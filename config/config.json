@@ -1,6 +1,6 @@
 {
   "development": {
-    "username": "root",
+    "username": "admin",
     "password": "password",
     "database": "cram_school",
     "host": "127.0.0.1",
