@@ -5,6 +5,9 @@ const flash = require('connect-flash')
 const session = require('express-session')
 const passport = require('./config/passport')
 const methodOverride = require('method-override')
+const fs = require('fs')
+const path = require('path')
+const uploadDir = path.join(__dirname, 'upload')
 const app = express()
 const port = 3000
 
@@ -25,6 +28,7 @@ app.use(passport.session())
 app.use(flash())
 app.use(methodOverride('_method'))
 
+fs.mkdirSync(uploadDir, { recursive: true })
 app.use('/upload', express.static(__dirname + '/upload'))
 
 app.use((req, res, next) => {
