@@ -1,5 +1,5 @@
 const express = require('express')
-const handlebars = require('express-handlebars')
+const { engine } = require('express-handlebars')
 const bodyParser = require('body-parser')
 const flash = require('connect-flash')
 const session = require('express-session')
@@ -12,7 +12,7 @@ const app = express()
 const port = 3000
 
 // setup handlebars
-app.engine('handlebars', handlebars({
+app.engine('handlebars', engine({
   defaultLayout: 'main',
   helpers: require('./config/handlebars-helpers')
 })) 
