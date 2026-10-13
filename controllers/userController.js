@@ -25,7 +25,7 @@ const userController = {
           User.create({
             name: req.body.name,
             email: req.body.email,
-            password: bcrypt.hashSync(req.body.password, bcrypt.genSaltSync(10), null)
+            password: bcrypt.hashSync(req.body.password, 10)
           }).then(user => {
             Teacher.create({
               name: req.body.realName,
@@ -54,7 +54,7 @@ const userController = {
       if (err) {
         return next(err)
       }
-      
+
       req.flash('success_messages', '登出成功！')
       return res.redirect('/signin')
     })
