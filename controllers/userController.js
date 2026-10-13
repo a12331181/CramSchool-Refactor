@@ -49,10 +49,15 @@ const userController = {
     res.redirect('/cramschool')
   },
 
-  logout: (req, res) => {
-    req.flash('success_messages', '登出成功！')
-    req.logout()
-    res.redirect('/signin')
+  logout: (req, res, next) => {
+    req.logout((err) => {
+      if (err) {
+        return next(err)
+      }
+      
+      req.flash('success_messages', '登出成功！')
+      return res.redirect('/signin')
+    })
   },
   //目前登錄先做老師這個身分的使用者
   getUser: (req, res) => {
