@@ -56,12 +56,11 @@ const studentController = {
         `/cramschool/students?${queryParams.toString()}`
       )
     }
-    
+
     return res.render('students', {
       students: result.rows,
       courses: result.courses,
       courseId: queryOptions.courseId ?? '',
-      isFilter: queryOptions.courseId !== undefined,
       ...pagination,
       isAdmin: req.user.isAdmin
     })

@@ -37,7 +37,6 @@
   </div>
 </form>
 
-{{#if isFilter}}
 <table class="table table-bordered">
   <thead>
     <tr class="table-primary">
@@ -59,36 +58,15 @@
         <a href="/cramschool/students/{{this.id}}" class="btn btn-sm btn-dark">基本資料</a>
       </th>
     </tr>
-    {{/each}}
-  </tbody>
-</table>
-
-{{else}}
-<table class="table table-bordered">
-  <thead>
-    <tr class="table-primary">
-      <th scope="col">#</th>
-      <th scope="col">學生姓名</th>
-      <th scope="col">學校</th>
-      <th scope="col">年級</th>
-      <th scope="col">#</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{#each students}}
-    <tr class="table-light">
-      <th scope="row">{{this.id}}</th>
-      <td>{{this.name}}</td>
-      <td>{{this.school}}</td>
-      <td>{{this.grade}}</td>
-      <th scope="col">
-        <a href="/cramschool/students/{{this.id}}" class="btn btn-sm btn-dark">基本資料</a>
-      </th>
+    {{else}}
+    <tr>
+      <td colspan="5" class="text-center">
+        沒有符合條件的學生
+      </td>
     </tr>
     {{/each}}
   </tbody>
 </table>
-{{/if}}
 
 <br />
 <nav aria-label="Page navigation example">
