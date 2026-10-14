@@ -21,6 +21,31 @@ async function getStudentDetails(studentId) {
   }
 }
 
+async function getStudentsPage({ page, courseId, pageSize }) {
+  const offset = (page - 1) * pageSize
+
+  const query = {
+    raw: true,
+    nest: true,
+    where: { status: 1 },
+    limit: pageSize,
+    offset
+  }
+
+  if (courseId !== undefined) {
+    query.include = [{
+      model: Course,
+      as: 'EnrolledCourses',
+      where: { id: courseId }
+    }]
+  }
+
+  const result = await Student.findAndCountAll(query)
+
+  return result
+}
+
 module.exports = {
-  getStudentDetails
+  getStudentDetails,
+  getStudentsPage
 }
