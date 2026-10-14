@@ -1,5 +1,5 @@
 'use strict';
-const faker = require('faker')
+const { faker } = require('@faker-js/faker')
 
 function randomSex() {
   const sexList = [
@@ -22,13 +22,13 @@ module.exports = {
     await queryInterface.bulkInsert('Students',
       Array.from({ length: 50 }).map((d, i) =>
       ({
-        name: faker.name.findName(),
+        name: faker.person.fullName(),
         sex: randomSex(),
         birth: '2011-11-11',
-        school: faker.name.findName() + ' School',
+        school: faker.person.fullName() + ' School',
         grade: randomGrade(),
-        tel: faker.phone.phoneNumber(),
-        address: faker.address.streetAddress(),
+        tel: faker.phone.number(),
+        address: faker.location.streetAddress(),
         createdAt: new Date(),
         updatedAt: new Date(),
         image: `https://loremflickr.com/400/320/students,school/?random=${Math.random() * 100}`,

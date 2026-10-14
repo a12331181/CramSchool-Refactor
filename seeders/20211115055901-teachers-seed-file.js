@@ -1,5 +1,5 @@
 'use strict';
-const faker = require('faker')
+const { faker } = require('@faker-js/faker')
 
 function randomSex() {
   const sexList = [
@@ -12,39 +12,39 @@ function randomSex() {
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.bulkInsert('Teachers', [{
-      name: faker.name.findName(),
+      name: faker.person.fullName(),
       sex: randomSex(),
       birth: '2011-11-11',
-      phone: faker.phone.phoneNumber(),
-      address: faker.address.streetAddress(),
+      phone: faker.phone.number(),
+      address: faker.location.streetAddress(),
       education: '大學',
-      school: faker.name.findName() + ' School',
+      school: faker.person.fullName() + ' School',
       createdAt: new Date(),
       updatedAt: new Date(),
       image: `https://loremflickr.com/240/320/teacher/?random=${Math.random() * 100}`,
       status: 1,
       UserId: 1
     }, {
-      name: faker.name.findName(),
+      name: faker.person.fullName(),
       sex: randomSex(),
       birth: '2011-11-11',
-      phone: faker.phone.phoneNumber(),
-      address: faker.address.streetAddress(),
+      phone: faker.phone.number(),
+      address: faker.location.streetAddress(),
       education: '大學',
-      school: faker.name.findName() + ' School',
+      school: faker.person.fullName() + ' School',
       createdAt: new Date(),
       updatedAt: new Date(),
       image: `https://loremflickr.com/240/320/teacher/?random=${Math.random() * 100}`,
       status: 1,
       UserId: 2
     }, {
-      name: faker.name.findName(),
+      name: faker.person.fullName(),
       sex: randomSex(),
       birth: '2011-11-11',
-      phone: faker.phone.phoneNumber(),
-      address: faker.address.streetAddress(),
+      phone: faker.phone.number(),
+      address: faker.location.streetAddress(),
       education: '大學',
-      school: faker.name.findName() + ' School',
+      school: faker.person.fullName() + ' School',
       createdAt: new Date(),
       updatedAt: new Date(),
       image: `https://loremflickr.com/240/320/teacher/?random=${Math.random() * 100}`,
