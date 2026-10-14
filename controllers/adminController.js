@@ -836,14 +836,22 @@ const adminController = {
     })
   },
 
-  addEnrollment: (req, res) => {
-    return Enrollment.create({
-      StudentId: req.params.studentId,
-      CourseId: req.params.courseId
-    }).then((student) => {
-      req.flash('success_messages', '成功註冊課程')
-      return res.redirect('back')
+  addEnrollment: async (req, res) => {
+    const [enrollment, created] = await Enrollment.findOrCreate({
+      where: {
+        StudentId: req.params.studentId,
+        CourseId: req.params.courseId
+      }
     })
+    
+    req.flash(
+      'success_messages',
+      created ? '成功註冊課程' : '學生已經註冊此課程'
+    )
+
+    return res.redirect(
+      `/admin/students/${req.params.studentId}/enrolls`
+    )
   },
 
   removeEnrollment: (req, res) => {
@@ -856,7 +864,9 @@ const adminController = {
         enrollment.destroy()
           .then((enrollment) => {
             req.flash('success_messages', '成功註銷課程')
-            return res.redirect('back')
+            return res.redirect(
+              `/admin/students/${req.params.studentId}/enrolls`
+            )
           })
       })
   },
