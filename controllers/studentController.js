@@ -1,4 +1,5 @@
 const studentService = require('../services/studentService')
+const { getPagination } = require('../utils/pagination')
 const db = require('../models')
 const Student = db.Student
 const Course = db.Course
@@ -33,27 +34,18 @@ const studentController = {
 
     const result = await studentService.getStudentsPage(queryOptions)
 
-    const page = queryOptions.page
-    const pages = Math.max(
-      1,
-      Math.ceil(result.count / queryOptions.pageSize)
-    )
-
-    const totalPage = Array.from({ length: pages })
-      .map((_, index) => index + 1)
-
-    const prev = Math.max(1, page - 1)
-    const next = Math.min(pages, page + 1)
+    const pagination = getPagination({
+      page: queryOptions.page,
+      pageSize: queryOptions.pageSize,
+      totalCount: result.count
+    })
 
     return res.render('students', {
       students: result.rows,
       courses: result.courses,
       courseId: queryOptions.courseId ?? '',
       isFilter: queryOptions.courseId !== undefined,
-      page,
-      totalPage,
-      prev,
-      next,
+      ...pagination,
       isAdmin: req.user.isAdmin
     })
   },
