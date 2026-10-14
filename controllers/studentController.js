@@ -39,7 +39,24 @@ const studentController = {
       pageSize: queryOptions.pageSize,
       totalCount: result.count
     })
+    
+    if (queryOptions.page > pagination.totalPages) {
+      const queryParams = new URLSearchParams({
+        page: String(pagination.totalPages)
+      })
 
+      if (queryOptions.courseId !== undefined) {
+        queryParams.set(
+          'courseId',
+          String(queryOptions.courseId)
+        )
+      }
+
+      return res.redirect(
+        `/cramschool/students?${queryParams.toString()}`
+      )
+    }
+    
     return res.render('students', {
       students: result.rows,
       courses: result.courses,

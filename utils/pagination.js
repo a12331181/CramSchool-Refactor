@@ -11,6 +11,7 @@ function getPagination({ page, pageSize, totalCount }) {
 
   return {
     page,
+    totalPages,
     totalPage,
     prev: Math.max(1, page - 1),
     next: Math.min(totalPages, page + 1)
