@@ -1,3 +1,4 @@
+const studentService = require('../services/studentService')
 const db = require('../models')
 const Student = db.Student
 const Course = db.Course
@@ -78,21 +79,14 @@ const studentController = {
     }
   },
 
-  getStudent: (req, res) => {
-    Student.findOne({
-      include: [{ model: Course, as: 'EnrolledCourses' }],
-      where: { id: req.params.id, status: 1 }
-    }).then(student => {
-      if (student === null) {
-        console.log('Not found')
-        res.redirect('/cramschool/students')
-      } else {
-        const enrolledCourses = student.EnrolledCourses.map(r => ({
-          ...r.dataValues
-        }))
-        return res.render('student', { student: student.toJSON(), enrolledCourses: enrolledCourses })
-      } 
-    })
+  getStudent: async (req, res) => {
+    const result = await studentService.getStudentDetails(req.params.id)
+
+    if (!result) {
+     return res.redirect('/cramschool/students')
+    }
+
+    return res.render('student', result)
   },
 
   getStudentAttend: (req, res) => {
