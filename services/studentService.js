@@ -28,6 +28,7 @@ async function getStudentsPage({ page, courseId, pageSize }) {
     raw: true,
     nest: true,
     where: { status: 1 },
+    order: [['id', 'ASC']],
     limit: pageSize,
     offset
   }
