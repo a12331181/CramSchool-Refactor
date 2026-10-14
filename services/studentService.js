@@ -27,6 +27,7 @@ async function getStudentsPage({ page, courseId, pageSize }) {
   const query = {
     raw: true,
     nest: true,
+    distinct: true,
     where: { status: 1 },
     order: [['id', 'ASC']],
     limit: pageSize,
