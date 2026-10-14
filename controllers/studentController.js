@@ -33,10 +33,6 @@ const studentController = {
 
     const result = await studentService.getStudentsPage(queryOptions)
 
-    const courses = await Course.findAll({
-      where: { isActive: true }
-    })
-
     const page = queryOptions.page
     const pages = Math.max(
       1,
@@ -51,7 +47,7 @@ const studentController = {
 
     return res.render('students', {
       students: result.rows,
-      courses,
+      courses: result.courses,
       courseId: queryOptions.courseId ?? '',
       isFilter: queryOptions.courseId !== undefined,
       page,

@@ -42,7 +42,16 @@ async function getStudentsPage({ page, courseId, pageSize }) {
 
   const result = await Student.findAndCountAll(query)
 
-  return result
+  const courses = await Course.findAll({
+    where: { isActive: true },
+    raw: true
+  })
+
+  return {
+    rows: result.rows,
+    count: result.count,
+    courses
+  }
 }
 
 module.exports = {

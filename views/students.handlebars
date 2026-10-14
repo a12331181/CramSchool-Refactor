@@ -31,7 +31,7 @@
     <select name="courseId" id="courseId" class="form-control-sm col-8" onchange="this.form.submit()">
       <option value="" {{#ifCond '' courseId}} selected{{/ifCond}}>全部學生</option>
       {{#each courses}}
-        <option value="{{this.dataValues.id}}" {{#ifCond this.dataValues.id ../courseId}} selected{{/ifCond}}>{{this.dataValues.name}}</option>
+        <option value="{{this.id}}" {{#ifCond this.id ../courseId}} selected{{/ifCond}}>{{this.name}}</option>
       {{/each}}
     </select>
   </div>
