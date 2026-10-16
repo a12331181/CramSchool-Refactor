@@ -1,11 +1,12 @@
 const { Student, Course } = require('../models')
+const STUDENT_STATUS = require('../constants/studentStatus')
 
 async function getStudentDetails(studentId) {
   const student = await Student.findOne({
     include: [{ model: Course, as: 'EnrolledCourses' }],
     where: {
       id: studentId,
-      status: 1
+      status: STUDENT_STATUS.ACTIVE
     }
   })
 
@@ -28,7 +29,7 @@ async function getStudentsPage({ page, courseId, pageSize }) {
     raw: true,
     nest: true,
     distinct: true,
-    where: { status: 1 },
+    where: { status: STUDENT_STATUS.ACTIVE },
     order: [['id', 'ASC']],
     limit: pageSize,
     offset

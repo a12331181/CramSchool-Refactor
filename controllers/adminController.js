@@ -808,33 +808,20 @@ const adminController = {
     })
   },
   
-  enrollCoursePage: (req, res) => {
-    Student.findByPk(req.params.id, {
-      include: [ 
-        { model: Course, as: 'EnrolledCourses' }
-      ]
-    }).then(student =>{
-      if (student === null) {
-        console.log('Not found!')
-        res.redirect('/admin/students')
-      } else if (Number(student.dataValues.status) === 2) {
-        console.log('Not open!')
-        res.redirect('/admin/students')
-      } else {
-        Course.findAll({ 
-          where: { isActive: true },
-          include: [ 
-            { model: Student, as: 'EnrolledStudents' }
-          ]
-        }).then(courses =>{
-          const data = courses.map(r => ({
-            ...r.dataValues,
-            isEnrolled: student.EnrolledCourses.map(d => d.id).includes(r.id)
-          }))
-          return res.render('admin/enrollcourse', { student: student.toJSON(), courses: data })
-        })
-      }
-    })
+  enrollCoursePage: async (req, res) => {
+    const studentId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(studentId) || studentId < 1) {
+      return res.status(400).send('學生 ID 必須是正整數')
+    }
+
+    const result = await enrollmentService.getEnrollmentPage(studentId)
+
+    if (!result) {
+      return res.redirect('/admin/students')
+    }
+
+    return res.render('admin/enrollcourse', result)
   },
 
   addEnrollment: async (req, res) => {
