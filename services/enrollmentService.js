@@ -2,6 +2,20 @@ const { Enrollment, Student, Course } = require('../models')
 const STUDENT_STATUS = require('../constants/studentStatus')
 
 async function addEnrollment({ studentId, courseId }) {
+  const student = await Student.findOne({
+    attributes: ['id'],
+    where: {
+      id: studentId,
+      status: STUDENT_STATUS.ACTIVE
+    }
+  })
+
+  if (!student) {
+    return {
+      allowed: false,
+      created: false
+    }
+  }
   const [, created] = await Enrollment.findOrCreate({
     where: {
       StudentId: studentId,
@@ -10,6 +24,7 @@ async function addEnrollment({ studentId, courseId }) {
   })
 
   return {
+    allowed: true,
     created
   }
 }

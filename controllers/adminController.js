@@ -836,10 +836,19 @@ const adminController = {
       return res.status(400).send('學生與課程 ID 必須是正整數')
     }
 
-    const { created } = await enrollmentService.addEnrollment({
+    const { allowed, created } = await enrollmentService.addEnrollment({
       studentId,
       courseId
     })
+    
+    if (!allowed) {
+      req.flash(
+        'error_messages',
+        '找不到在學學生，無法註冊課程'
+    
+      )
+      return res.redirect('/admin/students')
+    }
     
     req.flash(
       'success_messages',
