@@ -864,21 +864,31 @@ const adminController = {
     )
   },
 
-  removeEnrollment: (req, res) => {
-    return Enrollment.findOne({
-      where: {
-        StudentId: req.params.studentId,
-        CourseId: req.params.courseId
-      }
-    }).then((enrollment) => {
-        enrollment.destroy()
-          .then((enrollment) => {
-            req.flash('success_messages', '成功註銷課程')
-            return res.redirect(
-              `/admin/students/${req.params.studentId}/enrolls`
-            )
-          })
-      })
+  removeEnrollment: async (req, res) => {
+    const studentId = Number(req.params.studentId)
+    const courseId = Number(req.params.courseId)
+    if (
+      !Number.isSafeInteger(studentId) ||
+      studentId < 1 ||
+      !Number.isSafeInteger(courseId) ||
+      courseId < 1
+    ) {
+      return res.status(400).send('學生與課程 ID 必須是正整數')
+    }
+    const { removed } = await enrollmentService.removeEnrollment({
+      studentId,
+      courseId
+    })
+    req.flash(
+      'success_messages',
+      removed
+        ? '成功註銷課程'
+        : '此學生目前未註冊此課程'
+    )
+
+    return res.redirect(
+      `/admin/students/${studentId}/enrolls`
+    )
   },
 
   getExtraFees: (req, res) => {
