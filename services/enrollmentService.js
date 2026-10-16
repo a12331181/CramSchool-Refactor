@@ -10,10 +10,27 @@ async function addEnrollment({ studentId, courseId }) {
     }
   })
 
+  const course = await Course.findOne({
+    attributes: ['id'],
+    where: {
+      id: courseId,
+      isActive: true
+    }
+  })
+
+  if (!course) {
+    return {
+      allowed: false,
+      created: false,
+      reason: 'COURSE_UNAVAILABLE'
+    }
+  }
+
   if (!student) {
     return {
       allowed: false,
-      created: false
+      created: false,
+      reason: 'STUDENT_UNAVAILABLE'
     }
   }
   const [, created] = await Enrollment.findOrCreate({

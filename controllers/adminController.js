@@ -836,20 +836,28 @@ const adminController = {
       return res.status(400).send('學生與課程 ID 必須是正整數')
     }
 
-    const { allowed, created } = await enrollmentService.addEnrollment({
+    const { allowed, created, reason } = await enrollmentService.addEnrollment({
       studentId,
       courseId
     })
     
     if (!allowed) {
+      const isCourseUnavailable = reason === 'COURSE_UNAVAILABLE'
+
       req.flash(
         'error_messages',
-        '找不到在學學生，無法註冊課程'
-    
+        isCourseUnavailable
+          ? '課程不存在或已停止開課，無法註冊'
+          : '找不到在學學生，無法註冊課程'
       )
-      return res.redirect('/admin/students')
+
+      const redirectUrl = isCourseUnavailable
+        ? `/admin/students/${studentId}/enrolls`
+        : '/admin/students'
+      
+      return res.redirect(redirectUrl)
     }
-    
+
     req.flash(
       'success_messages',
       created ? '成功註冊課程' : '學生已經註冊此課程'
