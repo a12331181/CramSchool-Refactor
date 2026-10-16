@@ -1,3 +1,4 @@
+const enrollmentService = require('../services/enrollmentService')
 const db = require('../models')
 const Course = db.Course
 const User = db.User
@@ -837,11 +838,20 @@ const adminController = {
   },
 
   addEnrollment: async (req, res) => {
-    const [enrollment, created] = await Enrollment.findOrCreate({
-      where: {
-        StudentId: req.params.studentId,
-        CourseId: req.params.courseId
-      }
+    const studentId = Number(req.params.studentId)
+    const courseId = Number(req.params.courseId)
+    if (
+      !Number.isSafeInteger(studentId) ||
+      studentId < 1 ||
+      !Number.isSafeInteger(courseId) ||
+      courseId < 1
+    ) {
+      return res.status(400).send('學生與課程 ID 必須是正整數')
+    }
+
+    const { created } = await enrollmentService.addEnrollment({
+      studentId,
+      courseId
     })
     
     req.flash(
