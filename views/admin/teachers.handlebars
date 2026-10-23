@@ -29,7 +29,7 @@
   <div class="form-group d-flex justify-content-center">
     <label class="mr-2 mt-1" for="status"><strong style="color: rgb(83, 6, 6);">篩選: </strong></label>
     <select name="status" id="status" class="form-control-sm col-8" onchange="this.form.submit()">
-      <option value="" {{#ifCond '' ../status}} selected{{/ifCond}}>全部教師</option>
+      <option value="" {{#ifCond '' status}} selected{{/ifCond}}>全部教師</option>
       {{#each statusList}}
         <option value="{{this.id}}" 
           {{#ifCond this.id ../status}} 

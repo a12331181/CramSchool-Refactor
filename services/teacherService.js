@@ -17,6 +17,29 @@ async function getActiveTeachers() {
   return teachers.map(teacher => teacher.toJSON())
 }
 
+async function getTeachersPage({ page, pageSize, status }) {
+  const where = {}
+
+  if (status !== undefined) {
+    where.status = status
+  }
+
+  return Teacher.findAndCountAll({
+    attributes: [
+      'id', 'name', 'sex', 'education', 'school', 'status'
+    ],
+    where,
+    order: [
+      ['status', 'ASC'],
+      ['id', 'ASC']
+    ],
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    raw: true
+  })
+}
+
 module.exports = {
-  getActiveTeachers
+  getActiveTeachers,
+  getTeachersPage
 }

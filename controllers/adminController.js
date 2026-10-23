@@ -10,6 +10,9 @@ const ExtraFee = db.ExtraFee
 const fs = require('fs')
 const moment = require('moment')
 const pageLimit = 12
+const teacherService = require('../services/teacherService')
+const TEACHER_STATUS = require('../constants/teacherStatus')
+const { getPagination } = require('../utils/pagination')
 
 const adminController = {
   // 後臺首頁
@@ -398,67 +401,57 @@ const adminController = {
   },
 
   // 老師相關程式碼
-  getTeachers: (req, res) => {
-    let offset = 0
-    const statusList = [
-      { id: 1, status: '在職' },
-      { id: 2, status: '留職停薪' },
-      { id: 3, status: '離職' },
-    ]
-    const whereQuery = {}
-    let status = ''
-    if (req.query.page) {
-      offset = (req.query.page - 1) * pageLimit
+  getTeachers: async (req, res) => {
+    const page = Number(req.query.page || 1)
+    const status = req.query.status
+      ? Number(req.query.status)
+      : undefined
+
+    if (!Number.isSafeInteger(page) || page < 1) {
+      return res.status(400).send('頁碼必須是正整數')
     }
-    if (req.query.status) {
-      status = Number(req.query.status)
-      whereQuery.status = status
-      Teacher.findAndCountAll({
-        raw: true,
-        nest: true,
-        offset: offset,
-        limit: pageLimit,
-        where: whereQuery,
-        order: [['status', 'ASC']]  
-      }).then(teachers =>{
-        const page = Number(req.query.page) || 1
-        const pages = Math.ceil(teachers.count / pageLimit)
-        const totalPage = Array.from({ length: pages }).map((item, index) => index + 1)
-        const prev = page - 1 < 1 ? 1 : page - 1
-        const next = page + 1 > pages ? pages : page + 1
-        return res.render('admin/teachers', { 
-          teachers: teachers.rows,
-          page: page,
-          totalPage: totalPage,
-          prev: prev,
-          next: next,
-          statusList: statusList,
-          status: whereQuery.status
-        })
-      })
-    } else {
-      Teacher.findAndCountAll({
-        raw: true,
-        nest: true,
-        offset: offset,
-        limit: pageLimit,
-        order: [['status', 'ASC']]  
-      }).then(teachers =>{
-        const page = Number(req.query.page) || 1
-        const pages = Math.ceil(teachers.count / pageLimit)
-        const totalPage = Array.from({ length: pages }).map((item, index) => index + 1)
-        const prev = page - 1 < 1 ? 1 : page - 1
-        const next = page + 1 > pages ? pages : page + 1
-        return res.render('admin/teachers', { 
-          teachers: teachers.rows,
-          page: page,
-          totalPage: totalPage,
-          prev: prev,
-          next: next,
-          statusList: statusList
-        })
-      })
+
+    if (
+      status !== undefined &&
+      !Object.values(TEACHER_STATUS).includes(status)
+    ) {
+      return res.status(400).send('教師狀態不正確')
     }
+
+    const result = await teacherService.getTeachersPage({
+      page,
+      pageSize: pageLimit,
+      status
+    })
+
+    const pagination = getPagination({
+      page,
+      pageSize: pageLimit,
+      totalCount: result.count
+    })
+
+    if (page > pagination.totalPages) {
+      const queryParams = new URLSearchParams({
+        page: String(pagination.totalPages)
+      })
+
+      if (status !== undefined) {
+        queryParams.set('status', String(status))
+      }
+
+      return res.redirect(`/admin/teachers?${queryParams.toString()}`)
+    }
+
+    return res.render('admin/teachers', {
+      teachers: result.rows,
+      status: status ?? '',
+      statusList: [
+        { id: TEACHER_STATUS.ACTIVE, status: '在職' },
+        { id: TEACHER_STATUS.ON_LEAVE, status: '留職停薪' },
+        { id: TEACHER_STATUS.LEFT, status: '離職' }
+      ],
+      ...pagination
+    })
   },
 
   getTeacher: (req, res) => {
