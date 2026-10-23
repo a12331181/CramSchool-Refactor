@@ -472,30 +472,30 @@ const adminController = {
     })
   },
 
-  editTeacher: (req, res) => {
-    return Teacher.findByPk(req.params.id, {
-      raw: true,
-      nest: true
-    }).then(teacher => {
-      if (teacher === null) {
-        console.log('Not found!')
-        res.redirect('/admin/teachers')
-      } else {
-        const sexList = [
-          { id: 1, sex: '男' },
-          { id: 2, sex: '女' },
-        ]
-        const statusList = [
-          { id: 1, status: '在職' },
-          { id: 2, status: '留職停薪' },
-          { id: 3, status: '離職' },
-        ]
-        return res.render('admin/editteacher', { 
-          teacher: teacher,
-          sexList: sexList,
-          statusList: statusList
-        })       
-      }
+  editTeacher: async (req, res) => {
+    const teacherId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
+      return res.status(400).send('教師 ID 必須是正整數')
+    }
+
+    const teacher = await teacherService.getTeacherDetails(teacherId)
+
+    if (!teacher) {
+      return res.redirect('/admin/teachers')
+    }
+
+    return res.render('admin/editteacher', {
+      teacher,
+      sexList: [
+        { id: 1, sex: '男' },
+        { id: 2, sex: '女' }
+      ],
+      statusList: [
+        { id: TEACHER_STATUS.ACTIVE, status: '在職' },
+        { id: TEACHER_STATUS.ON_LEAVE, status: '留職停薪' },
+        { id: TEACHER_STATUS.LEFT, status: '離職' }
+      ]
     })
   },
 
