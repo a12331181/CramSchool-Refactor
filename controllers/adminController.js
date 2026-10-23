@@ -454,20 +454,21 @@ const adminController = {
     })
   },
 
-  getTeacher: (req, res) => {
-    return Teacher.findByPk(req.params.id, {
-      raw:true,
-      nest: true, 
-      include: [User]
-    }).then(teacher => {
-      if (teacher === null){
-        console.log('Not found!')
-        res.redirect('/admin/teachers')
-      } else {
-        return res.render('admin/teacher', {
-          teacher: teacher
-        })
-      }
+  getTeacher: async (req, res) => {
+    const teacherId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
+      return res.status(400).send('教師 ID 必須是正整數')
+    }
+
+    const teacher = await teacherService.getTeacherDetails(teacherId)
+
+    if (!teacher) {
+      return res.redirect('/admin/teachers')
+    }
+
+    return res.render('admin/teacher', {
+      teacher
     })
   },
 

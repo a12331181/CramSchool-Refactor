@@ -39,7 +39,36 @@ async function getTeachersPage({ page, pageSize, status }) {
   })
 }
 
+async function getTeacherDetails(teacherId) {
+  const teacher = await Teacher.findByPk(teacherId, {
+    attributes: [
+      'id',
+      'name',
+      'sex',
+      'birth',
+      'phone',
+      'address',
+      'education',
+      'school',
+      'image',
+      'status',
+      'UserId'
+    ],
+    include: [{
+      model: User,
+      attributes: ['email']
+    }]
+  })
+
+  if (!teacher) {
+    return null
+  }
+
+  return teacher.toJSON()
+}
+
 module.exports = {
   getActiveTeachers,
-  getTeachersPage
+  getTeachersPage,
+  getTeacherDetails
 }
