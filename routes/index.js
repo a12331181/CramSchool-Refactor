@@ -2,6 +2,7 @@ const {
   authenticated,
   authenticatedAdmin
 } = require('../middlewares/auth')
+const enrollmentRoutes = require('./enrollmentRoutes')
 const schoolController = require('../controllers/schoolController.js')
 const adminController = require('../controllers/adminController.js')
 const userController = require('../controllers/userController.js')
@@ -10,7 +11,6 @@ const paymentController = require('../controllers/paymentController.js')
 const teacherController = require('../controllers/teacherController.js')
 const studentController = require('../controllers/studentController.js')
 const tuitionController = require('../controllers/tuitionController.js')
-const enrollmentController = require('../controllers/enrollmentController.js')
 const multer = require('multer')
 const upload = multer({ dest: 'temp/' })
 
@@ -106,9 +106,7 @@ module.exports = (app, passport) => {
   app.get('/admin/students/:id/edit', authenticatedAdmin, adminController.editStudent)
   app.put('/admin/students/:id', authenticatedAdmin, upload.single('image'), adminController.putStudent)
   app.delete('/admin/students/:id', authenticatedAdmin, adminController.deleteStudent)
-  app.get('/admin/students/:id/enrolls', authenticatedAdmin, enrollmentController.enrollCoursePage)
-  app.post('/admin/students/:studentId/courses/:courseId/enrolls', authenticatedAdmin, enrollmentController.addEnrollment)
-  app.delete('/admin/students/:studentId/courses/:courseId/enrolls', authenticatedAdmin, enrollmentController.removeEnrollment)
+  app.use('/admin/students', enrollmentRoutes)
   //user profile 相關路由
   app.get('/users/:id', authenticated, userController.getUser)
   app.get('/users/:id/edit', authenticated, userController.getEditUserPage)
