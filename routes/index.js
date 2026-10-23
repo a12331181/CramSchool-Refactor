@@ -1,3 +1,7 @@
+const {
+  authenticated,
+  authenticatedAdmin
+} = require('../middlewares/auth')
 const schoolController = require('../controllers/schoolController.js')
 const adminController = require('../controllers/adminController.js')
 const userController = require('../controllers/userController.js')
@@ -11,19 +15,6 @@ const multer = require('multer')
 const upload = multer({ dest: 'temp/' })
 
 module.exports = (app, passport) => {
-  const authenticated = (req, res, next) => {
-    if (req.isAuthenticated()) {
-      return next()
-    }
-    res.redirect('/signin')
-  }
-  const authenticatedAdmin = (req, res, next) => {
-    if (req.isAuthenticated()) {
-      if (req.user.isAdmin) { return next() }
-      return res.redirect('/')
-    }
-    res.redirect('/signin')
-  }
   //前台相關路由
   app.get('/', authenticated, (req, res) => res.redirect('/cramschool'))
   app.get('/cramschool', authenticated, schoolController.getSchoolIndexPage)
