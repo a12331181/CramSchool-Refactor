@@ -1,17 +1,12 @@
-const db = require('../models')
-const Teacher = db.Teacher
-const User = db.User
+const teacherService = require('../services/teacherService')
 
 const teacherController = {
-  getTeachers: (req, res) => {
-    Teacher.findAll({
-      include: [User],
-      where: { status: 1 }
-    }).then(teachers => {
-      const data = teachers.map(r => ({
-        ...r.dataValues
-      }))
-      return res.render('teachers',{ teachers: data, isAdmin: req.user.isAdmin })
+  getTeachers: async (req, res) => {
+    const teachers = await teacherService.getActiveTeachers()
+
+    return res.render('teachers', {
+      teachers,
+      isAdmin: req.user.isAdmin
     })
   }
 }
