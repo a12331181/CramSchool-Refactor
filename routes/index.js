@@ -3,6 +3,7 @@ const {
   authenticatedAdmin
 } = require('../middlewares/auth')
 const enrollmentRoutes = require('./enrollmentRoutes')
+const adminTeacherRoutes = require('./adminTeacherRoutes')
 const schoolController = require('../controllers/schoolController.js')
 const adminController = require('../controllers/adminController.js')
 const userController = require('../controllers/userController.js')
@@ -11,7 +12,6 @@ const paymentController = require('../controllers/paymentController.js')
 const teacherController = require('../controllers/teacherController.js')
 const studentController = require('../controllers/studentController.js')
 const tuitionController = require('../controllers/tuitionController.js')
-const adminTeacherController = require('../controllers/adminTeacherController')
 const multer = require('multer')
 const upload = multer({ dest: 'temp/' })
 
@@ -95,10 +95,7 @@ module.exports = (app, passport) => {
   app.get('/admin/extrafees/:id/edit', authenticatedAdmin, adminController.getEditExtraFeePage)
   app.put('/admin/extrafees/:id', authenticatedAdmin, adminController.putExtraFee)
   //admin teacher 相關路由
-  app.get('/admin/teachers', authenticatedAdmin, adminTeacherController.getTeachers)
-  app.get('/admin/teachers/:id', authenticatedAdmin, adminTeacherController.getTeacher)
-  app.get('/admin/teachers/:id/edit', authenticatedAdmin, adminTeacherController.editTeacher)
-  app.put('/admin/teachers/:id', authenticatedAdmin, adminTeacherController.updateTeacher)
+  app.use('/admin/teachers', adminTeacherRoutes)
   //admin student 相關路由
   app.get('/admin/students', authenticatedAdmin, adminController.getStudents)
   app.get('/admin/students/create', authenticatedAdmin, adminController.getCreateStudentPage)
