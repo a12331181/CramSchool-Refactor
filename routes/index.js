@@ -97,7 +97,7 @@ module.exports = (app, passport) => {
   app.get('/admin/teachers', authenticatedAdmin, adminController.getTeachers)
   app.get('/admin/teachers/:id', authenticatedAdmin, adminController.getTeacher)
   app.get('/admin/teachers/:id/edit', authenticatedAdmin, adminController.editTeacher)
-  app.put('/admin/teachers/:id', authenticatedAdmin, adminController.putTeacher)
+  app.put('/admin/teachers/:id', authenticatedAdmin, adminController.updateTeacher)
   //admin student 相關路由
   app.get('/admin/students', authenticatedAdmin, adminController.getStudents)
   app.get('/admin/students/create', authenticatedAdmin, adminController.getCreateStudentPage)

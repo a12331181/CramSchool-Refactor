@@ -67,8 +67,46 @@ async function getTeacherDetails(teacherId) {
   return teacher.toJSON()
 }
 
+async function updateTeacher(teacherId, teacherData) {
+  if (!Object.values(TEACHER_STATUS).includes(teacherData.status)) {
+    return {
+      updated: false,
+      reason: 'INVALID_STATUS'
+    }
+  }
+
+  const teacher = await Teacher.findByPk(teacherId)
+
+  if (!teacher) {
+    return {
+      updated: false,
+      reason: 'TEACHER_NOT_FOUND'
+    }
+  }
+
+  const editableFields = [
+    'name', 'sex', 'birth', 'phone',
+    'address', 'education', 'school', 'status'
+  ]
+
+  const updates = {}
+
+  for (const field of editableFields) {
+    if (teacherData[field] !== undefined) {
+      updates[field] = teacherData[field]
+    }
+  }
+
+  await teacher.update(updates)
+
+  return {
+    updated: true
+  }
+}
+
 module.exports = {
   getActiveTeachers,
   getTeachersPage,
-  getTeacherDetails
+  getTeacherDetails,
+  updateTeacher
 }

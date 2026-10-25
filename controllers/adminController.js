@@ -499,24 +499,37 @@ const adminController = {
     })
   },
 
-  putTeacher: (req, res) => {
-    return Teacher.findByPk(req.params.id)
-      .then((teacher) => {
-        teacher.update({
-          name: req.body.name,
-          sex: req.body.sex,
-          birth: req.body.birth,
-          phone: req.body.phone,
-          address: req.body.address,
-          education: req.body.education,
-          school: req.body.school,
-          status: req.body.status,
-        })
-        .then((teacher) => {
-          req.flash('success_messages', '成功修改教師資料')
-          res.redirect('/admin/teachers')
-        })
-      })
+  updateTeacher: async (req, res) => {
+    const teacherId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
+      return res.status(400).send('教師 ID 必須是正整數')
+    }
+
+    const body = req.body ?? {}
+
+    const result = await teacherService.updateTeacher(teacherId, {
+      name: body.name,
+      sex: body.sex,
+      birth: body.birth,
+      phone: body.phone,
+      address: body.address,
+      education: body.education,
+      school: body.school,
+      status: Number(body.status)
+    })
+
+    if (!result.updated) {
+      if (result.reason === 'INVALID_STATUS') {
+        return res.status(400).send('教師狀態不正確')
+      }
+
+      req.flash('error_messages', '找不到教師資料')
+      return res.redirect('/admin/teachers')
+    }
+
+    req.flash('success_messages', '成功修改教師資料')
+    return res.redirect('/admin/teachers')
   },
 
   // 學生相關程式碼
