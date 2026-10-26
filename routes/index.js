@@ -1,7 +1,4 @@
-const {
-  authenticated,
-  authenticatedAdmin
-} = require('../middlewares/auth')
+const {authenticated, authenticatedAdmin} = require('../middlewares/auth')
 const enrollmentRoutes = require('./enrollmentRoutes')
 const adminTeacherRoutes = require('./adminTeacherRoutes')
 const schoolController = require('../controllers/schoolController.js')
