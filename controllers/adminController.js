@@ -478,43 +478,52 @@ const adminController = {
     })
   },
 
-  postStudent: (req, res) => {
-    file = req.file
-    if (file) {
-      fs.readFile(file.path, (err, data) => {
-        if (err) console.log('Error: ', err)
-        fs.writeFile(`upload/${file.originalname}`, data, () => {
-          return Student.create({
-            name: req.body.name,
-            sex: req.body.sex,
-            birth: req.body.birth,
-            school: req.body.school,
-            grade: req.body.grade,
-            tel: req.body.tel,
-            address: req.body.address,
-            image: file ? `/upload/${file.originalname}` : null,
-            status: req.body.status,
-          }).then((student) => {
-            req.flash('success_messages', '成功建立學生資料')
-            return res.redirect('/admin/students')
-          })
+  postStudent: async (req, res) => {
+    let uploadedImage
+    let createCompleted = false
+
+    try {
+      const body = req.body ?? {}
+
+      if (req.file) {
+        uploadedImage = await imageStorage.saveImage({
+          sourcePath: req.file.path,
+          originalName: req.file.originalname
         })
+      }
+
+      const result = await studentService.createStudent({
+        name: body.name,
+        sex: body.sex,
+        birth: body.birth,
+        school: body.school,
+        grade: body.grade,
+        tel: body.tel,
+        address: body.address,
+        status: Number(body.status),
+        image: uploadedImage?.url
       })
-    } else {      
-      return Student.create({
-        name: req.body.name,
-        sex: req.body.sex,
-        birth: req.body.birth,
-        school: req.body.school,
-        grade: req.body.grade,
-        tel: req.body.tel,
-        address: req.body.address,
-        image: null,
-        status: req.body.status,
-      }).then((student) => {
-        req.flash('success_messages', '成功建立學生資料')
-        return res.redirect('/admin/students')
-      })
+
+      if (!result.created) {
+        return res.status(400).send('學生狀態不正確')
+      }
+
+      createCompleted = true
+
+      req.flash('success_messages', '成功建立學生資料')
+      return res.redirect('/admin/students')
+    } finally {
+      if (uploadedImage && !createCompleted) {
+        await imageStorage.discardImage(
+          uploadedImage.filename
+        )
+      }
+
+      if (req.file) {
+        await imageStorage.discardTempFile(
+          req.file.path
+        )
+      }
     }
   },
 

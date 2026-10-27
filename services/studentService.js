@@ -175,10 +175,36 @@ async function updateStudent(studentId, studentData) {
   })
 }
 
+async function createStudent(studentData) {
+  if (!Object.values(STUDENT_STATUS).includes(studentData.status)) {
+    return {
+      created: false,
+      reason: 'INVALID_STATUS'
+    }
+  }
+
+  await Student.create({
+    name: studentData.name,
+    sex: studentData.sex,
+    birth: studentData.birth,
+    school: studentData.school,
+    grade: studentData.grade,
+    tel: studentData.tel,
+    address: studentData.address,
+    image: studentData.image ?? null,
+    status: studentData.status
+  })
+
+  return {
+    created: true
+  }
+}
+
 module.exports = {
   getStudentDetails,
   getStudentsPage,
   getAdminStudentsPage,
   getAdminStudentDetails,
-  updateStudent
+  updateStudent,
+  createStudent
 }
