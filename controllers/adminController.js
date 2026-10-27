@@ -12,6 +12,8 @@ const moment = require('moment')
 const pageLimit = 12
 const studentService = require('../services/studentService')
 const { getPagination } = require('../utils/pagination')
+const path = require('node:path')
+const { randomUUID } = require('node:crypto')
 
 const adminController = {
   // 後臺首頁
@@ -580,72 +582,59 @@ const adminController = {
     })
   },
 
-  putStudent: (req, res) => {
-    const file = req.file
-    if (file) {
-      fs.readFile(file.path, (err, data) => {
-        if (err) console.log('Error: ', err)
-        fs.writeFile(`upload/${file.originalname}`, data, () => {
-          return Student.findByPk(req.params.id)
-            .then((student) => {
-              student.update({
-                name: req.body.name,
-                sex: req.body.sex,
-                birth: req.body.birth,
-                school: req.body.school,
-                grade: req.body.grade,
-                tel: req.body.tel,
-                address: req.body.address,
-                image: file ? `/upload/${file.originalname}` : student.image,
-                status: req.body.status,
-              }).then(() => {
-                if (student.dataValues.status === '2') {
-                  Enrollment.destroy({
-                    where: {
-                      StudentId: student.dataValues.id
-                    }
-                  }).then(() => {
-                    req.flash('success_messages', '成功更新學生資料及刪除所有註冊課程')
-                    return res.redirect('/admin/students')
-                  })
-                } else {
-                  req.flash('success_messages', '成功更新學生資料')
-                  return res.redirect('/admin/students')
-                }
-              })
-            })
-        })
-      })
-    } else {
-      return Student.findByPk(req.params.id)
-        .then((student) => {
-          student.update({
-            name: req.body.name,
-            sex: req.body.sex,
-            birth: req.body.birth,
-            school: req.body.school,
-            grade: req.body.grade,
-            tel: req.body.tel,
-            address: req.body.address,
-            image: student.image,
-            status: req.body.status,
-          }).then(() => {
-            if (student.dataValues.status === '2') {
-              Enrollment.destroy({
-                where: {
-                  StudentId: student.dataValues.id
-                }
-              }).then(() => {
-                req.flash('success_messages', '成功更新學生資料及刪除所有註冊課程')
-                return res.redirect('/admin/students')
-              })
-            } else {
-              req.flash('success_messages', '成功更新學生資料')
-              return res.redirect('/admin/students')
-            }
-          })
-        })
+  putStudent: async (req, res) => {
+    const studentId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(studentId) || studentId < 1) {
+      return res.status(400).send('學生 ID 必須是正整數')
     }
+
+    const body = req.body ?? {}
+    const file = req.file
+
+    let image
+
+    if (file) {
+      const uploadDir = path.join(__dirname, '..', 'upload')
+      const extension = path.extname(file.originalname)
+      const filename = `${randomUUID()}${extension}`
+
+      await fs.promises.mkdir(uploadDir, {
+        recursive: true
+      })
+
+      await fs.promises.copyFile(
+        file.path,
+        path.join(uploadDir, filename)
+      )
+
+      image = `/upload/${filename}`
+    }
+
+    const result = await studentService.updateStudent(studentId, {
+      name: body.name,
+      sex: body.sex,
+      birth: body.birth,
+      school: body.school,
+      grade: body.grade,
+      tel: body.tel,
+      address: body.address,
+      status: Number(body.status),
+      image
+    })
+
+    if (!result.updated) {
+      if (result.reason === 'INVALID_STATUS') {
+        return res.status(400).send('學生狀態不正確')
+      }
+
+      req.flash('error_messages', '找不到學生資料')
+      return res.redirect('/admin/students')
+    }
+
+    req.flash('success_messages', '成功更新學生資料')
+
+    return res.redirect('/admin/students')
   },
 
   deleteStudent: (req, res) => {

@@ -1,4 +1,4 @@
-const { Student, Course } = require('../models')
+const {Student, Course, Enrollment, sequelize} = require('../models')
 const STUDENT_STATUS = require('../constants/studentStatus')
 
 async function getStudentDetails(studentId) {
@@ -115,9 +115,70 @@ async function getAdminStudentDetails(studentId) {
   return student
 }
 
+async function updateStudent(studentId, studentData) {
+  if (!Object.values(STUDENT_STATUS).includes(studentData.status)) {
+    return {
+      updated: false,
+      reason: 'INVALID_STATUS'
+    }
+  }
+
+  return sequelize.transaction(async transaction => {
+    const student = await Student.findByPk(studentId, {
+      transaction
+    })
+
+    if (!student) {
+      return {
+        updated: false,
+        reason: 'STUDENT_NOT_FOUND'
+      }
+    }
+
+    const editableFields = [
+      'name',
+      'sex',
+      'birth',
+      'school',
+      'grade',
+      'tel',
+      'address',
+      'image',
+      'status'
+    ]
+
+    const updates = {}
+
+    for (const field of editableFields) {
+      if (studentData[field] !== undefined) {
+        updates[field] = studentData[field]
+      }
+    }
+
+    await student.update(updates, {
+      transaction
+    })
+
+    if (studentData.status === STUDENT_STATUS.LEFT) {
+      await Enrollment.destroy({
+        where: {
+          StudentId: studentId
+        },
+        transaction
+      })
+    }
+
+    return {
+      updated: true,
+      status: studentData.status
+    }
+  })
+}
+
 module.exports = {
   getStudentDetails,
   getStudentsPage,
   getAdminStudentsPage,
-  getAdminStudentDetails
+  getAdminStudentDetails,
+  updateStudent
 }
