@@ -125,8 +125,35 @@ async function createCourse(courseData) {
   })
 }
 
+async function getCourseEditData(courseId) {
+  const course = await Course.findByPk(courseId, {
+    attributes: [
+      'id',
+      'name',
+      'time',
+      'type',
+      'amounts',
+      'price',
+      'TeacherId',
+      'isActive'
+    ]
+  })
+
+  if (!course || course.isActive === false) {
+    return null
+  }
+
+  const formData = await getCourseFormData()
+
+  return {
+    course: course.toJSON(),
+    teachers: formData.teachers
+  }
+}
+
 module.exports = {
   getAdminCoursesPage,
   getCourseFormData,
-  createCourse
+  createCourse,
+  getCourseEditData
 }

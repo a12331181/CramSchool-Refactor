@@ -108,7 +108,19 @@ const adminController = {
     return res.redirect('/admin/courses')
   },
 
-  editCourse: (req, res) => {
+  editCourse: async (req, res) => {
+    const courseId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
+    }
+
+    const result = await courseService.getCourseEditData(courseId)
+
+    if (!result) {
+      return res.redirect('/admin/courses')
+    }
+
     const typeList = Object.values(COURSE_TYPES).map(type => ({
       type
     }))
@@ -116,27 +128,12 @@ const adminController = {
     const timeList = Object.values(COURSE_TIMES).map(time => ({
       time
     }))
-    Promise.all([
-      Teacher.findAll({
-        raw: true,
-        nest: true
-      }),
-      Course.findByPk(req.params.id)
-    ]).then(([teachers, course]) => {
-      if (course === null) {
-        console.log('Not found!')
-        res.redirect('/admin/courses')
-      } else if (course.dataValues.isActive === false) {
-        console.log('Not open!')
-        res.redirect('/admin/courses')
-      } else {
-        return res.render('admin/createcourse', { 
-          course: course.toJSON(),
-          teachers: teachers,
-          typeList: typeList,
-          timeList: timeList
-        })
-      }
+
+    return res.render('admin/createcourse', {
+      course: result.course,
+      teachers: result.teachers,
+      typeList,
+      timeList
     })
   },
 
