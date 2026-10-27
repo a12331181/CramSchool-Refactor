@@ -1,7 +1,8 @@
 const {authenticated, authenticatedAdmin} = require('../middlewares/auth')
+const upload = require('../middlewares/upload')
 const enrollmentRoutes = require('./enrollmentRoutes')
 const adminTeacherRoutes = require('./adminTeacherRoutes')
-const adminStudentController = require('../controllers/adminStudentController')
+const adminStudentRoutes = require('./adminStudentRoutes')
 const schoolController = require('../controllers/schoolController.js')
 const adminController = require('../controllers/adminController.js')
 const userController = require('../controllers/userController.js')
@@ -10,8 +11,6 @@ const paymentController = require('../controllers/paymentController.js')
 const teacherController = require('../controllers/teacherController.js')
 const studentController = require('../controllers/studentController.js')
 const tuitionController = require('../controllers/tuitionController.js')
-const multer = require('multer')
-const upload = multer({ dest: 'temp/' })
 
 module.exports = (app, passport) => {
   //前台相關路由
@@ -95,13 +94,7 @@ module.exports = (app, passport) => {
   //admin teacher 相關路由
   app.use('/admin/teachers', adminTeacherRoutes)
   //admin student 相關路由
-  app.get('/admin/students', authenticatedAdmin, adminStudentController.getStudents)
-  app.get('/admin/students/create', authenticatedAdmin, adminStudentController.getCreateStudentPage)
-  app.post('/admin/students', authenticatedAdmin, upload.single('image'), adminStudentController.postStudent)
-  app.get('/admin/students/:id', authenticatedAdmin, adminStudentController.getStudent)
-  app.get('/admin/students/:id/edit', authenticatedAdmin, adminStudentController.editStudent)
-  app.put('/admin/students/:id', authenticatedAdmin, upload.single('image'), adminStudentController.putStudent)
-  app.delete('/admin/students/:id', authenticatedAdmin, adminStudentController.deleteStudent)
+  app.use('/admin/students', adminStudentRoutes)
   app.use('/admin/students', enrollmentRoutes)
   //user profile 相關路由
   app.get('/users/:id', authenticated, userController.getUser)
