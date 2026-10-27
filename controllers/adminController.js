@@ -3,7 +3,6 @@ const Course = db.Course
 const User = db.User
 const Teacher = db.Teacher
 const Student = db.Student
-const Enrollment = db.Enrollment
 const Calendar = db.Calendar
 const Attend = db.Attend
 const ExtraFee = db.ExtraFee
@@ -11,9 +10,9 @@ const fs = require('fs')
 const moment = require('moment')
 const pageLimit = 12
 const studentService = require('../services/studentService')
+const imageStorage = require('../utils/imageStorage')
 const { getPagination } = require('../utils/pagination')
-const path = require('node:path')
-const { randomUUID } = require('node:crypto')
+
 
 const adminController = {
   // 後臺首頁
@@ -583,58 +582,63 @@ const adminController = {
   },
 
   putStudent: async (req, res) => {
-    const studentId = Number(req.params.id)
+    let uploadedImage
+    let updateCompleted = false
 
-    if (!Number.isSafeInteger(studentId) || studentId < 1) {
-      return res.status(400).send('學生 ID 必須是正整數')
-    }
+    try {
+      const studentId = Number(req.params.id)
 
-    const body = req.body ?? {}
-    const file = req.file
-
-    let image
-
-    if (file) {
-      const uploadDir = path.join(__dirname, '..', 'upload')
-      const extension = path.extname(file.originalname)
-      const filename = `${randomUUID()}${extension}`
-
-      await fs.promises.mkdir(uploadDir, {
-        recursive: true
-      })
-
-      await fs.promises.copyFile(
-        file.path,
-        path.join(uploadDir, filename)
-      )
-
-      image = `/upload/${filename}`
-    }
-
-    const result = await studentService.updateStudent(studentId, {
-      name: body.name,
-      sex: body.sex,
-      birth: body.birth,
-      school: body.school,
-      grade: body.grade,
-      tel: body.tel,
-      address: body.address,
-      status: Number(body.status),
-      image
-    })
-
-    if (!result.updated) {
-      if (result.reason === 'INVALID_STATUS') {
-        return res.status(400).send('學生狀態不正確')
+      if (!Number.isSafeInteger(studentId) || studentId < 1) {
+        return res.status(400).send('學生 ID 必須是正整數')
       }
 
-      req.flash('error_messages', '找不到學生資料')
+      const body = req.body ?? {}
+
+      if (req.file) {
+        uploadedImage = await imageStorage.saveImage({
+          sourcePath: req.file.path,
+          originalName: req.file.originalname
+        })
+      }
+
+      const result = await studentService.updateStudent(studentId, {
+        name: body.name,
+        sex: body.sex,
+        birth: body.birth,
+        school: body.school,
+        grade: body.grade,
+        tel: body.tel,
+        address: body.address,
+        status: Number(body.status),
+        image: uploadedImage?.url
+      })
+
+      if (!result.updated) {
+        if (result.reason === 'INVALID_STATUS') {
+          return res.status(400).send('學生狀態不正確')
+        }
+
+        req.flash('error_messages', '找不到學生資料')
+        return res.redirect('/admin/students')
+      }
+
+      updateCompleted = true
+
+      req.flash('success_messages', '成功更新學生資料')
       return res.redirect('/admin/students')
+    } finally {
+      if (uploadedImage && !updateCompleted) {
+        await imageStorage.discardImage(
+          uploadedImage.filename
+        )
+      }
+
+      if (req.file) {
+        await imageStorage.discardTempFile(
+          req.file.path
+        )
+      }
     }
-
-    req.flash('success_messages', '成功更新學生資料')
-
-    return res.redirect('/admin/students')
   },
 
   deleteStudent: (req, res) => {
