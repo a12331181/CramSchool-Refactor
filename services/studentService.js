@@ -1,4 +1,4 @@
-const {Student, Course, Enrollment, sequelize} = require('../models')
+const {Student, Course, Enrollment, Attend, Tuition, sequelize} = require('../models')
 const STUDENT_STATUS = require('../constants/studentStatus')
 
 async function getStudentDetails(studentId) {
@@ -200,11 +200,73 @@ async function createStudent(studentData) {
   }
 }
 
+async function deleteStudent(studentId) {
+  return sequelize.transaction(async transaction => {
+    const student = await Student.findByPk(studentId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!student) {
+      return {
+        deleted: false,
+        reason: 'STUDENT_NOT_FOUND'
+      }
+    }
+
+    const attend = await Attend.findOne({
+      attributes: ['id'],
+      where: {
+        StudentId: studentId
+      },
+      transaction
+    })
+
+    if (attend) {
+      return {
+        deleted: false,
+        reason: 'HAS_ATTENDANCE'
+      }
+    }
+
+    const tuition = await Tuition.findOne({
+      attributes: ['id'],
+      where: {
+        StudentId: studentId
+      },
+      transaction
+    })
+
+    if (tuition) {
+      return {
+        deleted: false,
+        reason: 'HAS_TUITION'
+      }
+    }
+
+    await Enrollment.destroy({
+      where: {
+        StudentId: studentId
+      },
+      transaction
+    })
+
+    await student.destroy({
+      transaction
+    })
+
+    return {
+      deleted: true
+    }
+  })
+}
+
 module.exports = {
   getStudentDetails,
   getStudentsPage,
   getAdminStudentsPage,
   getAdminStudentDetails,
   updateStudent,
-  createStudent
+  createStudent,
+  deleteStudent
 }

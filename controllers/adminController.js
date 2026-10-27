@@ -2,11 +2,8 @@ const db = require('../models')
 const Course = db.Course
 const User = db.User
 const Teacher = db.Teacher
-const Student = db.Student
 const Calendar = db.Calendar
-const Attend = db.Attend
 const ExtraFee = db.ExtraFee
-const fs = require('fs')
 const moment = require('moment')
 const pageLimit = 12
 const studentService = require('../services/studentService')
@@ -650,26 +647,32 @@ const adminController = {
     }
   },
 
-  deleteStudent: (req, res) => {
-    Attend.findAll({
-      where: { StudentId: req.params.id }
-    }).then(attends => {
-      if (attends.length === 0) {
-        Student.findByPk(req.params.id)
-          .then((student) => {
-            student.destroy()
-            .then(() => {
-              console.log('No data!')
-              req.flash('success_messages', '成功刪除學生資料')
-              res.redirect('/admin/students')
-            })
-          })
-      } else {
-        console.log('Have attend data!')
-        req.flash('error_messages', '已有出席紀錄，故無法刪除此學生資料')
-        res.redirect('/admin/students')
+  deleteStudent: async (req, res) => {
+    const studentId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(studentId) || studentId < 1) {
+      return res.status(400).send('學生 ID 必須是正整數')
+    }
+
+    const result = await studentService.deleteStudent(studentId)
+
+    if (!result.deleted) {
+      const errorMessages = {
+        STUDENT_NOT_FOUND: '找不到學生資料',
+        HAS_ATTENDANCE: '已有出席紀錄，無法刪除學生，請改用離開狀態',
+        HAS_TUITION: '已有學費紀錄，無法刪除學生，請改用離開狀態'
       }
-    })
+
+      req.flash(
+        'error_messages',
+        errorMessages[result.reason] ?? '無法刪除學生資料'
+      )
+
+      return res.redirect('/admin/students')
+    }
+
+    req.flash('success_messages', '成功刪除學生資料')
+    return res.redirect('/admin/students')
   },
   
   getExtraFees: (req, res) => {
