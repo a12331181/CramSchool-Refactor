@@ -31,6 +31,19 @@ async function getAdminCoursesPage({ page, pageSize }) {
   }
 }
 
+async function getCourseFormData() {
+  const teachers = await Teacher.findAll({
+    attributes: ['id', 'name'],
+    order: [['id', 'ASC']],
+    raw: true
+  })
+
+  return {
+    teachers
+  }
+}
+
 module.exports = {
-  getAdminCoursesPage
+  getAdminCoursesPage,
+  getCourseFormData
 }

@@ -49,7 +49,9 @@ const adminController = {
     })
   },
 
-  getCreateCoursePage: (req, res) => {
+  getCreateCoursePage: async (req, res) => {
+    const formData = await courseService.getCourseFormData()
+
     const typeList = [
       { id: 1, type: '依堂數計費' },
       { id: 2, type: '依月計費' },
@@ -59,15 +61,10 @@ const adminController = {
       { id: 2, time: '90' },
       { id: 3, time: '120' },
     ]
-    Teacher.findAll({
-      raw: true,
-      nest: true
-    }).then(teachers => {
-      return res.render('admin/createcourse', {
-        teachers: teachers,
-        timeList: timeList,
-        typeList: typeList
-      })
+    return res.render('admin/createcourse', {
+      teachers: formData.teachers,
+      typeList,
+      timeList
     })
   },
 
