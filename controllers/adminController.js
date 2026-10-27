@@ -6,7 +6,8 @@ const Calendar = db.Calendar
 const ExtraFee = db.ExtraFee
 const moment = require('moment')
 const pageLimit = 12
-
+const courseService = require('../services/courseService')
+const { getPagination } = require('../utils/pagination')
 const adminController = {
   // 後臺首頁
   getSchoolIndexPage: (req, res) => {
@@ -14,31 +15,37 @@ const adminController = {
   },
 
   // 課程相關程式碼
-  getCourses : (req, res) => {
-    let offset = 0
-    if (req.query.page) {
-      offset = (req.query.page - 1) * pageLimit
+  getCourses: async (req, res) => {
+    const page = Number(req.query.page || 1)
+
+    if (
+      !Number.isSafeInteger(page) ||
+      page < 1 ||
+      !Number.isSafeInteger((page - 1) * pageLimit)
+    ) {
+      return res.status(400).send('頁碼不正確或超出可處理範圍')
     }
-    return Course.findAndCountAll({
-      raw: true,
-      nest: true,
-      offset: offset,
-      limit: pageLimit,
-      include: [Teacher],
-      order: [['isActive', 'DESC']]  
-    }).then(courses =>{
-      const page = Number(req.query.page) || 1
-      const pages = Math.ceil(courses.count / pageLimit)
-      const totalPage = Array.from({ length: pages }).map((item, index) => index + 1)
-      const prev = page - 1 < 1 ? 1 : page - 1
-      const next = page + 1 > pages ? pages : page + 1
-      return res.render('admin/courses', { 
-        courses: courses.rows, 
-        page: page,
-        totalPage: totalPage,
-        prev: prev,
-        next: next,
-      })
+
+    const result = await courseService.getAdminCoursesPage({
+      page,
+      pageSize: pageLimit
+    })
+
+    const pagination = getPagination({
+      page,
+      pageSize: pageLimit,
+      totalCount: result.count
+    })
+
+    if (page > pagination.totalPages) {
+      return res.redirect(
+        `/admin/courses?page=${pagination.totalPages}`
+      )
+    }
+
+    return res.render('admin/courses', {
+      courses: result.rows,
+      ...pagination
     })
   },
 
