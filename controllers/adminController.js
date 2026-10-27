@@ -537,7 +537,7 @@ const adminController = {
     })
   },
 
-  editStudent: (req, res) => {
+  editStudent: async (req, res) => {
     const sexList = [
       { id: 1, sex: '男' },
       { id: 2, sex: '女' },
@@ -558,21 +558,25 @@ const adminController = {
       { id: 9, grade: '九年級' },
       { id: 10, grade: '其他' },
     ]
-    Student.findByPk(req.params.id, {
-      raw: true,
-      nest: true
-    }).then(student => {
-      if (student === null) {
-        console.log('Not found!')
-        res.redirect('/admin/students')
-      } else {
-        return res.render('admin/createstudent', { 
-          student: student,
-          statusList: statusList,
-          sexList: sexList,
-          gradeList: gradeList
-        })        
-      }
+    const studentId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(studentId) || studentId < 1) {
+      return res.status(400).send('學生 ID 必須是正整數')
+    }
+
+    const student = await studentService.getAdminStudentDetails(
+      studentId
+    )
+
+    if (!student) {
+      return res.redirect('/admin/students')
+    }
+
+    return res.render('admin/createstudent', {
+      student,
+      statusList,
+      sexList,
+      gradeList
     })
   },
 
