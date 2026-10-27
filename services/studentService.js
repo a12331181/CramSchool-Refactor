@@ -57,7 +57,46 @@ async function getStudentsPage({ page, courseId, pageSize }) {
   }
 }
 
+async function getAdminStudentsPage({ page, pageSize, courseId }) {
+  const query = {
+    attributes: ['id', 'name', 'sex', 'school', 'grade', 'status'],
+    order: [
+      ['status', 'ASC'],
+      ['id', 'ASC']
+    ],
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    distinct: true
+  }
+
+  if (courseId !== undefined) {
+    query.include = [{
+      model: Course,
+      as: 'EnrolledCourses',
+      attributes: [],
+      through: { attributes: [] },
+      where: { id: courseId },
+      required: true
+    }]
+  }
+
+  const result = await Student.findAndCountAll(query)
+
+  const courses = await Course.findAll({
+    attributes: ['id', 'name'],
+    order: [['id', 'ASC']],
+    raw: true
+  })
+
+  return {
+    rows: result.rows.map(student => student.toJSON()),
+    count: result.count,
+    courses
+  }
+}
+
 module.exports = {
   getStudentDetails,
-  getStudentsPage
+  getStudentsPage,
+  getAdminStudentsPage
 }

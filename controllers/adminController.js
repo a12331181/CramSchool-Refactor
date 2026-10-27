@@ -10,6 +10,8 @@ const ExtraFee = db.ExtraFee
 const fs = require('fs')
 const moment = require('moment')
 const pageLimit = 12
+const studentService = require('../services/studentService')
+const { getPagination } = require('../utils/pagination')
 
 const adminController = {
   // 後臺首頁
@@ -398,72 +400,53 @@ const adminController = {
   },
 
   // 學生相關程式碼
-  getStudents: (req, res) => {
-    let offset = 0
-    const whereQuery = {}
-    let courseId = ''
-    if (req.query.page) {
-      offset = (Number(req.query.page) - 1) * pageLimit
+  getStudents: async (req, res) => {
+    const page = Number(req.query.page || 1)
+    const courseId = req.query.courseId
+      ? Number(req.query.courseId)
+      : undefined
+
+    if (!Number.isSafeInteger(page) || page < 1) {
+      return res.status(400).send('頁碼必須是正整數')
     }
-    if (req.query.courseId) {
-      courseId = Number(req.query.courseId)
-      whereQuery.id = courseId
-      Student.findAndCountAll({
-        raw: true,
-        nest: true,
-        include: [{ model: Course, as: 'EnrolledCourses', where: whereQuery }],
-        limit: pageLimit,
-        offset: offset,
-        order: [['status', 'ASC']]  
-      }).then(result => {
-        const page = Number(req.query.page) || 1
-        const pages = Math.ceil(result.count / pageLimit)
-        const totalPage = Array.from({ length: pages }).map((v, index) => index + 1)
-        const prev = page - 1 < 1 ? 1 : page - 1
-        const next = page + 1 > pages ? pages : page + 1
-        Course.findAll({
-          raw: true,
-          nest: true
-        }).then(courses => {
-          return res.render('admin/students', { 
-            students: result.rows,
-            courses: courses,
-            courseId: whereQuery.id,
-            page: page,
-            totalPage: totalPage,
-            prev: prev,
-            next: next,
-          })
-        })
-      })
-    } else {
-      Student.findAndCountAll({
-        raw: true,
-        nest: true,
-        limit: pageLimit,
-        offset: offset,
-        order: [['status', 'ASC']]  
-      }).then(result => {
-        const page = Number(req.query.page) || 1
-        const pages = Math.ceil(result.count / pageLimit)
-        const totalPage = Array.from({ length: pages }).map((v, index) => index + 1)
-        const prev = page - 1 < 1 ? 1 : page - 1
-        const next = page + 1 > pages ? pages : page + 1
-        Course.findAll({
-          raw: true,
-          nest: true
-        }).then(courses => {
-          return res.render('admin/students', { 
-            students: result.rows,
-            courses: courses,
-            page: page,
-            totalPage: totalPage,
-            prev: prev,
-            next: next,
-          })
-        })
-      })
+
+    if (
+      courseId !== undefined &&
+      (!Number.isSafeInteger(courseId) || courseId < 1)
+    ) {
+      return res.status(400).send('課程 ID 必須是正整數')
     }
+
+    const result = await studentService.getAdminStudentsPage({
+      page,
+      pageSize: pageLimit,
+      courseId
+    })
+
+    const pagination = getPagination({
+      page,
+      pageSize: pageLimit,
+      totalCount: result.count
+    })
+
+    if (page > pagination.totalPages) {
+      const queryParams = new URLSearchParams({
+        page: String(pagination.totalPages)
+      })
+
+      if (courseId !== undefined) {
+        queryParams.set('courseId', String(courseId))
+      }
+
+      return res.redirect(`/admin/students?${queryParams.toString()}`)
+    }
+
+    return res.render('admin/students', {
+      students: result.rows,
+      courses: result.courses,
+      courseId: courseId ?? '',
+      ...pagination
+    })
   },
 
   getCreateStudentPage: (req, res) => {
