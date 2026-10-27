@@ -1,6 +1,7 @@
 const {authenticated, authenticatedAdmin} = require('../middlewares/auth')
 const enrollmentRoutes = require('./enrollmentRoutes')
 const adminTeacherRoutes = require('./adminTeacherRoutes')
+const adminStudentController = require('../controllers/adminStudentController')
 const schoolController = require('../controllers/schoolController.js')
 const adminController = require('../controllers/adminController.js')
 const userController = require('../controllers/userController.js')
@@ -94,13 +95,13 @@ module.exports = (app, passport) => {
   //admin teacher 相關路由
   app.use('/admin/teachers', adminTeacherRoutes)
   //admin student 相關路由
-  app.get('/admin/students', authenticatedAdmin, adminController.getStudents)
-  app.get('/admin/students/create', authenticatedAdmin, adminController.getCreateStudentPage)
-  app.post('/admin/students', authenticatedAdmin, upload.single('image'), adminController.postStudent)
-  app.get('/admin/students/:id', authenticatedAdmin, adminController.getStudent)
-  app.get('/admin/students/:id/edit', authenticatedAdmin, adminController.editStudent)
-  app.put('/admin/students/:id', authenticatedAdmin, upload.single('image'), adminController.putStudent)
-  app.delete('/admin/students/:id', authenticatedAdmin, adminController.deleteStudent)
+  app.get('/admin/students', authenticatedAdmin, adminStudentController.getStudents)
+  app.get('/admin/students/create', authenticatedAdmin, adminStudentController.getCreateStudentPage)
+  app.post('/admin/students', authenticatedAdmin, upload.single('image'), adminStudentController.postStudent)
+  app.get('/admin/students/:id', authenticatedAdmin, adminStudentController.getStudent)
+  app.get('/admin/students/:id/edit', authenticatedAdmin, adminStudentController.editStudent)
+  app.put('/admin/students/:id', authenticatedAdmin, upload.single('image'), adminStudentController.putStudent)
+  app.delete('/admin/students/:id', authenticatedAdmin, adminStudentController.deleteStudent)
   app.use('/admin/students', enrollmentRoutes)
   //user profile 相關路由
   app.get('/users/:id', authenticated, userController.getUser)
