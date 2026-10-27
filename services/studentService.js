@@ -95,8 +95,29 @@ async function getAdminStudentsPage({ page, pageSize, courseId }) {
   }
 }
 
+async function getAdminStudentDetails(studentId) {
+  const student = await Student.findByPk(studentId, {
+    attributes: [
+      'id',
+      'name',
+      'sex',
+      'birth',
+      'school',
+      'grade',
+      'tel',
+      'address',
+      'image',
+      'status'
+    ],
+    raw: true
+  })
+
+  return student
+}
+
 module.exports = {
   getStudentDetails,
   getStudentsPage,
-  getAdminStudentsPage
+  getAdminStudentsPage,
+  getAdminStudentDetails
 }
