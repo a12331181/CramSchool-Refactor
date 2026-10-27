@@ -8,6 +8,8 @@ const moment = require('moment')
 const pageLimit = 12
 const courseService = require('../services/courseService')
 const { getPagination } = require('../utils/pagination')
+const {COURSE_TIMES, COURSE_TYPES} = require('../constants/courseOptions')
+
 const adminController = {
   // 後臺首頁
   getSchoolIndexPage: (req, res) => {
@@ -52,15 +54,13 @@ const adminController = {
   getCreateCoursePage: async (req, res) => {
     const formData = await courseService.getCourseFormData()
 
-    const typeList = [
-      { id: 1, type: '依堂數計費' },
-      { id: 2, type: '依月計費' },
-    ]
-    const timeList = [
-      { id: 1, time: '60' },
-      { id: 2, time: '90' },
-      { id: 3, time: '120' },
-    ]
+    const typeList = Object.values(COURSE_TYPES).map(type => ({
+      type
+    }))
+
+    const timeList = Object.values(COURSE_TIMES).map(time => ({
+      time
+    }))
     return res.render('admin/createcourse', {
       teachers: formData.teachers,
       typeList,
@@ -68,44 +68,54 @@ const adminController = {
     })
   },
 
-  postCourse: (req, res) => {
-    return Course.create({
-      name: req.body.name,
-      time: req.body.time,
-      type: req.body.type,
-      amounts: req.body.amounts,
-      price: req.body.price,
-      TeacherId: req.body.teacherId
-    }).then((course) => {
-      course = course.toJSON()
-      let calendarList = []
-      for (let i = 0; i < Number(course.amounts); i++) {
-        calendarList.push(
-          {
-            date: moment().format('YYYY-MM-DD'), //日期,內容為預設值
-            content: i,
-            CourseId: course.id,
-            period: 1
-          }
-        )
-      }
-      Calendar.bulkCreate(calendarList).then(calendars => {
-        req.flash('success_messages', '課程已成功被創建')
-        res.redirect('/admin/courses')
-      }) 
+  postCourse: async (req, res) => {
+    const body = req.body ?? {}
+    const numericFields = ['amounts', 'price', 'teacherId']
+
+    if (numericFields.some(field =>
+      typeof body[field] !== 'string' ||
+      body[field].trim() === ''
+    )) {
+      return res.status(400).send('堂數、價格與教師 ID 必須填寫數字')
+    }
+
+    const result = await courseService.createCourse({
+      name: body.name,
+      time: body.time,
+      type: body.type,
+      amounts: Number(body.amounts),
+      price: Number(body.price),
+      teacherId: Number(body.teacherId)
     })
+
+    if (!result.created) {
+      const errorMessages = {
+        INVALID_NAME: '課程名稱必填，且不可超過 255 字',
+        INVALID_TIME: '上課時長只能是 60、90 或 120 分鐘',
+        INVALID_TYPE: '計費方式不正確',
+        INVALID_AMOUNTS: '堂數必須是 1 到 36 的整數',
+        INVALID_PRICE: '價格必須是有效的非負整數',
+        INVALID_TEACHER_ID: '教師 ID 不正確',
+        TEACHER_NOT_FOUND: '找不到所選教師，請重新選擇'
+      }
+
+      return res.status(400).send(
+        errorMessages[result.reason] ?? '課程資料不正確'
+      )
+    }
+
+    req.flash('success_messages', '成功建立課程')
+    return res.redirect('/admin/courses')
   },
 
   editCourse: (req, res) => {
-    const typeList = [
-      { id: 1, type: '依堂數計費' },
-      { id: 2, type: '依月計費' },
-    ]
-    const timeList = [
-      { id: 1, time: '60' },
-      { id: 2, time: '90' },
-      { id: 3, time: '120' },
-    ]
+    const typeList = Object.values(COURSE_TYPES).map(type => ({
+      type
+    }))
+
+    const timeList = Object.values(COURSE_TIMES).map(time => ({
+      time
+    }))
     Promise.all([
       Teacher.findAll({
         raw: true,
