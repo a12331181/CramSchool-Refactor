@@ -137,22 +137,67 @@ const adminController = {
     })
   },
 
-  putCourse: (req, res) => {
-    return Course.findByPk(req.params.id)
-      .then((course) => {
-        course.update({
-          name: req.body.name,
-          time: req.body.time,
-          type: req.body.type,
-          amounts: req.body.amounts,
-          price: req.body.price,
-          TeacherId: req.body.teacherId
-        })
-        .then((course) => {
-          req.flash('success_messages', '課程已成功被修改')
-          res.redirect('/admin/courses')
-        })
-      })
+  putCourse: async (req, res) => {
+    const courseId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
+    }
+
+    const body = req.body ?? {}
+
+    if (!Object.values(COURSE_TIMES).includes(body.time)) {
+      return res.status(400).send('上課時長不正確')
+    }
+
+    if (!Object.values(COURSE_TYPES).includes(body.type)) {
+      return res.status(400).send('計費方式不正確')
+    }
+
+    if (
+      typeof body.price !== 'string' ||
+      body.price.trim() === '' ||
+      typeof body.teacherId !== 'string' ||
+      body.teacherId.trim() === ''
+    ) {
+      return res.status(400).send('請填寫有效的價格與教師資料')
+    }
+
+    const price = Number(body.price)
+    const teacherId = Number(body.teacherId)
+
+    if (!Number.isSafeInteger(price) || price < 0 || price > 2147483647) {
+      return res.status(400).send('價格必須是有效的台幣整數元')
+    }
+
+    if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
+      return res.status(400).send('教師 ID 必須是正整數')
+    }
+
+    const result = await courseService.updateCourse(courseId, {
+      time: body.time,
+      type: body.type,
+      price,
+      teacherId
+    })
+
+    if (!result.ok) {
+      const errorMessages = {
+        COURSE_NOT_FOUND: '找不到課程資料',
+        COURSE_CLOSED: '課程已關閉，無法修改',
+        TEACHER_NOT_FOUND: '找不到所選教師'
+      }
+
+      req.flash(
+        'error_messages',
+        errorMessages[result.code] ?? '無法修改課程'
+      )
+
+      return res.redirect('/admin/courses')
+    }
+
+    req.flash('success_messages', '成功修改課程')
+    return res.redirect('/admin/courses')
   },
 
   deleteCourse: (req, res) => {

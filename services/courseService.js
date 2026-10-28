@@ -151,9 +151,59 @@ async function getCourseEditData(courseId) {
   }
 }
 
+async function updateCourse(courseId, courseData) {
+  return sequelize.transaction(async transaction => {
+    const course = await Course.findByPk(courseId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!course) {
+      return {
+        ok: false,
+        code: 'COURSE_NOT_FOUND'
+      }
+    }
+
+    if (course.isActive === false) {
+      return {
+        ok: false,
+        code: 'COURSE_CLOSED'
+      }
+    }
+
+    const teacher = await Teacher.findByPk(courseData.teacherId, {
+      attributes: ['id'],
+      transaction
+    })
+
+    if (!teacher) {
+      return {
+        ok: false,
+        code: 'TEACHER_NOT_FOUND'
+      }
+    }
+
+    await course.update({
+      time: courseData.time,
+      type: courseData.type,
+      price: courseData.price,
+      TeacherId: courseData.teacherId
+    }, { transaction })
+
+    return {
+      ok: true,
+      data: {
+        id: course.id
+      }
+    }
+  })
+}
+
 module.exports = {
   getAdminCoursesPage,
   getCourseFormData,
   createCourse,
-  getCourseEditData
+  getCourseEditData,
+  updateCourse
 }
