@@ -283,11 +283,49 @@ async function deleteCourse(courseId) {
   })
 }
 
+async function setCourseActive(courseId, isActive) {
+  if (typeof isActive !== 'boolean') {
+    throw new TypeError('課程狀態必須是布林值')
+  }
+
+  return sequelize.transaction(async transaction => {
+    const course = await Course.findByPk(courseId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!course) {
+      return {
+        ok: false,
+        code: 'COURSE_NOT_FOUND'
+      }
+    }
+
+    if (course.isActive === isActive) {
+      return {
+        ok: true,
+        changed: false
+      }
+    }
+
+    await course.update(
+      { isActive },
+      { transaction }
+    )
+
+    return {
+      ok: true,
+      changed: true
+    }
+  })
+}
+
 module.exports = {
   getAdminCoursesPage,
   getCourseFormData,
   createCourse,
   getCourseEditData,
   updateCourse,
-  deleteCourse
+  deleteCourse,
+  setCourseActive
 }

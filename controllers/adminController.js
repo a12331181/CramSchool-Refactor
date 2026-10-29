@@ -231,28 +231,58 @@ const adminController = {
     return res.redirect('/admin/courses')
   },
 
-  closeCourse: (req, res) => {
-    Course.findByPk(req.params.id)
-      .then(course => {
-        course.update({
-          isActive: false
-        }).then(() => {
-          req.flash('success_messages', '已成功關閉課程')
-          return res.redirect('back')
-        })
-    })
+  closeCourse: async (req, res) => {
+    const courseId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
+    }
+
+    const result = await courseService.setCourseActive(
+      courseId,
+      false
+    )
+
+    if (!result.ok) {
+      req.flash('error_messages', '找不到課程資料')
+      return res.redirect('/admin/courses')
+    }
+
+    req.flash(
+      'success_messages',
+      result.changed
+        ? '已成功關閉課程'
+        : '課程已經是關閉狀態'
+    )
+
+    return res.redirect('/admin/courses')
   },
 
-  openCourse: (req, res) => {
-    Course.findByPk(req.params.id)
-      .then(course => {
-        course.update({
-          isActive: true
-        }).then(() => {
-          req.flash('success_messages', '已成功開啟課程')
-          return res.redirect('back')
-        })
-    })
+  openCourse: async (req, res) => {
+    const courseId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
+    }
+
+    const result = await courseService.setCourseActive(
+      courseId,
+      true
+    )
+
+    if (!result.ok) {
+      req.flash('error_messages', '找不到課程資料')
+      return res.redirect('/admin/courses')
+    }
+
+    req.flash(
+      'success_messages',
+      result.changed
+        ? '已成功開啟課程'
+        : '課程已經是開啟狀態'
+    )
+
+    return res.redirect('/admin/courses')
   },
 
   // 課程行事曆相關程式碼
