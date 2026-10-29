@@ -200,22 +200,35 @@ const adminController = {
     return res.redirect('/admin/courses')
   },
 
-  deleteCourse: (req, res) => {
-    Course.findByPk(req.params.id, {
-      include: { model: Calendar, where: { isActive: false }}
-    }).then((course) => {
-      if (course === null) {
-        Course.findByPk(req.params.id).then(needDeleteCourse => {
-          needDeleteCourse.destroy().then(() => {
-            req.flash('success_messages', '已成功刪除課程')
-            res.redirect('/admin/courses')
-          })
-        })
-      } else {
-        req.flash('error_messages', '課程已在進行，故無法刪除')
-        res.redirect('/admin/courses')
+  deleteCourse: async (req, res) => {
+    const courseId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
+    }
+
+    const result = await courseService.deleteCourse(courseId)
+
+    if (!result.ok) {
+      const errorMessages = {
+        COURSE_NOT_FOUND: '找不到課程資料',
+        COURSE_HAS_ENROLLMENTS: '課程已有學生選課，請改用關閉課程',
+        COURSE_HAS_TUITIONS: '課程已有學費帳單，無法刪除',
+        COURSE_HAS_DIARIES: '課程已有教學日誌，無法刪除',
+        COURSE_HAS_CLOSED_CALENDARS: '課程已有關閉的課堂紀錄，無法刪除',
+        COURSE_HAS_ATTENDANCE: '課程已有點名紀錄，無法刪除'
       }
-    })
+
+      req.flash(
+        'error_messages',
+        errorMessages[result.code] ?? '無法刪除課程'
+      )
+
+      return res.redirect('/admin/courses')
+    }
+
+    req.flash('success_messages', '已成功刪除課程')
+    return res.redirect('/admin/courses')
   },
 
   closeCourse: (req, res) => {

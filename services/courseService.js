@@ -1,4 +1,4 @@
-const { Course, Teacher, Calendar, sequelize } = require('../models')
+const {Course, Teacher, Calendar, Enrollment, Tuition, Diary, Attend, sequelize} = require('../models')
 const {COURSE_TIMES, COURSE_TYPES} = require('../constants/courseOptions')
 const moment = require('moment')
 
@@ -200,10 +200,94 @@ async function updateCourse(courseId, courseData) {
   })
 }
 
+async function deleteCourse(courseId) {
+  return sequelize.transaction(async transaction => {
+    const course = await Course.findByPk(courseId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!course) {
+      return { ok: false, code: 'COURSE_NOT_FOUND' }
+    }
+
+    const enrollment = await Enrollment.findOne({
+      attributes: ['id'],
+      where: { CourseId: courseId },
+      transaction
+    })
+
+    if (enrollment) {
+      return { ok: false, code: 'COURSE_HAS_ENROLLMENTS' }
+    }
+
+    const tuition = await Tuition.findOne({
+      attributes: ['id'],
+      where: { CourseId: courseId },
+      transaction
+    })
+
+    if (tuition) {
+      return { ok: false, code: 'COURSE_HAS_TUITIONS' }
+    }
+
+    const diary = await Diary.findOne({
+      attributes: ['id'],
+      where: { CourseId: courseId },
+      transaction
+    })
+
+    if (diary) {
+      return { ok: false, code: 'COURSE_HAS_DIARIES' }
+    }
+
+    const closedCalendar = await Calendar.findOne({
+      attributes: ['id'],
+      where: {
+        CourseId: courseId,
+        isActive: false
+      },
+      transaction
+    })
+
+    if (closedCalendar) {
+      return {
+        ok: false,
+        code: 'COURSE_HAS_CLOSED_CALENDARS'
+      }
+    }
+
+    const attend = await Attend.findOne({
+      attributes: ['id'],
+      include: [{
+        model: Calendar,
+        attributes: [],
+        where: { CourseId: courseId },
+        required: true
+      }],
+      transaction
+    })
+
+    if (attend) {
+      return { ok: false, code: 'COURSE_HAS_ATTENDANCE' }
+    }
+
+    await Calendar.destroy({
+      where: { CourseId: courseId },
+      transaction
+    })
+
+    await course.destroy({ transaction })
+
+    return { ok: true }
+  })
+}
+
 module.exports = {
   getAdminCoursesPage,
   getCourseFormData,
   createCourse,
   getCourseEditData,
-  updateCourse
+  updateCourse,
+  deleteCourse
 }
