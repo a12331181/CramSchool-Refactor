@@ -17,8 +17,15 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true
     },
 
-    StudentId: DataTypes.INTEGER,
-    CourseId: DataTypes.INTEGER,
+    StudentId: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+
+    CourseId: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
 
     startsOn: {
       type: DataTypes.DATEONLY,
