@@ -17,10 +17,14 @@
         {{#each courses}}
         <tr class="table-light">
           <th scope="row">{{this.id}}</th>
-          <td style="color:#3f3937f5;">{{this.name}}</td>
+          <td style="color:#3f3937f5;">
+            {{this.name}}
+            {{#unless this.isActive}}（已關閉）{{/unless}}
+          </td>
           <td>
             {{#if this.isEnrolled }}
               <form action="/admin/students/{{../student.id}}/courses/{{this.id}}/enrolls?_method=DELETE" method="POST" style="display: inline;">
+                <input type="hidden" name="enrollmentId" value="{{this.enrollmentId}}">
                 <button type="submit" class="btn btn-danger btn-sm">取消課程</button>
               </form>
             {{else}}

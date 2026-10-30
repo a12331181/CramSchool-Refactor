@@ -1,5 +1,8 @@
 const {Student, Course, Enrollment, Attend, Tuition, sequelize} = require('../models')
+const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
+const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
+const { getTaipeiDate } = require('../utils/date')
 
 async function getStudentDetails(studentId) {
   const student = await Student.findOne({
@@ -125,13 +128,32 @@ async function updateStudent(studentId, studentData) {
 
   return sequelize.transaction(async transaction => {
     const student = await Student.findByPk(studentId, {
-      transaction
+      transaction,
+      lock: transaction.LOCK.UPDATE
     })
 
     if (!student) {
       return {
         updated: false,
         reason: 'STUDENT_NOT_FOUND'
+      }
+    }
+
+    const endsOn = getTaipeiDate()
+
+    if (studentData.status === STUDENT_STATUS.LEFT) {
+      const futureEnrollment = await Enrollment.findOne({
+        attributes: ['id'],
+        where: {
+          StudentId: studentId,
+          status: ENROLLMENT_STATUS.ACTIVE,
+          startsOn: { [Op.gt]: endsOn }
+        },
+        transaction
+      })
+
+      if (futureEnrollment) {
+        return { updated: false, reason: 'FUTURE_ENROLLMENT' }
       }
     }
 
@@ -160,9 +182,13 @@ async function updateStudent(studentId, studentData) {
     })
 
     if (studentData.status === STUDENT_STATUS.LEFT) {
-      await Enrollment.destroy({
+      await Enrollment.update({
+        endsOn,
+        status: ENROLLMENT_STATUS.ENDED
+      }, {
         where: {
-          StudentId: studentId
+          StudentId: studentId,
+          status: ENROLLMENT_STATUS.ACTIVE
         },
         transaction
       })
@@ -244,12 +270,17 @@ async function deleteStudent(studentId) {
       }
     }
 
-    await Enrollment.destroy({
+    const enrollment = await Enrollment.findOne({
+      attributes: ['id'],
       where: {
         StudentId: studentId
       },
       transaction
     })
+
+    if (enrollment) {
+      return { deleted: false, reason: 'HAS_ENROLLMENTS' }
+    }
 
     await student.destroy({
       transaction

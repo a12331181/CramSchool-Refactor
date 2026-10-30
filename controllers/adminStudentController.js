@@ -231,6 +231,11 @@ const adminStudentController = {
           return res.status(400).send('學生狀態不正確')
         }
 
+        if (result.reason === 'FUTURE_ENROLLMENT') {
+          req.flash('error_messages', '學生有尚未開始的選課，請先核對參加期間')
+          return res.redirect(`/admin/students/${studentId}/edit`)
+        }
+
         req.flash('error_messages', '找不到學生資料')
         return res.redirect('/admin/students')
       }
@@ -266,6 +271,7 @@ const adminStudentController = {
     if (!result.deleted) {
       const errorMessages = {
         STUDENT_NOT_FOUND: '找不到學生資料',
+        HAS_ENROLLMENTS: '已有選課紀錄，無法刪除學生，請改用離開狀態',
         HAS_ATTENDANCE: '已有出席紀錄，無法刪除學生，請改用離開狀態',
         HAS_TUITION: '已有學費紀錄，無法刪除學生，請改用離開狀態'
       }
