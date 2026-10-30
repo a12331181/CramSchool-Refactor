@@ -1,14 +1,22 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+
+const { Model } = require('sequelize');
+const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
+
 module.exports = (sequelize, DataTypes) => {
   class Course extends Model {
     static associate(models) {
       Course.belongsTo(models.Teacher)
       Course.belongsToMany(models.Student, {
-        through: models.Enrollment,
+        through: {
+          model: models.Enrollment,
+          unique: false,
+          scope: {
+            status: ENROLLMENT_STATUS.ACTIVE
+          }
+        },
         foreignKey: 'CourseId',
+        otherKey: 'StudentId',
         as: 'EnrolledStudents'
       })
       Course.hasMany(models.Calendar)
