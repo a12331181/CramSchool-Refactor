@@ -7,7 +7,10 @@
   <thead class="thead-dark">
     <tr>
       <th scope="col">#</th>
-      <th scope="col">上課日期</th>
+      <th scope="col">原紀錄日期</th>
+      <th scope="col">開始時間（台北）</th>
+      <th scope="col">結束時間（台北）</th>
+      <th scope="col">課堂狀態</th>
       <th scope="col">期數</th>
       <th scope="col">課程內容</th>
       <th scope="col">#</th>
@@ -19,6 +22,9 @@
     <tr class="table-light">
       <th scope="row">{{this.id}}</th>
       <td>{{this.date}}</td>
+      <td>{{this.startAtText}}</td>
+      <td>{{this.endAtText}}</td>
+      <td>{{this.statusText}}</td>
       <td>第{{this.period}}期</td>
       <td>{{this.content}}</td>
       <td>
@@ -36,6 +42,9 @@
     <tr class="table-secondary">
       <th scope="row">{{this.id}}</th>
       <td>{{this.date}}</td>
+      <td>{{this.startAtText}}</td>
+      <td>{{this.endAtText}}</td>
+      <td>{{this.statusText}}</td>
       <td>第{{this.period}}期</td>
       <td>{{this.content}}</td>
       <td>
@@ -52,7 +61,6 @@
     {{/if}}
     {{/each}}
   </tbody>
-</table>
 </table>
 
 <br />

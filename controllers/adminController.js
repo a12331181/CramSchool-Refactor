@@ -5,6 +5,15 @@ const Calendar = db.Calendar
 const ExtraFee = db.ExtraFee
 const moment = require('moment')
 const pageLimit = 12
+const calendarService = require('../services/calendarService')
+const { getPagination } = require('../utils/pagination')
+const { formatTaipeiDateTime } = require('../utils/date')
+const CALENDAR_STATUS = require('../constants/calendarStatus')
+const CALENDAR_STATUS_LABELS = Object.freeze({
+  [CALENDAR_STATUS.SCHEDULED]: '已排定',
+  [CALENDAR_STATUS.COMPLETED]: '已完成',
+  [CALENDAR_STATUS.CANCELLED]: '已取消'
+})
 
 const adminController = {
   // 後臺首頁
@@ -13,55 +22,71 @@ const adminController = {
   },
 
   // 課程行事曆相關程式碼
-  getCalendar : (req, res) => {
-    let offset = 0
-    if (req.query.page) {
-      offset = (req.query.page - 1) * pageLimit
+  getCalendar: async (req, res) => {
+    const courseId = Number(req.params.id)
+    const page = Number(req.query.page || 1)
+
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
     }
-    Promise.all([
-      Calendar.max('period', {
-        where: {
-          CourseId: req.params.id
-        }
-      }),
-      Course.findByPk(req.params.id),
-      Calendar.findAndCountAll({
-        where: {
-          CourseId: req.params.id
-        },
-        offset: offset,
-        limit: pageLimit
-      })
-    ]).then(([calendarPeriod, course, result]) =>{
-      if (course === null) {
-        console.log('Not found')
-        res.redirect('/admin/courses')
-      } else if (course.dataValues.isActive === false) {
-        console.log('Not open!')
-        res.redirect('/admin/courses')
-      } else {
-        let isPeriodNotEqualOne = true
-        if (calendarPeriod === 1) {
-          isPeriodNotEqualOne = false
-        }
-        const page = Number(req.query.page) || 1
-        const pages = Math.ceil(result.count / pageLimit)
-        const totalPage = Array.from({ length: pages }).map((item, index) => index + 1)
-        const prev = page - 1 < 1 ? 1 : page - 1
-        const next = page + 1 > pages ? pages : page + 1
-        const calendars = result.rows.map(r => ({
-          ...r.dataValues
-        }))
-        return res.render('admin/course', { 
-          course: course.toJSON(), 
-          calendars: calendars, 
-          isPeriodNotEqualOne: isPeriodNotEqualOne,
-          page: page,
-          totalPage: totalPage,
-          prev: prev,
-          next: next
-        })
+
+    if (
+      !Number.isSafeInteger(page) ||
+      page < 1 ||
+      !Number.isSafeInteger((page - 1) * pageLimit)
+    ) {
+      return res.status(400).send('頁碼不正確或超出可處理範圍')
+    }
+
+    const result = await calendarService.getCalendarPage({
+      courseId,
+      page,
+      pageSize: pageLimit
+    })
+
+    if (!result.ok) {
+      const errorMessages = {
+        COURSE_NOT_FOUND: '找不到課程資料',
+        COURSE_CLOSED: '課程已關閉，暫不提供此操作頁面'
       }
+
+      req.flash(
+        'error_messages',
+        errorMessages[result.code] ?? '無法取得課程行事曆'
+      )
+
+      return res.redirect('/admin/courses')
+    }
+
+    const pagination = getPagination({
+      page,
+      pageSize: pageLimit,
+      totalCount: result.count
+    })
+
+    if (page > pagination.totalPages) {
+      return res.redirect(
+        `/admin/courses/${courseId}/calendar?page=${pagination.totalPages}`
+      )
+    }
+    const calendars = result.rows.map(calendar => ({
+      ...calendar,
+
+      startAtText:
+        formatTaipeiDateTime(calendar.startAt) ?? '待核對',
+
+      endAtText:
+        formatTaipeiDateTime(calendar.endAt) ?? '待核對',
+
+      statusText: Object.hasOwn(CALENDAR_STATUS_LABELS, calendar.status)
+        ? CALENDAR_STATUS_LABELS[calendar.status]
+        : '待核對'
+    }))
+    return res.render('admin/course', {
+      course: result.course,
+      calendars,
+      isPeriodNotEqualOne: result.latestPeriod > 1,
+      ...pagination
     })
   },
 
