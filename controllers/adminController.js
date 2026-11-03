@@ -90,6 +90,40 @@ const adminController = {
     })
   },
 
+  getCreateCalendarPage: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
+    }
+
+    const result = await calendarService.getCreateCalendarFormData(courseId)
+
+    if (!result.ok) {
+      const errorMessages = {
+        COURSE_NOT_FOUND: '找不到課程資料',
+        COURSE_CLOSED: '課程已關閉，無法新增課堂'
+      }
+
+      req.flash(
+        'error_messages',
+        errorMessages[result.code] ?? '無法開啟新增課堂頁面'
+      )
+
+      return res.redirect('/admin/courses')
+    }
+
+    const teachers = result.teachers.map(teacher => ({
+      ...teacher,
+      isSelected: teacher.id === result.course.TeacherId
+    }))
+
+    return res.render('admin/createcalendar', {
+      course: result.course,
+      teachers
+    })
+  },
+
   postNextPeriodCalendar: (req, res) => {
     Calendar.max('period', {
       where: {
@@ -134,23 +168,29 @@ const adminController = {
     })
   },
 
-  editCalendar: (req, res) => {
-    Calendar.findByPk(req.params.calendarId, {
-      include: [Course]
-    }).then(calendar => {
-      let url = '/admin/courses/'+ String(req.params.courseId) + '/calendar'
-      if (calendar === null) {
-        console.log('Not found!')
-        res.redirect(url)
-      } else {
-        if (calendar.isActive === false) {
-          console.log('Not open!')
-          res.redirect(url)
-        } else {
-          return res.render('admin/editcalendar',{ calendar: calendar.toJSON() })
-        }
-      }
-    })
+  editCalendar: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    const calendarId = Number(req.params.calendarId)
+
+    if (
+      !Number.isSafeInteger(courseId) || courseId < 1 ||
+      !Number.isSafeInteger(calendarId) || calendarId < 1
+    ) {
+      return res.status(400).send('課程與課堂 ID 必須是正整數')
+    }
+
+    const calendar = await calendarService.getLegacyCalendarEditData(
+      courseId,
+      calendarId
+    )
+
+    if (!calendar) {
+      return res.status(409).send(
+        '此課堂目前無法使用舊日期表單修改，請返回課堂列表確認'
+      )
+    }
+
+    return res.render('admin/editcalendar', { calendar })
   },
 
   putCalendar: (req, res) => {

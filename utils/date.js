@@ -34,7 +34,25 @@ function formatTaipeiDateTime(date) {
   return `${getTaipeiDate(date)} ${parts.hour}:${parts.minute}`
 }
 
+function parseTaipeiDateTime(value) {
+  if (
+    typeof value !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)
+  ) {
+    return null
+  }
+
+  const date = new Date(`${value}:00+08:00`)
+
+  if (formatTaipeiDateTime(date) !== value.replace('T', ' ')) {
+    return null
+  }
+
+  return date
+}
+
 module.exports = { 
   getTaipeiDate,
-  formatTaipeiDateTime
+  formatTaipeiDateTime,
+  parseTaipeiDateTime
 }

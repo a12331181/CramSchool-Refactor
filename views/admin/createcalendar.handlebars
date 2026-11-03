@@ -1,0 +1,40 @@
+<h1>{{course.name}}</h1>
+<h2>新增課堂</h2>
+
+<p class="text-muted">開始與結束時間皆以台北時間填寫。</p>
+
+{{#unless teachers.length}}
+<p class="alert alert-warning">目前沒有可安排的授課教師，請先確認教師資料。</p>
+{{/unless}}
+
+<form action="/admin/courses/{{course.id}}/sessions" method="POST">
+  <div class="form-group">
+    <label for="startAt">開始時間（台北）</label>
+    <input type="datetime-local" class="form-control" id="startAt" name="startAt" step="60" required>
+  </div>
+
+  <div class="form-group">
+    <label for="endAt">結束時間（台北）</label>
+    <input type="datetime-local" class="form-control" id="endAt" name="endAt" step="60" required>
+  </div>
+
+  <div class="form-group">
+    <label for="teacherId">授課教師</label>
+    <select class="form-control" id="teacherId" name="teacherId" required>
+      <option value="">請選擇授課教師</option>
+      {{#each teachers}}
+      <option value="{{this.id}}" {{#if this.isSelected}}selected{{/if}}>
+        {{this.name}}
+      </option>
+      {{/each}}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="content">課堂內容（選填）</label>
+    <textarea class="form-control" id="content" name="content" rows="3" maxlength="40"></textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary" disabled>儲存課堂</button>
+  <a href="/admin/courses/{{course.id}}/calendar" class="btn btn-secondary">返回課堂列表</a>
+</form>

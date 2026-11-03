@@ -80,6 +80,7 @@ module.exports = (app, passport) => {
   app.delete('/admin/courses/:id', authenticatedAdmin, adminCourseController.deleteCourse)
   //admin calendar 相關路由
   app.get('/admin/courses/:id/calendar', authenticatedAdmin, adminController.getCalendar)
+  app.get('/admin/courses/:courseId/sessions/create', authenticatedAdmin, adminController.getCreateCalendarPage)
   app.post('/admin/courses/:id/calendar', authenticatedAdmin, adminController.postNextPeriodCalendar)
   app.get('/admin/courses/:courseId/calendar/:calendarId/edit', authenticatedAdmin, adminController.editCalendar)
   app.put('/admin/courses/:courseId/calendar/:calendarId', authenticatedAdmin, adminController.putCalendar)
