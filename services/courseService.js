@@ -1,6 +1,7 @@
 const {Course, Teacher, Calendar, Enrollment, Tuition, Diary, Attend, sequelize} = require('../models')
 const {COURSE_TIMES, COURSE_TYPES} = require('../constants/courseOptions')
 const moment = require('moment')
+const { Op } = require('sequelize')
 
 async function getAdminCoursesPage({ page, pageSize }) {
   const result = await Course.findAndCountAll({
@@ -210,7 +211,28 @@ async function deleteCourse(courseId) {
     if (!course) {
       return { ok: false, code: 'COURSE_NOT_FOUND' }
     }
+    
+    const calendarWithSessionData = await Calendar.findOne({
+      attributes: ['id'],
+      where: {
+        CourseId: courseId,
+        [Op.or]: [
+          { status: { [Op.ne]: null } },
+          { startAt: { [Op.ne]: null } },
+          { endAt: { [Op.ne]: null } },
+          { TeacherId: { [Op.ne]: null } }
+        ]
+      },
+      transaction
+    })
 
+    if (calendarWithSessionData) {
+      return {
+        ok: false,
+        code: 'COURSE_HAS_SESSION_RECORDS'
+      }
+    }
+    
     const enrollment = await Enrollment.findOne({
       attributes: ['id'],
       where: { CourseId: courseId },

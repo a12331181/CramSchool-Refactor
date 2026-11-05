@@ -200,6 +200,7 @@ const adminCourseController = {
     if (!result.ok) {
       const errorMessages = {
         COURSE_NOT_FOUND: '找不到課程資料',
+        COURSE_HAS_SESSION_RECORDS: '課程已有課堂紀錄，無法刪除，請改用關閉課程',
         COURSE_HAS_ENROLLMENTS: '課程已有學生選課，請改用關閉課程',
         COURSE_HAS_TUITIONS: '課程已有學費帳單，無法刪除',
         COURSE_HAS_DIARIES: '課程已有教學日誌，無法刪除',
