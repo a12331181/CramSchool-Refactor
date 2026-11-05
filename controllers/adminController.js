@@ -295,16 +295,41 @@ const adminController = {
     )
   },
 
-  openCalendar: (req, res) => {
-    Calendar.findByPk(req.params.calendarId)
-      .then(calendar => {
-        calendar.update({
-          isActive: true
-        }).then(() => {
-          req.flash('success_messages', '已成功開啟行事曆')
-          return res.redirect('back')
-        })
-    })
+  openCalendar: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    const calendarId = Number(req.params.calendarId)
+
+    const result = await calendarService.openLegacyCalendar(
+      courseId,
+      calendarId
+    )
+
+    if (!result.ok) {
+      const errors = {
+        INVALID_COURSE_ID: [400, '課程 ID 必須是正整數'],
+        INVALID_CALENDAR_ID: [400, '課堂 ID 必須是正整數'],
+        COURSE_NOT_FOUND: [404, '找不到課程'],
+        COURSE_CLOSED: [409, '課程已關閉，無法操作點名狀態'],
+        LEGACY_CALENDAR_UNAVAILABLE: [
+          409,
+          '此課堂目前無法使用舊點名操作，請返回列表確認'
+        ]
+      }
+
+      const [status, message] = errors[result.code] ?? [500, '開啟點名失敗']
+      return res.status(status).send(message)
+    }
+
+    const message = result.changed
+      ? '已成功開啟此課堂的點名'
+      : '此課堂的點名原本就已開啟'
+
+    req.flash('success_messages', message)
+
+    return res.redirect(
+      303,
+      `/admin/courses/${courseId}/calendar`
+    )
   },
 
   // 使用者相關程式碼

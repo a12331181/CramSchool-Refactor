@@ -292,6 +292,60 @@ async function closeLegacyCalendar(courseId, calendarId) {
   })
 }
 
+async function openLegacyCalendar(courseId, calendarId) {
+  if (!Number.isSafeInteger(courseId) || courseId < 1) {
+    return { ok: false, code: 'INVALID_COURSE_ID' }
+  }
+
+  if (!Number.isSafeInteger(calendarId) || calendarId < 1) {
+    return { ok: false, code: 'INVALID_CALENDAR_ID' }
+  }
+
+  return sequelize.transaction(async transaction => {
+    const course = await Course.findByPk(courseId, {
+      attributes: ['id', 'isActive'],
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!course) {
+      return { ok: false, code: 'COURSE_NOT_FOUND' }
+    }
+
+    if (course.isActive !== true) {
+      return { ok: false, code: 'COURSE_CLOSED' }
+    }
+
+    const calendar = await Calendar.findOne({
+      where: {
+        id: calendarId,
+        CourseId: courseId,
+        status: null,
+        startAt: null,
+        endAt: null,
+        TeacherId: null
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!calendar) {
+      return { ok: false, code: 'LEGACY_CALENDAR_UNAVAILABLE' }
+    }
+
+    if (calendar.isActive === true) {
+      return { ok: true, changed: false }
+    }
+
+    await calendar.update(
+      { isActive: true },
+      { transaction }
+    )
+
+    return { ok: true, changed: true }
+  })
+}
+
 function prepareCalendarData({ startAt, endAt, teacherId, content = '' }) {
   const parsedStartAt = parseTaipeiDateTime(startAt)
   const parsedEndAt = parseTaipeiDateTime(endAt)
@@ -334,5 +388,6 @@ module.exports = {
   getCreateCalendarFormData,
   getLegacyCalendarEditData,
   updateLegacyCalendar,
-  closeLegacyCalendar
+  closeLegacyCalendar,
+  openLegacyCalendar
 }
