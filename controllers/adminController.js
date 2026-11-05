@@ -125,47 +125,9 @@ const adminController = {
   },
 
   postNextPeriodCalendar: (req, res) => {
-    Calendar.max('period', {
-      where: {
-        CourseId: req.params.id
-      }
-    }).then(period => {
-      Course.findByPk(req.params.id, {
-        include: { 
-          model: Calendar, where: { period: period, isActive: false }
-        }
-      }).then(course => {
-        let url = '/admin/courses/'+ String(req.params.id) + '/calendar'
-        if (course === null) {
-          console.log('Not found!')
-          req.flash('error_messages', '目前已為最新一期課程行事曆，故新增失敗')
-          res.redirect(url)
-        } else {
-          if (course.amounts === course.Calendars.length) {
-            console.log('The course is end!')
-            let calendarList = []
-            for (let i = 0; i < Number(course.amounts); i++) {
-              calendarList.push(
-                {
-                  date: moment().format('YYYY-MM-DD'), //日期,內容為預設值
-                  content: i,
-                  CourseId: course.id,
-                  period: period + 1
-                }
-              )
-            }
-            Calendar.bulkCreate(calendarList).then(calendars => {
-              req.flash('success_messages', '已成功新增下一期課程行事曆')
-              res.redirect(url)
-            }) 
-          } else {
-            console.log('The course is not end!')
-            req.flash('error_messages', '此期課程尚未結束，故無法新增下一期課程行事曆')
-            res.redirect(url)
-          }
-        }
-      })
-    })
+    return res.status(409).send(
+      '整期新增功能已停用，課堂將改以實際日期與時段建立。'
+    )
   },
 
   editCalendar: async (req, res) => {
