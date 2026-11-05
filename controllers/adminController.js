@@ -193,19 +193,37 @@ const adminController = {
     return res.render('admin/editcalendar', { calendar })
   },
 
-  putCalendar: (req, res) => {
-    return Calendar.findByPk(req.params.calendarId)
-      .then((calendar) => {
-        calendar.update({
-          date: req.body.date,
-          content: req.body.content
-        })
-        .then((calendar) => {
-          let url = '/admin/courses/'+ String(req.params.courseId) + '/calendar'
-          req.flash('success_messages', '已成功更新課程行事曆')
-          res.redirect(url)
-        })
-      })
+  putCalendar: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    const calendarId = Number(req.params.calendarId)
+    const { date, content } = req.body ?? {}
+
+    const result = await calendarService.updateLegacyCalendar(
+      courseId,
+      calendarId,
+      { date, content }
+    )
+
+    if (!result.ok) {
+      const errors = {
+        INVALID_COURSE_ID: [400, '課程 ID 必須是正整數'],
+        INVALID_CALENDAR_ID: [400, '課堂 ID 必須是正整數'],
+        INVALID_LEGACY_DATE: [400, '日期格式不正確'],
+        INVALID_CONTENT: [400, '上課內容必須填寫，且不能超過 40 個字元'],
+        COURSE_NOT_FOUND: [404, '找不到課程'],
+        COURSE_CLOSED: [409, '課程已關閉，無法修改課堂'],
+        LEGACY_CALENDAR_UNAVAILABLE: [
+          409,
+          '此課堂目前無法使用舊表單修改，請返回列表確認'
+        ]
+      }
+
+      const [status, message] = errors[result.code] ?? [500, '更新課堂失敗']
+      return res.status(status).send(message)
+    }
+
+    req.flash('success_messages', '已成功更新課堂資料')
+    return res.redirect(303, `/admin/courses/${courseId}/calendar`)
   },
 
   deleteCalendars: (req, res) => {

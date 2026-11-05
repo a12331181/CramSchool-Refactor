@@ -172,6 +172,72 @@ async function getLegacyCalendarEditData(courseId, calendarId) {
   return calendar ? calendar.toJSON() : null
 }
 
+async function updateLegacyCalendar(courseId, calendarId, { date, content }) {
+  if (!Number.isSafeInteger(courseId) || courseId < 1) {
+    return { ok: false, code: 'INVALID_COURSE_ID' }
+  }
+
+  if (!Number.isSafeInteger(calendarId) || calendarId < 1) {
+    return { ok: false, code: 'INVALID_CALENDAR_ID' }
+  }
+
+  if (
+    typeof date !== 'string' ||
+    !parseTaipeiDateTime(`${date}T00:00`)
+  ) {
+    return { ok: false, code: 'INVALID_LEGACY_DATE' }
+  }
+
+  if (
+    typeof content !== 'string' ||
+    !content.trim() ||
+    content.trim().length > 40
+  ) {
+    return { ok: false, code: 'INVALID_CONTENT' }
+  }
+
+  return sequelize.transaction(async transaction => {
+    const course = await Course.findByPk(courseId, {
+      attributes: ['id', 'isActive'],
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!course) {
+      return { ok: false, code: 'COURSE_NOT_FOUND' }
+    }
+
+    if (course.isActive !== true) {
+      return { ok: false, code: 'COURSE_CLOSED' }
+    }
+
+    const calendar = await Calendar.findOne({
+      where: {
+        id: calendarId,
+        CourseId: courseId,
+        status: null,
+        startAt: null,
+        endAt: null,
+        TeacherId: null,
+        isActive: true
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!calendar) {
+      return { ok: false, code: 'LEGACY_CALENDAR_UNAVAILABLE' }
+    }
+
+    await calendar.update({
+      date,
+      content: content.trim()
+    }, { transaction })
+
+    return { ok: true }
+  })
+}
+
 function prepareCalendarData({ startAt, endAt, teacherId, content = '' }) {
   const parsedStartAt = parseTaipeiDateTime(startAt)
   const parsedEndAt = parseTaipeiDateTime(endAt)
@@ -212,5 +278,6 @@ module.exports = {
   createCalendar,
   getCalendarPage,
   getCreateCalendarFormData,
-  getLegacyCalendarEditData
+  getLegacyCalendarEditData,
+  updateLegacyCalendar
 }
