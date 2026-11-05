@@ -189,35 +189,9 @@ const adminController = {
   },
 
   deleteCalendars: (req, res) => {
-    Calendar.max('period', {
-      where: {
-        CourseId: req.params.id
-      }
-    }).then(period => {
-      Calendar.findAll({
-        where: {
-          period: period,
-          CourseId: req.params.id,
-          isActive: false
-        }
-      }).then(calendars => {
-        let url = '/admin/courses/'+ String(req.params.id) + '/calendar'
-        if (calendars.length !== 0) {
-          req.flash('error_messages', '此期課程已進行，故刪除失敗')
-          res.redirect(url)
-        } else {
-          Calendar.destroy({
-            where: {
-              CourseId: req.params.id,
-              period: period
-            }
-          }).then(() => {
-            req.flash('success_messages', '已成功刪除最新一期課程')
-            res.redirect(url)
-          })
-        }
-      })
-    })
+    return res.status(409).send(
+      '整期刪除功能已停用，既有課堂紀錄會保留。'
+    )
   },
 
   closeCalendar: async (req, res) => {

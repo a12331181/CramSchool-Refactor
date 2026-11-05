@@ -67,19 +67,6 @@
   </tbody>
 </table>
 
-<br />
-
-<div class="row ml-2">
-  {{#if isPeriodNotEqualOne}}
-  <form action="/admin/courses/{{course.id}}/calendar?_method=DELETE" method="POST" style="display: inline;">
-    <button type="submit" class="btn btn-danger ml-2">刪除最新一期課程行事曆</button>
-  </form>
-  {{/if}}
-  <p class="my-2 mx-2" style="color: rgb(192, 77, 57);">※刪除課程行事曆都會影響前台課程顯示的期數，請謹慎使用</p>
-</div>
-
-<br />
-
 <nav aria-label="Page navigation example">
   <ul class="pagination justify-content-center">
     <li class="page-item">
