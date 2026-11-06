@@ -25,6 +25,39 @@
 
 <br>
 
+<h5>我的課堂時段（台北時間）</h5>
+
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th scope="col">課程</th>
+      <th scope="col">開始時間</th>
+      <th scope="col">結束時間</th>
+      <th scope="col">狀態</th>
+      <th scope="col">課堂內容</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each sessions}}
+    <tr>
+      <td>{{this.courseName}}</td>
+      <td>{{this.startAtText}}</td>
+      <td>{{this.endAtText}}</td>
+      <td>{{this.statusText}}</td>
+      <td>{{this.content}}</td>
+    </tr>
+    {{else}}
+    <tr>
+      <td colspan="5" class="text-center text-muted">
+        目前沒有安排的課堂。
+      </td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+
+{{#if courses.length}}
+<h5>原有課程點名</h5>
 <table class="table table-bordered">
   <thead>
     <tr class="table-primary">
@@ -47,3 +80,4 @@
     {{/each}}
   </tbody>
 </table>
+{{/if}}

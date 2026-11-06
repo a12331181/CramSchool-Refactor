@@ -2,30 +2,36 @@ const db = require('../models')
 const Course = db.Course
 const Teacher = db.Teacher
 const Student = db.Student
-const User = db.User
 const Calendar = db.Calendar
 const Attend = db.Attend
 const attendService = require('../services/attendService')
+const CALENDAR_STATUS = require('../constants/calendarStatus')
+const { formatTaipeiDateTime } = require('../utils/date')
 
 const attendController = {
-  getAttendIndexpage: (req, res) => {
-    User.findByPk(req.user.id,{
-      raw: true,
-      nest: true,
-      include: [Teacher]
-    }).then(user =>{
-      Course.findAll({
-        where: { isActive: true },
-        include: {
-          model: Teacher,
-          where: { id: user.Teacher.id }
-        }
-      }).then(courses => {
-        return res.render('courseattend', {
-          courses: courses,
-          isAdmin: req.user.isAdmin
-        })
-      })
+  getAttendIndexpage: async (req, res) => {
+    const { courses, sessions } = await attendService.getAttendIndexData({
+      userId: req.user.id
+    })
+
+    const statusLabels = {
+      [CALENDAR_STATUS.SCHEDULED]: '已排定',
+      [CALENDAR_STATUS.COMPLETED]: '已完成',
+      [CALENDAR_STATUS.CANCELLED]: '已取消'
+    }
+
+    return res.render('courseattend', {
+      courses,
+      sessions: sessions.map(session => ({
+        id: session.id,
+        courseId: session.CourseId,
+        courseName: session.Course.name,
+        startAtText: formatTaipeiDateTime(session.startAt) ?? '待核對',
+        endAtText: formatTaipeiDateTime(session.endAt) ?? '待核對',
+        statusText: statusLabels[session.status] ?? '待核對',
+        content: session.content
+      })),
+      isAdmin: req.user.isAdmin
     })
   },
 

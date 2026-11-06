@@ -1,4 +1,6 @@
 const { Course, Teacher, Calendar } = require('../models')
+const { Op } = require('sequelize')
+const CALENDAR_STATUS = require('../constants/calendarStatus')
 
 async function getAttendCourseData({ courseId, userId }) {
   const course = await Course.findOne({
@@ -37,6 +39,57 @@ async function getAttendCourseData({ courseId, userId }) {
   return { course, calendars, maxPeriod }
 }
 
+async function getAttendIndexData({ userId }) {
+  const [courses, sessions] = await Promise.all([
+    Course.findAll({
+      attributes: ['id', 'name'],
+      where: { isActive: true },
+      include: [{
+        model: Teacher,
+        attributes: ['name'],
+        where: { UserId: userId },
+        required: true
+      }],
+      order: [['id', 'ASC']]
+    }),
+
+    Calendar.findAll({
+      attributes: ['id', 'CourseId', 'startAt', 'endAt', 'status', 'content'],
+      where: {
+        status: {
+          [Op.in]: [
+            CALENDAR_STATUS.SCHEDULED,
+            CALENDAR_STATUS.COMPLETED,
+            CALENDAR_STATUS.CANCELLED
+          ]
+        },
+        startAt: { [Op.ne]: null },
+        endAt: { [Op.ne]: null }
+      },
+      include: [
+        {
+          model: Teacher,
+          attributes: [],
+          where: { UserId: userId },
+          required: true
+        },
+        {
+          model: Course,
+          attributes: ['name'],
+          where: { isActive: true },
+          required: true
+        }
+      ],
+      order: [['startAt', 'ASC'], ['id', 'ASC']],
+      raw: true,
+      nest: true
+    })
+  ])
+
+  return { courses, sessions }
+}
+
 module.exports = { 
-  getAttendCourseData 
+  getAttendCourseData,
+  getAttendIndexData
 }
