@@ -123,7 +123,92 @@ const adminController = {
 
     return res.render('admin/createcalendar', {
       course: result.course,
-      teachers
+      teachers,
+      values: {},
+      canSubmit: teachers.length > 0
+    })
+  },
+
+  postCalendar: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
+    }
+
+    const body = req.body ?? {}
+
+    const teacherId =
+      typeof body.teacherId === 'string' && body.teacherId.trim() !== ''
+        ? Number(body.teacherId)
+        : NaN
+
+    const result = await calendarService.createCalendar(courseId, {
+      startAt: body.startAt,
+      endAt: body.endAt,
+      teacherId,
+      content: body.content
+    })
+
+    if (result.ok) {
+      const pagination = getPagination({
+        page: 1,
+        pageSize: pageLimit,
+        totalCount: result.data.totalCount
+      })
+
+      req.flash('success_messages', `已新增課堂 #${result.data.id}`)
+
+      return res.redirect(
+        303,
+        `/admin/courses/${courseId}/calendar?page=${pagination.totalPages}`
+      )
+    }
+
+    const errors = {
+      INVALID_COURSE_ID: [400, '課程 ID 必須是正整數'],
+      INVALID_START_AT: [400, '開始日期或時間不正確'],
+      INVALID_END_AT: [400, '結束日期或時間不正確'],
+      INVALID_TIME_RANGE: [400, '結束時間必須晚於開始時間'],
+      INVALID_TEACHER_ID: [400, '請選擇有效的授課教師'],
+      INVALID_CONTENT: [400, '課堂內容必須是文字，且不可超過 40 個字元'],
+      COURSE_NOT_FOUND: [404, '找不到課程資料'],
+      COURSE_CLOSED: [409, '課程已關閉，無法新增課堂'],
+      TEACHER_UNAVAILABLE: [409, '所選教師目前無法授課，請重新選擇'],
+      TIME_CONFLICT: [409, '此課程或授課教師已有重疊課堂，請調整時間'],
+      UTC_TIMEZONE_REQUIRED: [500, '系統時間設定異常，暫時無法儲存課堂']
+    }
+
+    const [status, errorMessage] =
+      errors[result.code] ?? [500, '無法新增課堂']
+
+    if (['COURSE_NOT_FOUND', 'COURSE_CLOSED'].includes(result.code)) {
+      req.flash('error_messages', errorMessage)
+      return res.redirect(303, '/admin/courses')
+    }
+
+    const formData = await calendarService.getCreateCalendarFormData(courseId)
+
+    if (!formData.ok) {
+      req.flash('error_messages', '課程狀態已變動，請重新確認')
+      return res.redirect(303, '/admin/courses')
+    }
+
+    const teachers = formData.teachers.map(teacher => ({
+      ...teacher,
+      isSelected: teacher.id === teacherId
+    }))
+
+    return res.status(status).render('admin/createcalendar', {
+      course: formData.course,
+      teachers,
+      values: {
+        startAt: typeof body.startAt === 'string' ? body.startAt : '',
+        endAt: typeof body.endAt === 'string' ? body.endAt : '',
+        content: typeof body.content === 'string' ? body.content : ''
+      },
+      canSubmit: teachers.length > 0,
+      error_messages: [errorMessage]
     })
   },
 

@@ -153,7 +153,18 @@ async function createCalendar(courseId, calendarData) {
       isActive: false
     }, { transaction })
 
-    return { ok: true, data: { id: calendar.id } }
+    const totalCount = await Calendar.count({
+      where: { CourseId: courseId },
+      transaction
+    })
+
+    return {
+      ok: true,
+      data: {
+        id: calendar.id,
+        totalCount
+      }
+    }
   })
 }
 

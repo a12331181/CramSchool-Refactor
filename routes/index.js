@@ -83,6 +83,7 @@ module.exports = (app, passport) => {
   app.get('/admin/courses/:courseId/sessions/create', authenticatedAdmin, adminController.getCreateCalendarPage)
   app.post('/admin/courses/:id/calendar', authenticatedAdmin, adminController.postNextPeriodCalendar)
   app.get('/admin/courses/:courseId/calendar/:calendarId/edit', authenticatedAdmin, adminController.editCalendar)
+  app.post('/admin/courses/:courseId/sessions', authenticatedAdmin, adminController.postCalendar)
   app.put('/admin/courses/:courseId/calendar/:calendarId', authenticatedAdmin, adminController.putCalendar)
   app.delete('/admin/courses/:id/calendar', authenticatedAdmin, adminController.deleteCalendars)
   app.put('/admin/courses/:courseId/calendar/:calendarId/close', authenticatedAdmin, adminController.closeCalendar)
