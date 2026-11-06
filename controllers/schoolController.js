@@ -1,11 +1,13 @@
 const db = require('../models')
 const Course = db.Course
 const Teacher = db.Teacher
-const Calendar = db.Calendar
 const Meeting = db.Meeting
 const Student = db.Student
 const Diary = db.Diary
 const User = db.User
+const calendarService = require('../services/calendarService')
+const CALENDAR_STATUS = require('../constants/calendarStatus')
+const { formatTaipeiDateTime } = require('../utils/date')
 const pageLimit = 10
 
 const schoolController = {
@@ -53,44 +55,39 @@ const schoolController = {
     })
   },
 
-  getCourse: (req, res) => {
-    Calendar.max('period', {
-      where: {
-        CourseId: req.params.id
-      }
-    }).then(currentPeriod => {
-      if (isNaN(currentPeriod)) {
-        console.log('Not found!')
-        res.redirect('/cramschool/courses')
-      } else {
-        Course.findOne({
-          where: { id: req.params.id, isActive: true },
-          include: {
-            model: Calendar,
-            where: { period: currentPeriod }
-          },
-          order: [[Calendar, 'date', 'ASC']]
-        }).then(course =>{
-          if (course === null) {
-            console.log('Not found!')
-            res.redirect('/cramschool/courses')
-          } else {
-            const data = course.dataValues.Calendars
-            const calendars = data.map(r => ({
-              ...r.dataValues
-            }))
-            const firstCalendarDate = calendars[0].date
-            const lastCalendarDate = calendars[calendars.length -1].date
-            return res.render('course', { 
-              course: course.dataValues, 
-              calendars: calendars,
-              currentPeriod: currentPeriod, 
-              firstCalendarDate: firstCalendarDate, 
-              lastCalendarDate: lastCalendarDate 
-            })
-          }
-        })
-      }
+  getCourse: async (req, res) => {
+    const courseId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
+    }
+
+    const result = await calendarService.getCourseCalendarData(courseId)
+
+    if (!result) {
+      return res.redirect('/cramschool/courses')
+    }
+
+    const statusLabels = {
+      [CALENDAR_STATUS.SCHEDULED]: '已排定',
+      [CALENDAR_STATUS.COMPLETED]: '已完成',
+      [CALENDAR_STATUS.CANCELLED]: '已取消'
+    }
+
+    const { course, sessions, currentPeriod, legacyCalendars } = result
+
+    return res.render('course', {
+      course,
+      sessions: sessions.map(session => ({
+        startAtText: formatTaipeiDateTime(session.startAt) ?? '待核對',
+        endAtText: formatTaipeiDateTime(session.endAt) ?? '待核對',
+        statusText: statusLabels[session.status] ?? '待核對',
+        content: session.content
+      })),
+      calendars: legacyCalendars,
+      currentPeriod,
+      firstCalendarDate: legacyCalendars[0]?.date,
+      lastCalendarDate: legacyCalendars.at(-1)?.date
     })
   },
   

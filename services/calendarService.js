@@ -219,6 +219,56 @@ async function cancelCalendar(courseId, calendarId) {
   })
 }
 
+async function getCourseCalendarData(courseId) {
+  const course = await Course.findOne({
+    attributes: ['id', 'name'],
+    where: { id: courseId, isActive: true },
+    raw: true
+  })
+
+  if (!course) return null
+
+  const legacyWhere = {
+    CourseId: courseId,
+    status: null,
+    startAt: null,
+    endAt: null,
+    TeacherId: null
+  }
+
+  const [sessions, currentPeriod] = await Promise.all([
+    Calendar.findAll({
+      attributes: ['id', 'startAt', 'endAt', 'status', 'content'],
+      where: {
+        CourseId: courseId,
+        status: {
+          [Op.in]: [
+            CALENDAR_STATUS.SCHEDULED,
+            CALENDAR_STATUS.COMPLETED,
+            CALENDAR_STATUS.CANCELLED
+          ]
+        },
+        startAt: { [Op.ne]: null },
+        endAt: { [Op.ne]: null }
+      },
+      order: [['startAt', 'ASC'], ['id', 'ASC']],
+      raw: true
+    }),
+    Calendar.max('period', { where: legacyWhere })
+  ])
+
+  const legacyCalendars = currentPeriod == null
+    ? []
+    : await Calendar.findAll({
+        attributes: ['id', 'date', 'content', 'isActive'],
+        where: { ...legacyWhere, period: currentPeriod },
+        order: [['date', 'ASC'], ['id', 'ASC']],
+        raw: true
+      })
+
+  return { course, sessions, currentPeriod, legacyCalendars }
+}
+
 async function getLegacyCalendarEditData(courseId, calendarId) {
   const calendar = await Calendar.findOne({
     where: {
@@ -414,6 +464,7 @@ module.exports = {
   cancelCalendar,
   getCalendarPage,
   getCreateCalendarFormData,
+  getCourseCalendarData,
   getLegacyCalendarEditData,
   updateLegacyCalendar,
   closeLegacyCalendar,
