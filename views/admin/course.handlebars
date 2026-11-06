@@ -22,47 +22,52 @@
   </thead>
   <tbody>
     {{#each calendars}}
-    {{#if this.isActive}}
-    <tr class="table-light">
+    <tr class="{{this.rowClass}}">
       <th scope="row">{{this.id}}</th>
-      <td>{{this.date}}</td>
+  
+      <td>{{#if this.date}}{{this.date}}{{else}}—{{/if}}</td>
       <td>{{this.startAtText}}</td>
       <td>{{this.endAtText}}</td>
       <td>{{this.statusText}}</td>
-      <td>第{{this.period}}期</td>
+      <td>{{#if this.period}}第{{this.period}}期{{else}}—{{/if}}</td>
       <td>{{this.content}}</td>
+  
       <td>
-        <button type="button" class="btn btn-link">
-          <a href="/admin/courses/{{../course.id}}/calendar/{{this.id}}/edit">
-            修改行事曆
-          </a>
-        </button>
-        <form action="/admin/courses/{{../course.id}}/calendar/{{this.id}}/close?_method=PUT" method="POST" style="display: inline;">
-          <button type="submit" class="btn btn-sm btn-danger">關閉點名</button>
+        {{#if this.isLegacy}}
+        {{#if this.isActive}}
+        <a class="btn btn-link" href="/admin/courses/{{../course.id}}/calendar/{{this.id}}/edit">
+          修改原紀錄
+        </a>
+  
+        <form action="/admin/courses/{{../course.id}}/calendar/{{this.id}}/close?_method=PUT" method="POST"
+          style="display: inline;">
+          <button type="submit" class="btn btn-sm btn-danger">
+            關閉點名
+          </button>
         </form>
+        {{else}}
+        <span class="btn btn-link disabled" aria-disabled="true">
+          修改原紀錄
+        </span>
+  
+        <form action="/admin/courses/{{../course.id}}/calendar/{{this.id}}/open?_method=PUT" method="POST"
+          style="display: inline;">
+          <button type="submit" class="btn btn-sm btn-warning">
+            開啟點名
+          </button>
+        </form>
+        {{/if}}
+        {{else}}
+        <span class="text-muted">—</span>
+        {{/if}}
       </td>
     </tr>
     {{else}}
-    <tr class="table-secondary">
-      <th scope="row">{{this.id}}</th>
-      <td>{{this.date}}</td>
-      <td>{{this.startAtText}}</td>
-      <td>{{this.endAtText}}</td>
-      <td>{{this.statusText}}</td>
-      <td>第{{this.period}}期</td>
-      <td>{{this.content}}</td>
-      <td>
-        <button type="button" class="btn btn-link disabled">
-          <a href="/admin/courses/{{../course.id}}/calendar/{{this.id}}/edit">
-            修改行事曆
-          </a>
-        </button>
-        <form action="/admin/courses/{{../course.id}}/calendar/{{this.id}}/open?_method=PUT" method="POST" style="display: inline;">
-          <button type="submit" class="btn btn-sm btn-warning">開啟點名</button>
-        </form>
+    <tr>
+      <td colspan="8" class="text-center text-muted">
+        尚未建立課堂
       </td>
     </tr>
-    {{/if}}
     {{/each}}
   </tbody>
 </table>

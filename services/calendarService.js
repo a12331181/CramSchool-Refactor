@@ -34,7 +34,14 @@ async function getCalendarPage({ courseId, page, pageSize }) {
   return {
     ok: true,
     course: course.toJSON(),
-    rows: result.rows,
+    rows: result.rows.map(calendar => ({
+      ...calendar,
+      isLegacy:
+        calendar.status === null &&
+        calendar.startAt === null &&
+        calendar.endAt === null &&
+        calendar.TeacherId === null
+    })),
     count: result.count,
     latestPeriod
   }

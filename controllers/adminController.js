@@ -71,6 +71,9 @@ const adminController = {
     }
     const calendars = result.rows.map(calendar => ({
       ...calendar,
+      rowClass: calendar.isLegacy && !calendar.isActive
+        ? 'table-secondary'
+        : 'table-light',
 
       startAtText:
         formatTaipeiDateTime(calendar.startAt) ?? '待核對',
