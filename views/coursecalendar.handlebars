@@ -4,9 +4,11 @@
 
 <div class="row justify-content-between">
   <h4 class="ml-4 mb-2" style="color: rgb(126, 120, 113);">課程行事曆</h4>
+  {{#if calendars.length}}
   <h5 class="mr-4 my-1" style="color: rgb(211, 178, 141);">
     <strong style="color: rgb(218, 166, 107);">目前期數: 第 {{maxPeriod}} 期 </strong>
   </h5>
+  {{/if}}
 </div>
 
 <table class="table table-bordered">
@@ -39,6 +41,12 @@
       </th>
     </tr>
     {{/if}}
+    {{else}}
+    <tr>
+      <td colspan="4" class="text-center text-muted">
+        這門課程目前沒有可在此點名的課堂。
+      </td>
+    </tr>
     {{/each}}
   </tbody>
 </table>
