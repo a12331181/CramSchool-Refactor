@@ -7,6 +7,9 @@ const Calendar = db.Calendar
 const ExtraFee = db.ExtraFee
 const Payment = db.Payment
 const moment = require('moment')
+const calendarService = require('../services/calendarService')
+const NO_LEGACY_PERIOD_MESSAGE =
+  '這門課程沒有原有期數，無法使用按期建立學費表。'
 
 const tuitionController = {
   getCourseTuitionList: (req, res) => {
@@ -42,90 +45,126 @@ const tuitionController = {
     })
   },
   
-  createTuition: (req, res) => {
-    Promise.all([
-      Calendar.max('period', {
-        where: {
-          CourseId: req.params.courseId
-        }
-      }),
-      Course.findByPk(req.params.courseId, {
-        raw: true,
-        nest: true
+  createTuition: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    const studentId = Number(req.params.studentId)
+
+    if (
+      !Number.isSafeInteger(courseId) || courseId < 1 ||
+      !Number.isSafeInteger(studentId) || studentId < 1
+    ) {
+      return res.status(400).send('課程與學生 ID 必須是正整數')
+    }
+
+    const [calendarPeriod, course] = await Promise.all([
+      calendarService.getLatestLegacyPeriod(courseId),
+      Course.findOne({
+        where: { id: courseId, isActive: true },
+        attributes: ['id', 'price'],
+        raw: true
       })
-    ]).then(([calendarPeriod, course]) => {
-      Tuition.max('period', {
-        where: {
-          CourseId: course.id,
-          StudentId: req.params.studentId
-        }
-      }).then(currentPeriod => {
-        let url = '/cramschool/tuition/courses/'+ String(course.id) + '/students/' + String(req.params.studentId)
-        currentPeriod = isNaN(currentPeriod) ? 0 : currentPeriod
-        if (currentPeriod < calendarPeriod) {
-          Tuition.create({
-            amounts: course.price,
-            CourseId: course.id,
-            StudentId: req.params.studentId,
-            period: calendarPeriod
-          }).then(() => {
-            req.flash('success_messages', '已成功建立收費表')
-            return res.redirect(url)
-          })
-        } else {
-          req.flash('error_messages', '無法重複建立收費表')
-          return res.redirect(url)
-        }
-      })
+    ])
+
+    if (!course) {
+      req.flash('error_messages', '找不到可建立學費表的課程')
+      return res.redirect(303, '/cramschool/payment')
+    }
+
+    const url = `/cramschool/tuition/courses/${course.id}/students/${studentId}`
+
+    if (calendarPeriod === null) {
+      req.flash('error_messages', NO_LEGACY_PERIOD_MESSAGE)
+      return res.redirect(303, url)
+    }
+
+    const currentPeriod = await Tuition.max('period', {
+      where: { CourseId: course.id, StudentId: studentId }
     })
+
+    if ((currentPeriod ?? 0) >= calendarPeriod) {
+      req.flash('error_messages', '已有最新一期的學費表')
+      return res.redirect(303, url)
+    }
+
+    await Tuition.create({
+      amounts: course.price,
+      CourseId: course.id,
+      StudentId: studentId,
+      period: calendarPeriod
+    })
+
+    req.flash('success_messages', '已成功建立收費表')
+    return res.redirect(303, url)
   },
 
-  createTuitions: (req, res) => {
-    Promise.all([
-      Calendar.max('period', {
-        where: {
-          CourseId: req.params.id
-        }
-      }),
-      Course.findByPk(req.params.id, {
-        include: [{ model: Student, as: 'EnrolledStudents', where: { status: 1 }}]
+  createTuitions: async (req, res) => {
+    const courseId = Number(req.params.id)
+
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
+    }
+
+    const [calendarPeriod, course] = await Promise.all([
+      calendarService.getLatestLegacyPeriod(courseId),
+      Course.findOne({
+        where: { id: courseId, isActive: true },
+        attributes: ['id', 'price'],
+        include: [{
+          model: Student,
+          as: 'EnrolledStudents',
+          attributes: ['id'],
+          where: { status: 1 },
+          required: false,
+          through: { attributes: [] }
+        }]
       })
-    ]).then(([calendarPeriod, course]) => {
-      let nums = 0
-      let url = '/cramschool/payment/courses/'+ String(course.id)
-      enrolledStudents = course.dataValues.EnrolledStudents
-      course = course.toJSON()
-      async function tuitionLoopCreate (course, enrolledStudents) {
-        for (let i = 0; i < enrolledStudents.length; i++ ) {
-          await Tuition.max('period', {
-            where: {
-              CourseId: course.id,
-              StudentId: enrolledStudents[i].dataValues.id
-            }
-          }).then(period => {
-            period = isNaN(period) ? 0 : period
-            if (period < calendarPeriod) {
-              Tuition.create({
-                amounts: course.price,
-                CourseId: course.id,
-                StudentId: enrolledStudents[i].dataValues.id,
-                period: calendarPeriod
-              })
-              nums += 1
-            }
-          })
-        }
+    ])
+
+    if (!course) {
+      req.flash('error_messages', '找不到可建立學費表的課程')
+      return res.redirect(303, '/cramschool/payment')
+    }
+
+    const url = `/cramschool/payment/courses/${course.id}`
+
+    if (calendarPeriod === null) {
+      req.flash('error_messages', NO_LEGACY_PERIOD_MESSAGE)
+      return res.redirect(303, url)
+    }
+
+    const students = course.EnrolledStudents
+
+    if (students.length === 0) {
+      req.flash('error_messages', '這門課程目前沒有可建立學費表的學生')
+      return res.redirect(303, url)
+    }
+
+    let createdCount = 0
+
+    for (const student of students) {
+      const currentPeriod = await Tuition.max('period', {
+        where: { CourseId: course.id, StudentId: student.id }
+      })
+
+      if ((currentPeriod ?? 0) < calendarPeriod) {
+        await Tuition.create({
+          amounts: course.price,
+          CourseId: course.id,
+          StudentId: student.id,
+          period: calendarPeriod
+        })
+
+        createdCount += 1
       }
-      return tuitionLoopCreate (course, enrolledStudents).then(()=> {
-        if (nums > 0) {
-          req.flash('success_messages', '已成功建立收費表')
-          res.redirect(url)
-        } else {
-          req.flash('error_messages', '目前皆是最新收費表，故新增失敗')
-          res.redirect(url)
-        }
-      })
-    })
+    }
+
+    if (createdCount > 0) {
+      req.flash('success_messages', `已成功建立 ${createdCount} 筆收費表`)
+    } else {
+      req.flash('error_messages', '學生皆已有最新一期的學費表')
+    }
+
+    return res.redirect(303, url)
   },
 
   editTuition: (req, res) => {
