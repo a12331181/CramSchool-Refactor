@@ -58,7 +58,15 @@
         </form>
         {{/if}}
         {{else}}
-        <span class="text-muted">—</span>
+          {{#if this.canCancel}}
+          <form action="/admin/courses/{{../course.id}}/sessions/{{this.id}}/cancel?_method=PUT&amp;page={{../page}}" method="POST" onsubmit="return confirm('確定取消這堂課嗎？')">
+          <button type="submit" class="btn btn-sm btn-outline-danger">
+            取消課堂
+          </button>
+          </form>
+          {{else}}
+            <span class="text-muted">—</span>
+          {{/if}}
         {{/if}}
       </td>
     </tr>

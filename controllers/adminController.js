@@ -75,6 +75,8 @@ const adminController = {
         ? 'table-secondary'
         : 'table-light',
 
+      canCancel: calendar.status === CALENDAR_STATUS.SCHEDULED,
+
       startAtText:
         formatTaipeiDateTime(calendar.startAt) ?? '待核對',
 
@@ -210,6 +212,49 @@ const adminController = {
       canSubmit: teachers.length > 0,
       error_messages: [errorMessage]
     })
+  },
+
+  cancelCalendar: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    const calendarId = Number(req.params.calendarId)
+    const result = await calendarService.cancelCalendar(courseId, calendarId)
+
+    if (['INVALID_COURSE_ID', 'INVALID_CALENDAR_ID'].includes(result.code)) {
+      return res.status(400).send('課程與課堂 ID 必須是正整數')
+    }
+
+    const requestedPage = Number(req.query.page ?? 1)
+    const validPage =
+      Number.isSafeInteger(requestedPage) &&
+      requestedPage > 0 &&
+      Number.isSafeInteger((requestedPage - 1) * pageLimit)
+
+    const page = validPage ? requestedPage : 1
+    const listUrl = `/admin/courses/${courseId}/calendar?page=${page}`
+
+    if (!result.ok) {
+      const errors = {
+        COURSE_NOT_FOUND: '找不到課程資料',
+        COURSE_CLOSED: '課程已關閉，無法取消課堂',
+        CALENDAR_NOT_FOUND: '找不到這門課程的課堂',
+        CALENDAR_NOT_CANCELLABLE: '只有已排定的課堂可以取消'
+      }
+
+      req.flash('error_messages', errors[result.code] ?? '無法取消課堂')
+
+      if (['COURSE_NOT_FOUND', 'COURSE_CLOSED'].includes(result.code)) {
+        return res.redirect(303, '/admin/courses')
+      }
+
+      return res.redirect(303, listUrl)
+    }
+
+    req.flash(
+      'success_messages',
+      result.changed ? '已取消課堂' : '這堂課已經取消'
+    )
+
+    return res.redirect(303, listUrl)
   },
 
   postNextPeriodCalendar: (req, res) => {

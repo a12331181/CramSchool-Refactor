@@ -168,6 +168,57 @@ async function createCalendar(courseId, calendarData) {
   })
 }
 
+async function cancelCalendar(courseId, calendarId) {
+  if (!Number.isSafeInteger(courseId) || courseId < 1) {
+    return { ok: false, code: 'INVALID_COURSE_ID' }
+  }
+
+  if (!Number.isSafeInteger(calendarId) || calendarId < 1) {
+    return { ok: false, code: 'INVALID_CALENDAR_ID' }
+  }
+
+  return sequelize.transaction(async transaction => {
+    const course = await Course.findByPk(courseId, {
+      attributes: ['id', 'isActive'],
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!course) {
+      return { ok: false, code: 'COURSE_NOT_FOUND' }
+    }
+
+    if (course.isActive !== true) {
+      return { ok: false, code: 'COURSE_CLOSED' }
+    }
+
+    const calendar = await Calendar.findOne({
+      where: { id: calendarId, CourseId: courseId },
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!calendar) {
+      return { ok: false, code: 'CALENDAR_NOT_FOUND' }
+    }
+
+    if (calendar.status === CALENDAR_STATUS.CANCELLED) {
+      return { ok: true, changed: false }
+    }
+
+    if (calendar.status !== CALENDAR_STATUS.SCHEDULED) {
+      return { ok: false, code: 'CALENDAR_NOT_CANCELLABLE' }
+    }
+
+    await calendar.update(
+      { status: CALENDAR_STATUS.CANCELLED },
+      { transaction }
+    )
+
+    return { ok: true, changed: true }
+  })
+}
+
 async function getLegacyCalendarEditData(courseId, calendarId) {
   const calendar = await Calendar.findOne({
     where: {
@@ -360,6 +411,7 @@ function prepareCalendarData({ startAt, endAt, teacherId, content = '' }) {
 module.exports = {
   prepareCalendarData,
   createCalendar,
+  cancelCalendar,
   getCalendarPage,
   getCreateCalendarFormData,
   getLegacyCalendarEditData,
