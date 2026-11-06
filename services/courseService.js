@@ -98,7 +98,7 @@ async function createCourse(courseData) {
       return { created: false, reason: 'TEACHER_NOT_FOUND' }
     }
 
-    const course = await Course.create({
+    await Course.create({
       name: name.trim(),
       time,
       type,
@@ -107,20 +107,6 @@ async function createCourse(courseData) {
       TeacherId: teacherId,
       isActive: true
     }, { transaction })
-
-    const defaultDate = moment().format('YYYY-MM-DD')
-
-    const calendars = Array.from({ length: amounts }, (_, index) => ({
-      date: defaultDate,
-      content: String(index),
-      CourseId: course.id,
-      period: 1,
-      isActive: true
-    }))
-
-    await Calendar.bulkCreate(calendars, {
-      transaction
-    })
 
     return { created: true }
   })
