@@ -11,8 +11,8 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   Attend.init({
-    CalendarId: DataTypes.INTEGER,
-    StudentId: DataTypes.INTEGER,
+    CalendarId: { type: DataTypes.INTEGER, allowNull: false },
+    StudentId: { type: DataTypes.INTEGER, allowNull: false },
     isAttend: DataTypes.BOOLEAN,
     reason: DataTypes.STRING,
     status: {

@@ -7,6 +7,7 @@ const Attend = db.Attend
 const attendService = require('../services/attendService')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const { formatTaipeiDateTime } = require('../utils/date')
+const { UniqueConstraintError } = require('sequelize')
 
 const attendController = {
   getAttendIndexpage: async (req, res) => {
@@ -104,6 +105,16 @@ const attendController = {
     }).then((attend) => {
       req.flash('success_messages', '已成功新增出席紀錄')
       return res.redirect('back')
+    }).catch(error => {
+      if (
+        !(error instanceof UniqueConstraintError) ||
+        !Object.hasOwn(error.fields ?? {}, 'uq_attends_calendar_student')
+      ) {
+        throw error
+      }
+
+      req.flash('error_messages', '這位學生已有本堂點名紀錄。')
+      return res.redirect('/cramschool/attend')
     })
   },
 
