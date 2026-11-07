@@ -130,6 +130,6 @@ const attendController = {
         return res.redirect('back')
       })
     })
-  }
+  },
 }
 module.exports = attendController
