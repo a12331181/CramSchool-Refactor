@@ -37,6 +37,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       validate: { isInt: true, min: 0 }
     }
+  }, {
+    sequelize,
+    modelName: 'Attend',
   });
   return Attend;
 };
