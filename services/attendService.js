@@ -40,7 +40,7 @@ async function getAttendCourseData({ courseId, userId }) {
 }
 
 async function getAttendIndexData({ userId }) {
-  const [courses, sessions] = await Promise.all([
+  const [courses, calendars] = await Promise.all([
     Course.findAll({
       attributes: ['id', 'name'],
       where: { isActive: true },
@@ -86,7 +86,7 @@ async function getAttendIndexData({ userId }) {
     })
   ])
 
-  return { courses, sessions }
+  return { courses, calendars }
 }
 
 module.exports = { 

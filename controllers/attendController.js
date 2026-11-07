@@ -11,7 +11,7 @@ const { UniqueConstraintError } = require('sequelize')
 
 const attendController = {
   getAttendIndexpage: async (req, res) => {
-    const { courses, sessions } = await attendService.getAttendIndexData({
+    const { courses, calendars } = await attendService.getAttendIndexData({
       userId: req.user.id
     })
 
@@ -23,14 +23,14 @@ const attendController = {
 
     return res.render('courseattend', {
       courses,
-      sessions: sessions.map(session => ({
-        id: session.id,
-        courseId: session.CourseId,
-        courseName: session.Course.name,
-        startAtText: formatTaipeiDateTime(session.startAt) ?? '待核對',
-        endAtText: formatTaipeiDateTime(session.endAt) ?? '待核對',
-        statusText: statusLabels[session.status] ?? '待核對',
-        content: session.content
+      calendars: calendars.map(calendar => ({
+        id: calendar.id,
+        courseId: calendar.CourseId,
+        courseName: calendar.Course.name,
+        startAtText: formatTaipeiDateTime(calendar.startAt) ?? '待核對',
+        endAtText: formatTaipeiDateTime(calendar.endAt) ?? '待核對',
+        statusText: statusLabels[calendar.status] ?? '待核對',
+        content: calendar.content
       })),
       isAdmin: req.user.isAdmin
     })
