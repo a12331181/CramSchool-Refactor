@@ -27,6 +27,9 @@ const attendController = {
         id: calendar.id,
         courseId: calendar.CourseId,
         courseName: calendar.Course.name,
+        canViewStudents:
+          calendar.status === CALENDAR_STATUS.SCHEDULED ||
+          calendar.status === CALENDAR_STATUS.COMPLETED,
         startAtText: formatTaipeiDateTime(calendar.startAt) ?? '待核對',
         endAtText: formatTaipeiDateTime(calendar.endAt) ?? '待核對',
         statusText: statusLabels[calendar.status] ?? '待核對',
@@ -53,6 +56,36 @@ const attendController = {
     }
 
     return res.render('coursecalendar', result)
+  },
+
+  getAttendStudents: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    const calendarId = Number(req.params.calendarId)
+
+    if (
+      !Number.isSafeInteger(courseId) || courseId < 1 ||
+      !Number.isSafeInteger(calendarId) || calendarId < 1
+    ) {
+      return res.status(400).send('課程與課堂 ID 必須是正整數')
+    }
+
+    const result = await attendService.getAttendStudentsData({
+      courseId,
+      calendarId,
+      userId: req.user.id
+    })
+
+    if (!result) {
+      req.flash('error_messages', '找不到可查看的課堂')
+      return res.redirect('/cramschool/attend')
+    }
+
+    return res.render('attend', {
+      ...result,
+      isReadOnly: true,
+      startAtText: formatTaipeiDateTime(result.calendar.startAt),
+      endAtText: formatTaipeiDateTime(result.calendar.endAt)
+    })
   },
 
   getAttend:(req, res) => {

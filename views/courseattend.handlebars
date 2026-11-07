@@ -35,6 +35,7 @@
       <th scope="col">結束時間</th>
       <th scope="col">狀態</th>
       <th scope="col">課堂內容</th>
+      <th scope="col">學生名單</th>
     </tr>
   </thead>
   <tbody>
@@ -45,10 +46,18 @@
       <td>{{this.endAtText}}</td>
       <td>{{this.statusText}}</td>
       <td>{{this.content}}</td>
+      <td>
+        {{#if this.canViewStudents}}
+        <a href="/cramschool/attend/courses/{{this.courseId}}/calendar/{{this.id}}/students"
+          class="btn btn-sm btn-outline-primary">查看名單</a>
+        {{else}}
+        —
+        {{/if}}
+      </td>
     </tr>
     {{else}}
     <tr>
-      <td colspan="5" class="text-center text-muted">
+      <td colspan="6" class="text-center text-muted">
         目前沒有安排的課堂。
       </td>
     </tr>

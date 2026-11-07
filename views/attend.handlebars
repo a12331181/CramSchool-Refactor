@@ -1,3 +1,41 @@
+{{#if isReadOnly}}
+<br>
+<h1>{{course.name}}</h1>
+<h5>本堂學生名單</h5>
+<p>台北時間：{{startAtText}} ～ {{endAtText}}</p>
+<p>課堂內容：{{calendar.content}}</p>
+<p class="text-muted">名單以 {{calendarDate}} 的選課期間判定。</p>
+
+{{#if pendingCount}}
+<p class="alert alert-info">
+  另有 {{pendingCount}} 位學生的選課日期待核對。
+</p>
+{{/if}}
+
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th scope="col">學生編號</th>
+      <th scope="col">姓名</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each students}}
+    <tr>
+      <td>{{this.id}}</td>
+      <td>{{this.name}}</td>
+    </tr>
+    {{else}}
+    <tr>
+      <td colspan="2">目前沒有日期已確認的學生。</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+
+<a href="/cramschool/attend">回到點名首頁</a>
+{{else}}
+
 <br>
 
 <h1><strong>上課日期: </strong>{{calendar.date}}</h1>
@@ -56,3 +94,5 @@
 <br />
 <br />
 <a href="/cramschool/attend/courses/{{course.id}}">回到上一頁</a>
+
+{{/if}}
