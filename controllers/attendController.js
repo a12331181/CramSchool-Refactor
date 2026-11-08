@@ -103,7 +103,16 @@ const attendController = {
         attendText: student.hasAttend
           ? labels[student.attendStatus] ?? '舊紀錄待核對'
           : '未點名',
-        canCreateAttend: canCreate && !student.hasAttend
+        canCreateAttend: canCreate && !student.hasAttend,
+        canUpdateAttend:
+          canCreate && student.hasAttend &&
+          [ATTEND_STATUS.PRESENT, ATTEND_STATUS.ABSENT, ATTEND_STATUS.EXCUSED]
+            .includes(student.attendStatus) &&
+          Number.isSafeInteger(student.attendVersion) &&
+          student.attendVersion >= 0,
+        isPresent: student.attendStatus === ATTEND_STATUS.PRESENT,
+        isAbsent: student.attendStatus === ATTEND_STATUS.ABSENT,
+        isExcused: student.attendStatus === ATTEND_STATUS.EXCUSED,
       }))
     })
   },
@@ -232,6 +241,68 @@ const attendController = {
       req.flash('error_messages', '這位學生已有本堂點名紀錄。')
       return res.redirect('/cramschool/attend')
     })
+  },
+
+  updateAttend: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    const calendarId = Number(req.params.calendarId)
+    const studentId = Number(req.params.studentId)
+    const body = req.body ?? {}
+    const attendId = Number(body.attendId)
+    const attendVersion = Number(body.attendVersion)
+
+    if (
+      ![courseId, calendarId, studentId, attendId]
+        .every(id => Number.isSafeInteger(id) && id > 0) ||
+      body.attendVersion == null ||
+      body.attendVersion === '' ||
+      !Number.isSafeInteger(attendVersion) ||
+      attendVersion < 0 ||
+      typeof body.calendarStartAt !== 'string' ||
+      typeof body.calendarEndAt !== 'string'
+    ) {
+      return res.status(400).send('課程、課堂、學生或點名版本格式不正確')
+    }
+
+    const result = await attendService.updateAttend({
+      courseId,
+      calendarId,
+      studentId,
+      attendId,
+      attendVersion,
+      userId: req.user.id,
+      calendarStartAt: body.calendarStartAt,
+      calendarEndAt: body.calendarEndAt,
+      status: body.status,
+      reason: body.reason,
+      correctionReason: body.correctionReason
+    })
+
+    const errors = {
+      INVALID_INPUT: '資料格式不正確。',
+      INVALID_STATUS: '請選擇出席、缺席或請假。',
+      INVALID_REASON: '原因／備註必須是 255 字以內的文字。',
+      REASON_REQUIRED: '請填寫請假原因。',
+      CORRECTION_REASON_REQUIRED: '請填寫 255 字以內的更正原因。',
+      CALENDAR_UNAVAILABLE: '這堂課目前無法更正，請回首頁確認。',
+      CALENDAR_CHANGED: '上課時間已變更，請重新核對。',
+      ATTEND_NOT_FOUND: '找不到這筆點名紀錄。',
+      ATTEND_REQUIRES_REVIEW: '這筆舊紀錄需要先核對。',
+      VERSION_CONFLICT: '其他分頁已修改這筆點名，請核對重新載入的結果。',
+      ENROLLMENT_UNCONFIRMED: '選課期間無法確認，請先核對。'
+    }
+
+    req.flash(
+      result.ok ? 'success_messages' : 'error_messages',
+      result.ok
+        ? (result.changed ? '已更正點名並保存操作紀錄。' : '內容相同，沒有變更。')
+        : errors[result.code] ?? '目前無法更正。'
+    )
+
+    return res.redirect(
+      303,
+      `/cramschool/attend/courses/${courseId}/calendar/${calendarId}/students`
+    )
   },
 
   deleteAttend: (req, res) => {

@@ -1,4 +1,4 @@
-const { Course, Teacher, Calendar, Enrollment, Student, Attend, sequelize } = require('../models')
+const { Course, Teacher, Calendar, Enrollment, Student, Attend, AuditLog, sequelize } = require('../models')
 const { Op, UniqueConstraintError } = require('sequelize')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
@@ -197,7 +197,7 @@ async function getAttendStudentsData({ courseId, calendarId, userId }) {
       })
 
   const attends = await Attend.findAll({
-    attributes: ['StudentId', 'status', 'reason'],
+    attributes: ['id', 'StudentId', 'status', 'reason', 'version'],
     where: { CalendarId: calendarId },
     raw: true
   })
@@ -215,7 +215,9 @@ async function getAttendStudentsData({ courseId, calendarId, userId }) {
       ...student,
       hasAttend: attendByStudentId.has(student.id),
       attendStatus: attendByStudentId.get(student.id)?.status ?? null,
-      attendReason: attendByStudentId.get(student.id)?.reason ?? ''
+      attendReason: attendByStudentId.get(student.id)?.reason ?? '',
+      attendId: attendByStudentId.get(student.id)?.id ?? null,
+      attendVersion: attendByStudentId.get(student.id)?.version ?? null
     }))
   }
 }
@@ -383,9 +385,199 @@ async function createAttend({
   }
 }
 
+async function updateAttend({
+  courseId, calendarId, studentId, attendId, attendVersion, userId,
+  calendarStartAt, calendarEndAt, status, reason = '', correctionReason
+}) {
+  const allowedStatuses = [
+    ATTEND_STATUS.PRESENT,
+    ATTEND_STATUS.ABSENT,
+    ATTEND_STATUS.EXCUSED
+  ]
+
+  if (
+    ![courseId, calendarId, studentId, attendId, userId]
+      .every(id => Number.isSafeInteger(id) && id > 0) ||
+    !Number.isSafeInteger(attendVersion) || attendVersion < 0 ||
+    typeof calendarStartAt !== 'string' ||
+    typeof calendarEndAt !== 'string'
+  ) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  if (!allowedStatuses.includes(status)) {
+    return { ok: false, code: 'INVALID_STATUS' }
+  }
+
+  if (typeof reason !== 'string' || reason.trim().length > 255) {
+    return { ok: false, code: 'INVALID_REASON' }
+  }
+
+  if (
+    typeof correctionReason !== 'string' ||
+    !correctionReason.trim() ||
+    correctionReason.trim().length > 255
+  ) {
+    return { ok: false, code: 'CORRECTION_REASON_REQUIRED' }
+  }
+
+  const normalizedReason = reason.trim()
+
+  if (status === ATTEND_STATUS.EXCUSED && !normalizedReason) {
+    return { ok: false, code: 'REASON_REQUIRED' }
+  }
+
+  const target = await Calendar.findOne({
+    attributes: ['TeacherId'],
+    where: {
+      id: calendarId,
+      CourseId: courseId,
+      status: CALENDAR_STATUS.SCHEDULED
+    },
+    include: [{
+      model: Teacher,
+      attributes: [],
+      where: { UserId: userId },
+      required: true
+    }],
+    raw: true
+  })
+
+  if (!target) return { ok: false, code: 'CALENDAR_UNAVAILABLE' }
+
+  return sequelize.transaction(async transaction => {
+    const locked = { transaction, lock: transaction.LOCK.UPDATE }
+
+    const student = await Student.findByPk(studentId, {
+      ...locked, attributes: ['id']
+    })
+    const course = await Course.findByPk(courseId, {
+      ...locked, attributes: ['id', 'isActive']
+    })
+    const teacher = await Teacher.findOne({
+      ...locked,
+      attributes: ['id'],
+      where: { id: target.TeacherId, UserId: userId }
+    })
+    const calendar = await Calendar.findOne({
+      ...locked,
+      where: {
+        id: calendarId,
+        CourseId: courseId,
+        TeacherId: target.TeacherId
+      }
+    })
+
+    if (
+      !student || Number(course?.isActive) !== 1 || !teacher || !calendar ||
+      calendar.status !== CALENDAR_STATUS.SCHEDULED ||
+      !(calendar.startAt instanceof Date) ||
+      !Number.isFinite(calendar.startAt.getTime()) ||
+      !(calendar.endAt instanceof Date) ||
+      !Number.isFinite(calendar.endAt.getTime()) ||
+      calendar.startAt >= calendar.endAt
+    ) {
+      return { ok: false, code: 'CALENDAR_UNAVAILABLE' }
+    }
+
+    if (
+      calendar.startAt.toISOString() !== calendarStartAt ||
+      calendar.endAt.toISOString() !== calendarEndAt
+    ) {
+      return { ok: false, code: 'CALENDAR_CHANGED' }
+    }
+
+    const attend = await Attend.findOne({
+      ...locked,
+      where: {
+        id: attendId,
+        CalendarId: calendarId,
+        StudentId: studentId
+      }
+    })
+
+    if (!attend) return { ok: false, code: 'ATTEND_NOT_FOUND' }
+
+    if (
+      !allowedStatuses.includes(attend.status) ||
+      !Number.isSafeInteger(attend.version) ||
+      attend.version < 0
+    ) {
+      return { ok: false, code: 'ATTEND_REQUIRES_REVIEW' }
+    }
+
+    if (attend.version !== attendVersion) {
+      return { ok: false, code: 'VERSION_CONFLICT' }
+    }
+
+    const calendarDate = getTaipeiDate(calendar.startAt)
+    const enrollment = await Enrollment.findOne({
+      ...locked,
+      attributes: ['id'],
+      where: {
+        id: attend.EnrollmentId,
+        StudentId: studentId,
+        CourseId: courseId,
+        startsOn: { [Op.lte]: calendarDate },
+        [Op.or]: [
+          { status: ENROLLMENT_STATUS.ACTIVE, endsOn: null },
+          {
+            status: {
+              [Op.in]: [ENROLLMENT_STATUS.ACTIVE, ENROLLMENT_STATUS.ENDED]
+            },
+            endsOn: { [Op.gt]: calendarDate }
+          }
+        ]
+      }
+    })
+
+    if (!enrollment) {
+      return { ok: false, code: 'ENROLLMENT_UNCONFIRMED' }
+    }
+
+    const isAttend = status === ATTEND_STATUS.PRESENT
+
+    if (
+      attend.status === status &&
+      attend.reason === normalizedReason &&
+      attend.isAttend === isAttend
+    ) {
+      return { ok: true, changed: false }
+    }
+
+    const before = {
+      status: attend.status,
+      reason: attend.reason,
+      isAttend: attend.isAttend,
+      version: attend.version
+    }
+    const after = {
+      status,
+      reason: normalizedReason,
+      isAttend,
+      version: attend.version + 1
+    }
+
+    await attend.update(after, { transaction })
+
+    await AuditLog.create({
+      actorId: userId,
+      entityType: 'Attend',
+      entityId: attend.id,
+      action: 'update',
+      before,
+      after,
+      reason: correctionReason.trim()
+    }, { transaction })
+
+    return { ok: true, changed: true }
+  })
+}
+
 module.exports = { 
   getAttendCourseData,
   getAttendIndexData,
   getAttendStudentsData,
-  createAttend
+  createAttend,
+  updateAttend
 }

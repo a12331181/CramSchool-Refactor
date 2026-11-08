@@ -57,7 +57,38 @@
           <button type="submit" class="btn btn-sm btn-primary mt-2">送出點名</button>
         </form>
         {{else}}
+        {{#if this.canUpdateAttend}}
+        <details>
+          <summary>更正點名</summary>
+        
+          <form method="POST"
+            action="/cramschool/attend/courses/{{../course.id}}/calendar/{{../calendar.id}}/students/{{this.id}}?_method=PUT">
+            <input type="hidden" name="attendId" value="{{this.attendId}}">
+            <input type="hidden" name="attendVersion" value="{{this.attendVersion}}">
+            <input type="hidden" name="calendarStartAt" value="{{../calendarStartAt}}">
+            <input type="hidden" name="calendarEndAt" value="{{../calendarEndAt}}">
+        
+            <label for="edit-status-{{this.id}}">點名結果</label>
+            <select id="edit-status-{{this.id}}" name="status" class="form-select form-select-sm" required>
+              <option value="present" {{#if this.isPresent}}selected{{/if}}>出席</option>
+              <option value="absent" {{#if this.isAbsent}}selected{{/if}}>缺席</option>
+              <option value="excused" {{#if this.isExcused}}selected{{/if}}>請假</option>
+            </select>
+        
+            <label for="edit-reason-{{this.id}}" class="mt-2">原因／備註</label>
+            <input id="edit-reason-{{this.id}}" name="reason" value="{{this.attendReason}}" class="form-control form-control-sm"
+              maxlength="255">
+        
+            <label for="correction-reason-{{this.id}}" class="mt-2">更正原因</label>
+            <input id="correction-reason-{{this.id}}" name="correctionReason" class="form-control form-control-sm"
+              maxlength="255" required>
+        
+            <button type="submit" class="btn btn-sm btn-warning mt-2">儲存更正</button>
+          </form>
+        </details>
+        {{else}}
         —
+        {{/if}}
         {{/if}}
       </td>
     </tr>
