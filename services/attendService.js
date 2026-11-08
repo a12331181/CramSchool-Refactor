@@ -691,7 +691,7 @@ async function getAttendHistoryData({
   const actors = actorIds.length === 0
     ? []
     : await User.findAll({
-        attributes: ['id', 'name'],
+        attributes: ['id', 'name', 'userNo'],
         where: { id: { [Op.in]: actorIds } },
         raw: true
       })

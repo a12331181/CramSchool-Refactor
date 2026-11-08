@@ -365,7 +365,15 @@ const attendController = {
     }
 
     const actorNames = new Map(
-      result.actors.map(actor => [actor.id, actor.name])
+      result.actors.map(actor => {
+        const accountName = actor.name?.trim() || '未設定名稱'
+
+        const displayName = actor.userNo
+          ? `${actor.userNo}｜${accountName}`
+          : `未編號｜${accountName}（帳號 #${actor.id}）`
+
+        return [actor.id, displayName]
+      })
     )
 
     return res.render('attendhistory', {
