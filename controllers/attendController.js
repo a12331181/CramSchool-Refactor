@@ -81,8 +81,16 @@ const attendController = {
     }
 
     const canCreate =
+      result.isAssignedTeacher &&
       result.calendar.status === CALENDAR_STATUS.SCHEDULED &&
       Number(result.course.isActive) === 1
+
+    const canUpdate = result.isAdmin
+      ? [
+          CALENDAR_STATUS.SCHEDULED,
+          CALENDAR_STATUS.COMPLETED
+        ].includes(result.calendar.status)
+      : canCreate
 
     const labels = {
       [ATTEND_STATUS.PRESENT]: '出席',
@@ -105,7 +113,7 @@ const attendController = {
           : '未點名',
         canCreateAttend: canCreate && !student.hasAttend,
         canUpdateAttend:
-          canCreate && student.hasAttend &&
+          canUpdate && student.hasAttend &&
           [ATTEND_STATUS.PRESENT, ATTEND_STATUS.ABSENT, ATTEND_STATUS.EXCUSED]
             .includes(student.attendStatus) &&
           Number.isSafeInteger(student.attendVersion) &&

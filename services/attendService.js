@@ -93,6 +93,15 @@ async function getAttendIndexData({ userId }) {
 }
 
 async function getAttendStudentsData({ courseId, calendarId, userId }) {
+   const user = await User.findByPk(userId, {
+    attributes: ['id', 'isAdmin'],
+    raw: true
+  })
+
+  if (!user) return null
+
+  const isAdmin = Number(user.isAdmin) === 1
+
   const calendar = await Calendar.findOne({
     attributes: ['id', 'CourseId', 'startAt', 'endAt', 'status', 'content'],
     where: {
@@ -108,8 +117,8 @@ async function getAttendStudentsData({ courseId, calendarId, userId }) {
     include: [
       {
         model: Teacher,
-        attributes: [],
-        where: { UserId: userId },
+        attributes: ['UserId'],
+        ...(isAdmin ? {} : { where: { UserId: userId } }),
         required: true
       },
       {
@@ -209,8 +218,10 @@ async function getAttendStudentsData({ courseId, calendarId, userId }) {
   return {
     calendar,
     course: calendar.Course,
+    isAdmin,
     calendarDate,
     pendingCount: pendingIds.size,
+    isAssignedTeacher: calendar.Teacher.UserId === user.id,
     students: students.map(student => ({
       ...student,
       hasAttend: attendByStudentId.has(student.id),
@@ -427,17 +438,30 @@ async function updateAttend({
     return { ok: false, code: 'REASON_REQUIRED' }
   }
 
+  const user = await User.findByPk(userId, {
+    attributes: ['id', 'isAdmin'],
+    raw: true
+  })
+
+  if (!user) return { ok: false, code: 'CALENDAR_UNAVAILABLE' }
+
+  const isAdmin = Number(user.isAdmin) === 1
+
+  const allowedCalendarStatuses = isAdmin
+    ? [CALENDAR_STATUS.SCHEDULED, CALENDAR_STATUS.COMPLETED]
+    : [CALENDAR_STATUS.SCHEDULED]
+
   const target = await Calendar.findOne({
     attributes: ['TeacherId'],
     where: {
       id: calendarId,
       CourseId: courseId,
-      status: CALENDAR_STATUS.SCHEDULED
+      status: { [Op.in]: allowedCalendarStatuses }
     },
     include: [{
       model: Teacher,
       attributes: [],
-      where: { UserId: userId },
+      ...(isAdmin ? {} : { where: { UserId: userId } }),
       required: true
     }],
     raw: true
@@ -454,11 +478,16 @@ async function updateAttend({
     const course = await Course.findByPk(courseId, {
       ...locked, attributes: ['id', 'isActive']
     })
+
     const teacher = await Teacher.findOne({
       ...locked,
       attributes: ['id'],
-      where: { id: target.TeacherId, UserId: userId }
+      where: {
+        id: target.TeacherId,
+        ...(isAdmin ? {} : { UserId: userId })
+      }
     })
+
     const calendar = await Calendar.findOne({
       ...locked,
       where: {
@@ -577,6 +606,15 @@ async function updateAttend({
 async function getAttendHistoryData({
   courseId, calendarId, studentId, userId
 }) {
+    const user = await User.findByPk(userId, {
+    attributes: ['id', 'isAdmin'],
+    raw: true
+  })
+
+  if (!user) return null
+
+  const isAdmin = Number(user.isAdmin) === 1
+  
   const calendar = await Calendar.findOne({
     attributes: ['id', 'startAt', 'endAt'],
     where: {
@@ -594,7 +632,7 @@ async function getAttendHistoryData({
       {
         model: Teacher,
         attributes: [],
-        where: { UserId: userId },
+        ...(isAdmin ? {} : { where: { UserId: userId } }),
         required: true
       },
       {
