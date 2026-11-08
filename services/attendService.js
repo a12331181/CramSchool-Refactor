@@ -43,6 +43,17 @@ async function getAttendCourseData({ courseId, userId }) {
 }
 
 async function getAttendIndexData({ userId }) {
+  const user = await User.findByPk(userId, {
+    attributes: ['id', 'isAdmin'],
+    raw: true
+  })
+
+  if (!user) {
+    return { courses: [], calendars: [], isAdmin: false }
+  }
+
+  const isAdmin = Number(user.isAdmin) === 1
+
   const [courses, calendars] = await Promise.all([
     Course.findAll({
       attributes: ['id', 'name'],
@@ -73,13 +84,13 @@ async function getAttendIndexData({ userId }) {
         {
           model: Teacher,
           attributes: [],
-          where: { UserId: userId },
+          ...(isAdmin ? {} : { where: { UserId: userId } }),
           required: true
         },
         {
           model: Course,
           attributes: ['name'],
-          where: { isActive: true },
+          ...(isAdmin ? {} : { where: { isActive: true } }),
           required: true
         }
       ],
@@ -89,7 +100,7 @@ async function getAttendIndexData({ userId }) {
     })
   ])
 
-  return { courses, calendars }
+  return { courses, calendars, isAdmin }
 }
 
 async function getAttendStudentsData({ courseId, calendarId, userId }) {

@@ -25,7 +25,13 @@
 
 <br>
 
-<h5>我的課堂時段（台北時間）</h5>
+<h5>
+  {{#if isAdmin}}
+  全部課堂時段（台北時間）
+  {{else}}
+  我的課堂時段（台北時間）
+  {{/if}}
+</h5>
 
 <table class="table table-bordered">
   <thead>
