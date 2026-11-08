@@ -112,7 +112,7 @@ const attendController = {
     const courseId = Number(req.params.courseId)
     const calendarId = Number(req.params.calendarId)
     const studentId = Number(req.params.studentId)
-    const { calendarStartAt, calendarEndAt } = req.body ?? {}
+    const { calendarStartAt, calendarEndAt, status, reason } = req.body ?? {}
 
     if (
       ![courseId, calendarId, studentId].every(id => Number.isSafeInteger(id) && id > 0) ||
@@ -127,6 +127,8 @@ const attendController = {
       studentId,
       calendarStartAt,
       calendarEndAt,
+      status,
+      reason,
       userId: req.user.id
     })
 
@@ -134,7 +136,10 @@ const attendController = {
       INVALID_INPUT: '資料格式不正確。',
       CALENDAR_UNAVAILABLE: '找不到可登記的課堂。',
       CALENDAR_CHANGED: '上課時間已變更，請核對後再登記。',
-      ENROLLMENT_UNCONFIRMED: '學生當天的選課期間無法確認，請先核對。'
+      ENROLLMENT_UNCONFIRMED: '學生當天的選課期間無法確認，請先核對。',
+      INVALID_STATUS: '請選擇出席、缺席或請假。',
+      INVALID_REASON: '原因／備註必須是 255 字以內的文字。',
+      REASON_REQUIRED: '請填寫請假原因。'
     }
 
     req.flash(

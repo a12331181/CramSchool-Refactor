@@ -18,6 +18,7 @@
       <th scope="col">學生編號</th>
       <th scope="col">姓名</th>
       <th scope="col">點名結果</th>
+      <th scope="col">原因／備註</th>
       <th scope="col">操作</th>
     </tr>
   </thead>
@@ -28,12 +29,32 @@
       <td>{{this.name}}</td>
       <td>{{this.attendText}}</td>
       <td>
+        {{#if this.attendReason}}
+        {{this.attendReason}}
+        {{else}}
+        —
+        {{/if}}
+      </td>
+      <td>
         {{#if this.canCreateAttend}}
         <form method="POST"
           action="/cramschool/attend/courses/{{../course.id}}/calendar/{{../calendar.id}}/students/{{this.id}}">
           <input type="hidden" name="calendarStartAt" value="{{../calendarStartAt}}">
           <input type="hidden" name="calendarEndAt" value="{{../calendarEndAt}}">
-          <button type="submit" class="btn btn-sm btn-primary">登記出席</button>
+        
+          <label for="attend-status-{{this.id}}">狀態</label>
+          <select id="attend-status-{{this.id}}" name="status" class="form-select form-select-sm" required>
+            <option value="" selected disabled>請選擇</option>
+            <option value="present">出席</option>
+            <option value="absent">缺席</option>
+            <option value="excused">請假</option>
+          </select>
+        
+          <label for="attend-reason-{{this.id}}" class="mt-2">原因／備註</label>
+          <input id="attend-reason-{{this.id}}" name="reason" type="text" class="form-control form-control-sm" maxlength="255"
+            placeholder="請假時必填">
+        
+          <button type="submit" class="btn btn-sm btn-primary mt-2">送出點名</button>
         </form>
         {{else}}
         —
@@ -42,7 +63,7 @@
     </tr>
     {{else}}
     <tr>
-      <td colspan="4">目前沒有日期已確認的學生。</td>
+      <td colspan="5">目前沒有日期已確認的學生。</td>
     </tr>
     {{/each}}
   </tbody>

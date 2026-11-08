@@ -197,7 +197,7 @@ async function getAttendStudentsData({ courseId, calendarId, userId }) {
       })
 
   const attends = await Attend.findAll({
-    attributes: ['StudentId', 'status'],
+    attributes: ['StudentId', 'status', 'reason'],
     where: { CalendarId: calendarId },
     raw: true
   })
@@ -214,19 +214,44 @@ async function getAttendStudentsData({ courseId, calendarId, userId }) {
     students: students.map(student => ({
       ...student,
       hasAttend: attendByStudentId.has(student.id),
-      attendStatus: attendByStudentId.get(student.id)?.status ?? null
+      attendStatus: attendByStudentId.get(student.id)?.status ?? null,
+      attendReason: attendByStudentId.get(student.id)?.reason ?? ''
     }))
   }
 }
 
 async function createAttend({
-  courseId, calendarId, studentId, userId, calendarStartAt, calendarEndAt
+  courseId, calendarId, studentId, userId, calendarStartAt, calendarEndAt, status, reason = ''
 }) {
   if (
     ![courseId, calendarId, studentId, userId].every(id => Number.isSafeInteger(id) && id > 0) ||
     typeof calendarStartAt !== 'string' || typeof calendarEndAt !== 'string'
   ) {
     return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  const allowedStatuses = [
+    ATTEND_STATUS.PRESENT,
+    ATTEND_STATUS.ABSENT,
+    ATTEND_STATUS.EXCUSED
+  ]
+
+  if (!allowedStatuses.includes(status)) {
+    return { ok: false, code: 'INVALID_STATUS' }
+  }
+
+  if (typeof reason !== 'string') {
+    return { ok: false, code: 'INVALID_REASON' }
+  }
+
+  const normalizedReason = reason.trim()
+
+  if (normalizedReason.length > 255) {
+    return { ok: false, code: 'INVALID_REASON' }
+  }
+
+  if (status === ATTEND_STATUS.EXCUSED && normalizedReason === '') {
+    return { ok: false, code: 'REASON_REQUIRED' }
   }
 
   const target = await Calendar.findOne({
@@ -338,9 +363,9 @@ async function createAttend({
         CalendarId: calendarId,
         StudentId: studentId,
         EnrollmentId: enrollment.id,
-        status: ATTEND_STATUS.PRESENT,
-        isAttend: true,
-        reason: '',
+        status,
+        isAttend: status === ATTEND_STATUS.PRESENT,
+        reason: normalizedReason,
         recordedBy: userId,
         version: 0
       }, { transaction })
