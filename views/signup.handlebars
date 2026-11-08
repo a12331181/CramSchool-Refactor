@@ -15,12 +15,12 @@
 
   <div class="form-label-group my-1">
     <label for="inputEmail">信箱</label>
-    <input type="text" name="email" class="form-control" placeholder="輸入信箱..." required>
+    <input id="inputEmail" type="email" name="email" class="form-control" placeholder="輸入信箱..." maxlength="254" autocomplete="email" required>
   </div>
 
   <div class="form-label-group my-1">
     <label for="inputPhone">聯絡電話</label>
-    <input type="text" name="phone" class="form-control" placeholder="輸入聯絡電話..." required>
+    <input id="inputPhone" type="tel" name="phone" class="form-control" placeholder="例如 0912345678" inputmode="numeric" pattern="09[0-9]{8}" minlength="10" maxlength="10" title="請輸入 09 開頭的十位手機號碼" autocomplete="tel-national" required>
   </div>
 
   <div class="form-label-group my-1">

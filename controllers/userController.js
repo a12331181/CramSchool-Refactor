@@ -1,4 +1,4 @@
-const bcrypt = require('bcryptjs') 
+const userService = require('../services/userService')
 const db = require('../models')
 const User = db.User
 const Teacher = db.Teacher
@@ -10,34 +10,41 @@ const userController = {
     return res.render('signup')
   },
 
-  signUp: (req, res) => {
-    // 確認密碼
-    if(req.body.passwordCheck !== req.body.password){
+  signUp: async (req, res) => {
+    const body = req.body ?? {}
+
+    if (body.passwordCheck !== body.password) {
       req.flash('error_messages', '兩次密碼輸入不同！')
-      return res.redirect('/signup')
-    } else {
-      // 確認是否有重複註冊
-      User.findOne({where: {email: req.body.email}}).then(user => {
-        if(user){
-          req.flash('error_messages', '信箱重複！')
-          return res.redirect('/signup')
-        } else {
-          User.create({
-            name: req.body.name,
-            email: req.body.email,
-            password: bcrypt.hashSync(req.body.password, 10)
-          }).then(user => {
-            Teacher.create({
-              name: req.body.realName,
-              phone: req.body.phone,
-              UserId: user.id
-            })
-            req.flash('success_messages', '成功註冊帳號！')
-            return res.redirect('/signin')
-          })  
-        }
-      })    
+      return res.redirect(303, '/signup')
     }
+
+    const result = await userService.signUp({
+      name: body.name,
+      email: body.email,
+      password: body.password,
+      realName: body.realName,
+      phone: body.phone
+    })
+
+    if (!result.ok) {
+      const errors = {
+        INVALID_INPUT: '請完整填寫姓名、暱稱、信箱與密碼，文字欄位限 255 字以內。',
+        INVALID_EMAIL: 'Email 格式不正確，例如 name@example.com。',
+        INVALID_PHONE: '手機必須是 09 開頭的十位數字，例如 0912345678。',
+        PASSWORD_TOO_LONG: '密碼過長，請縮短後再試。',
+        EMAIL_EXISTS: '信箱重複！'
+      }
+
+      req.flash('error_messages', errors[result.code] ?? '目前無法註冊。')
+      return res.redirect(303, '/signup')
+    }
+
+    req.flash(
+      'success_messages',
+      '成功註冊帳號！帳號編號：' + result.userNo
+    )
+
+    return res.redirect(303, '/signin')
   },
 
   signInPage: (req, res) => {
