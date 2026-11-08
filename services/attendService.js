@@ -1,4 +1,4 @@
-const { Course, Teacher, Calendar, Enrollment, Student, Attend, AuditLog, sequelize } = require('../models')
+const { User, Course, Teacher, Calendar, Enrollment, Student, Attend, AuditLog, sequelize } = require('../models')
 const { Op, UniqueConstraintError } = require('sequelize')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
@@ -574,10 +574,94 @@ async function updateAttend({
   })
 }
 
+async function getAttendHistoryData({
+  courseId, calendarId, studentId, userId
+}) {
+  const calendar = await Calendar.findOne({
+    attributes: ['id', 'startAt', 'endAt'],
+    where: {
+      id: calendarId,
+      CourseId: courseId,
+      status: {
+        [Op.in]: [
+          CALENDAR_STATUS.SCHEDULED,
+          CALENDAR_STATUS.COMPLETED,
+          CALENDAR_STATUS.CANCELLED
+        ]
+      }
+    },
+    include: [
+      {
+        model: Teacher,
+        attributes: [],
+        where: { UserId: userId },
+        required: true
+      },
+      {
+        model: Course,
+        attributes: ['id', 'name'],
+        required: true
+      }
+    ],
+    raw: true,
+    nest: true
+  })
+
+  if (!calendar) return null
+
+  const attend = await Attend.findOne({
+    attributes: ['id', 'status'],
+    where: {
+      CalendarId: calendarId,
+      StudentId: studentId
+    },
+    include: [{
+      model: Student,
+      attributes: ['id', 'name'],
+      required: true
+    }],
+    raw: true,
+    nest: true
+  })
+
+  if (!attend) return null
+
+  const logs = await AuditLog.findAll({
+    attributes: ['id', 'actorId', 'before', 'after', 'reason', 'occurredAt'],
+    where: {
+      entityType: 'Attend',
+      entityId: attend.id,
+      action: 'update'
+    },
+    order: [['id', 'DESC']],
+    limit: 50,
+    raw: true
+  })
+
+  const actorIds = [...new Set(logs.map(log => log.actorId))]
+  const actors = actorIds.length === 0
+    ? []
+    : await User.findAll({
+        attributes: ['id', 'name'],
+        where: { id: { [Op.in]: actorIds } },
+        raw: true
+      })
+
+  return {
+    calendar,
+    course: calendar.Course,
+    student: attend.Student,
+    attend,
+    logs,
+    actors
+  }
+}
+
 module.exports = { 
   getAttendCourseData,
   getAttendIndexData,
   getAttendStudentsData,
   createAttend,
-  updateAttend
+  updateAttend,
+  getAttendHistoryData
 }

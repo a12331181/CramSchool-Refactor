@@ -1,0 +1,47 @@
+<br>
+<h1>{{course.name}}</h1>
+<h5>{{student.name}}的點名更正紀錄</h5>
+<p>台北時間：{{startAtText}} ～ {{endAtText}}</p>
+<p>目前點名結果：{{currentStatusText}}</p>
+<p class="text-muted">顯示最近 50 筆已記錄的更正。</p>
+
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th scope="col">更正時間（台北）</th>
+        <th scope="col">修改人</th>
+        <th scope="col">修改前</th>
+        <th scope="col">修改後</th>
+        <th scope="col">更正原因</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each logs}}
+      <tr>
+        <td>{{this.occurredAtText}}</td>
+        <td>{{this.actorName}}</td>
+        <td>
+          {{this.beforeStatusText}}
+          {{#if this.beforeReason}}
+          <br>備註：{{this.beforeReason}}
+          {{/if}}
+        </td>
+        <td>
+          {{this.afterStatusText}}
+          {{#if this.afterReason}}
+          <br>備註：{{this.afterReason}}
+          {{/if}}
+        </td>
+        <td>{{this.correctionReason}}</td>
+      </tr>
+      {{else}}
+      <tr>
+        <td colspan="5">目前沒有已記錄的更正。</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</div>
+
+<a href="/cramschool/attend">回到點名首頁</a>

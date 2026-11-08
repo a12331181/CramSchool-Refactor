@@ -323,5 +323,60 @@ const attendController = {
       })
     })
   },
+
+  getAttendHistory: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    const calendarId = Number(req.params.calendarId)
+    const studentId = Number(req.params.studentId)
+
+    if (
+      ![courseId, calendarId, studentId]
+        .every(id => Number.isSafeInteger(id) && id > 0)
+    ) {
+      return res.status(400).send('課程、課堂與學生 ID 必須是正整數')
+    }
+
+    const result = await attendService.getAttendHistoryData({
+      courseId,
+      calendarId,
+      studentId,
+      userId: req.user.id
+    })
+
+    if (!result) {
+      req.flash('error_messages', '找不到可查看的點名紀錄')
+      return res.redirect('/cramschool/attend')
+    }
+
+    const labels = {
+      [ATTEND_STATUS.PRESENT]: '出席',
+      [ATTEND_STATUS.ABSENT]: '缺席',
+      [ATTEND_STATUS.EXCUSED]: '請假',
+      [ATTEND_STATUS.UNMARKED]: '未點名'
+    }
+
+    const actorNames = new Map(
+      result.actors.map(actor => [actor.id, actor.name])
+    )
+
+    return res.render('attendhistory', {
+      course: result.course,
+      student: result.student,
+      startAtText: formatTaipeiDateTime(result.calendar.startAt) ?? '待核對',
+      endAtText: formatTaipeiDateTime(result.calendar.endAt) ?? '待核對',
+      currentStatusText: labels[result.attend.status] ?? '待核對',
+      logs: result.logs.map(log => ({
+        id: log.id,
+        occurredAtText: formatTaipeiDateTime(log.occurredAt) ?? '待核對',
+        actorName: actorNames.get(log.actorId) || `帳號 #${log.actorId}`,
+        beforeStatusText: labels[log.before?.status] ?? '待核對',
+        afterStatusText: labels[log.after?.status] ?? '待核對',
+        beforeReason: log.before?.reason,
+        afterReason: log.after?.reason,
+        correctionReason: log.reason
+      }))
+    })
+  },
 }
+
 module.exports = attendController

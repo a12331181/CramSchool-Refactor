@@ -90,6 +90,13 @@
         —
         {{/if}}
         {{/if}}
+        {{#if this.hasAttend}}
+        <div class="mt-2">
+          <a href="/cramschool/attend/courses/{{../course.id}}/calendar/{{../calendar.id}}/students/{{this.id}}/history">
+            查看更正紀錄
+          </a>
+        </div>
+        {{/if}}
       </td>
     </tr>
     {{else}}
