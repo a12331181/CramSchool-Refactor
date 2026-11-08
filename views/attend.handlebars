@@ -1,4 +1,4 @@
-{{#if isReadOnly}}
+{{#if isFormalCalendar}}
 <br>
 <h1>{{course.name}}</h1>
 <h5>本堂學生名單</h5>
@@ -17,6 +17,8 @@
     <tr>
       <th scope="col">學生編號</th>
       <th scope="col">姓名</th>
+      <th scope="col">點名結果</th>
+      <th scope="col">操作</th>
     </tr>
   </thead>
   <tbody>
@@ -24,10 +26,23 @@
     <tr>
       <td>{{this.id}}</td>
       <td>{{this.name}}</td>
+      <td>{{this.attendText}}</td>
+      <td>
+        {{#if this.canCreateAttend}}
+        <form method="POST"
+          action="/cramschool/attend/courses/{{../course.id}}/calendar/{{../calendar.id}}/students/{{this.id}}">
+          <input type="hidden" name="calendarStartAt" value="{{../calendarStartAt}}">
+          <input type="hidden" name="calendarEndAt" value="{{../calendarEndAt}}">
+          <button type="submit" class="btn btn-sm btn-primary">登記出席</button>
+        </form>
+        {{else}}
+        —
+        {{/if}}
+      </td>
     </tr>
     {{else}}
     <tr>
-      <td colspan="2">目前沒有日期已確認的學生。</td>
+      <td colspan="4">目前沒有日期已確認的學生。</td>
     </tr>
     {{/each}}
   </tbody>
