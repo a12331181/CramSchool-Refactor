@@ -77,6 +77,12 @@ const adminController = {
 
       canCancel: calendar.status === CALENDAR_STATUS.SCHEDULED,
 
+      canComplete:
+        calendar.status === CALENDAR_STATUS.SCHEDULED &&
+        calendar.endAt instanceof Date &&
+        Number.isFinite(calendar.endAt.getTime()) &&
+        calendar.endAt.getTime() <= Date.now(),
+
       startAtText:
         formatTaipeiDateTime(calendar.startAt) ?? '待核對',
 
@@ -212,6 +218,71 @@ const adminController = {
       canSubmit: teachers.length > 0,
       error_messages: [errorMessage]
     })
+  },
+
+  completeCalendar: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    const calendarId = Number(req.params.calendarId)
+
+    if (
+      ![courseId, calendarId]
+        .every(id => Number.isSafeInteger(id) && id > 0)
+    ) {
+      return res.status(400).send('課程與課堂 ID 必須是正整數')
+    }
+
+    const requestedPage = Number(req.query.page ?? 1)
+
+    const validPage =
+      Number.isSafeInteger(requestedPage) &&
+      requestedPage > 0 &&
+      Number.isSafeInteger((requestedPage - 1) * pageLimit)
+
+    const page = validPage ? requestedPage : 1
+    const listUrl = `/admin/courses/${courseId}/calendar?page=${page}`
+
+    const result = await calendarService.completeCalendar(
+      courseId,
+      calendarId
+    )
+
+    if (!result.ok) {
+      const errors = {
+        COURSE_NOT_FOUND: '找不到課程資料。',
+        COURSE_CLOSED: '課程已關閉，目前無法完成課堂。',
+        CALENDAR_NOT_FOUND: '找不到這門課程的課堂。',
+        CALENDAR_NOT_COMPLETABLE: '只有已排定的正式課堂可以標記完成。',
+        CALENDAR_REQUIRES_REVIEW: '課堂的教師或時間資料需要先核對。',
+        CALENDAR_NOT_ENDED: '尚未到這堂課的結束時間。',
+        ENROLLMENT_UNCONFIRMED: '學生的選課期間有缺漏或重疊，請先核對。',
+        ATTEND_REQUIRES_REVIEW: '點名紀錄與選課資料需要先核對。',
+        ATTEND_INCOMPLETE:
+          `尚有 ${result.unmarkedCount} 位學生未點名，請先完成點名。`
+      }
+
+      req.flash(
+        'error_messages',
+        errors[result.code] ?? '目前無法完成課堂。'
+      )
+
+      const redirectUrl = [
+        'COURSE_NOT_FOUND',
+        'COURSE_CLOSED'
+      ].includes(result.code)
+        ? '/admin/courses'
+        : listUrl
+
+      return res.redirect(303, redirectUrl)
+    }
+
+    req.flash(
+      'success_messages',
+      result.changed
+        ? '已將課堂標記為已完成。'
+        : '這堂課原本就已完成。'
+    )
+
+    return res.redirect(303, listUrl)
   },
 
   cancelCalendar: async (req, res) => {

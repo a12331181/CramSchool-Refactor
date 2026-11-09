@@ -1,8 +1,10 @@
 const { Op } = require('sequelize')
-const { Course, Calendar, Teacher, sequelize } = require('../models')
+const { Course, Calendar, Teacher, Enrollment, Attend, sequelize } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
-const { parseTaipeiDateTime } = require('../utils/date')
+const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
+const ATTEND_STATUS = require('../constants/attendStatus')
+const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
 
 async function getCalendarPage({ courseId, page, pageSize }) {
   const course = await Course.findByPk(courseId, {
@@ -217,6 +219,206 @@ async function cancelCalendar(courseId, calendarId) {
 
     return { ok: true, changed: true }
   })
+}
+
+async function completeCalendar(courseId, calendarId) {
+  if (!Number.isSafeInteger(courseId) || courseId < 1) {
+    return { ok: false, code: 'INVALID_COURSE_ID' }
+  }
+
+  if (!Number.isSafeInteger(calendarId) || calendarId < 1) {
+    return { ok: false, code: 'INVALID_CALENDAR_ID' }
+  }
+
+  return sequelize.transaction(async transaction => {
+    const locked = {
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    }
+
+    const course = await Course.findByPk(courseId, {
+      ...locked,
+      attributes: ['id', 'isActive']
+    })
+
+    if (!course) {
+      return { ok: false, code: 'COURSE_NOT_FOUND' }
+    }
+
+    if (course.isActive !== true) {
+      return { ok: false, code: 'COURSE_CLOSED' }
+    }
+
+    const calendar = await Calendar.findOne({
+      ...locked,
+      where: {
+        id: calendarId,
+        CourseId: courseId
+      }
+    })
+
+    if (!calendar) {
+      return { ok: false, code: 'CALENDAR_NOT_FOUND' }
+    }
+
+    if (calendar.status === CALENDAR_STATUS.COMPLETED) {
+      return { ok: true, changed: false }
+    }
+
+    if (calendar.status !== CALENDAR_STATUS.SCHEDULED) {
+      return { ok: false, code: 'CALENDAR_NOT_COMPLETABLE' }
+    }
+
+    if (
+      !Number.isSafeInteger(calendar.TeacherId) ||
+      calendar.TeacherId < 1 ||
+      !(calendar.startAt instanceof Date) ||
+      !Number.isFinite(calendar.startAt.getTime()) ||
+      !(calendar.endAt instanceof Date) ||
+      !Number.isFinite(calendar.endAt.getTime()) ||
+      calendar.startAt >= calendar.endAt
+    ) {
+      return { ok: false, code: 'CALENDAR_REQUIRES_REVIEW' }
+    }
+
+    if (calendar.endAt.getTime() > Date.now()) {
+      return { ok: false, code: 'CALENDAR_NOT_ENDED' }
+    }
+
+    const attendanceCheck = await checkCalendarAttendance({
+      calendar,
+      transaction
+    })
+
+    if (!attendanceCheck.ok) {
+      return attendanceCheck
+    }
+
+    await calendar.update(
+      { status: CALENDAR_STATUS.COMPLETED },
+      { transaction }
+    )
+
+    return { ok: true, changed: true }
+  })
+}
+
+async function checkCalendarAttendance({ calendar, transaction }) {
+  const calendarDate = getTaipeiDate(calendar.startAt)
+
+  const locked = {
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+    raw: true
+  }
+
+  const enrollments = await Enrollment.findAll({
+    ...locked,
+    attributes: ['id', 'StudentId', 'startsOn', 'endsOn', 'status'],
+    where: {
+      CourseId: calendar.CourseId,
+      status: {
+        [Op.in]: [
+          ENROLLMENT_STATUS.ACTIVE,
+          ENROLLMENT_STATUS.ENDED
+        ]
+      },
+      [Op.and]: [
+        {
+          [Op.or]: [
+            { startsOn: null },
+            { startsOn: { [Op.lte]: calendarDate } }
+          ]
+        },
+        {
+          [Op.or]: [
+            { endsOn: null },
+            { endsOn: { [Op.gt]: calendarDate } }
+          ]
+        }
+      ]
+    }
+  })
+
+  const enrollmentByStudentId = new Map()
+
+  for (const enrollment of enrollments) {
+    if (
+      !Number.isSafeInteger(enrollment.StudentId) ||
+      enrollment.StudentId < 1 ||
+      enrollment.startsOn == null ||
+      (
+        enrollment.status === ENROLLMENT_STATUS.ENDED &&
+        enrollment.endsOn == null
+      ) ||
+      enrollmentByStudentId.has(enrollment.StudentId)
+    ) {
+      return {
+        ok: false,
+        code: 'ENROLLMENT_UNCONFIRMED'
+      }
+    }
+
+    enrollmentByStudentId.set(enrollment.StudentId, enrollment)
+  }
+
+  const attends = await Attend.findAll({
+    ...locked,
+    attributes: ['StudentId', 'EnrollmentId', 'status'],
+    where: {
+      CalendarId: calendar.id
+    }
+  })
+
+  const attendByStudentId = new Map()
+
+  for (const attend of attends) {
+    const enrollment = enrollmentByStudentId.get(attend.StudentId)
+
+    if (
+      !enrollment ||
+      attend.EnrollmentId !== enrollment.id ||
+      attendByStudentId.has(attend.StudentId)
+    ) {
+      return {
+        ok: false,
+        code: 'ATTEND_REQUIRES_REVIEW'
+      }
+    }
+
+    attendByStudentId.set(attend.StudentId, attend)
+  }
+
+  const allowedStatuses = [
+    ATTEND_STATUS.PRESENT,
+    ATTEND_STATUS.ABSENT,
+    ATTEND_STATUS.EXCUSED
+  ]
+
+  let unmarkedCount = 0
+
+  for (const studentId of enrollmentByStudentId.keys()) {
+    const attend = attendByStudentId.get(studentId)
+
+    if (!attend || attend.status === ATTEND_STATUS.UNMARKED) {
+      unmarkedCount += 1
+    } else if (!allowedStatuses.includes(attend.status)) {
+      return {
+        ok: false,
+        code: 'ATTEND_REQUIRES_REVIEW'
+      }
+    }
+  }
+
+  if (unmarkedCount > 0) {
+    return {
+      ok: false,
+      code: 'ATTEND_INCOMPLETE',
+      unmarkedCount
+    }
+  }
+
+  return { ok: true }
 }
 
 async function getCourseCalendarData(courseId) {
@@ -476,6 +678,8 @@ module.exports = {
   prepareCalendarData,
   createCalendar,
   cancelCalendar,
+  completeCalendar,
+  checkCalendarAttendance,
   getCalendarPage,
   getCreateCalendarFormData,
   getCourseCalendarData,

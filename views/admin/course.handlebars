@@ -34,38 +34,48 @@
   
       <td>
         {{#if this.isLegacy}}
-        {{#if this.isActive}}
-        <a class="btn btn-link" href="/admin/courses/{{../course.id}}/calendar/{{this.id}}/edit">
-          修改原紀錄
-        </a>
-  
-        <form action="/admin/courses/{{../course.id}}/calendar/{{this.id}}/close?_method=PUT" method="POST"
-          style="display: inline;">
-          <button type="submit" class="btn btn-sm btn-danger">
-            關閉點名
-          </button>
-        </form>
-        {{else}}
-        <span class="btn btn-link disabled" aria-disabled="true">
-          修改原紀錄
-        </span>
-  
-        <form action="/admin/courses/{{../course.id}}/calendar/{{this.id}}/open?_method=PUT" method="POST"
-          style="display: inline;">
-          <button type="submit" class="btn btn-sm btn-warning">
-            開啟點名
-          </button>
-        </form>
-        {{/if}}
-        {{else}}
-          {{#if this.canCancel}}
-          <form action="/admin/courses/{{../course.id}}/sessions/{{this.id}}/cancel?_method=PUT&amp;page={{../page}}" method="POST" onsubmit="return confirm('確定取消這堂課嗎？')">
-          <button type="submit" class="btn btn-sm btn-outline-danger">
-            取消課堂
-          </button>
+          {{#if this.isActive}}
+          <a class="btn btn-link" href="/admin/courses/{{../course.id}}/calendar/{{this.id}}/edit">
+            修改原紀錄
+          </a>
+        
+          <form action="/admin/courses/{{../course.id}}/calendar/{{this.id}}/close?_method=PUT" method="POST"
+            style="display: inline;">
+            <button type="submit" class="btn btn-sm btn-danger">
+              關閉點名
+            </button>
           </form>
           {{else}}
-            <span class="text-muted">—</span>
+          <span class="btn btn-link disabled" aria-disabled="true">
+            修改原紀錄
+          </span>
+        
+          <form action="/admin/courses/{{../course.id}}/calendar/{{this.id}}/open?_method=PUT" method="POST"
+            style="display: inline;">
+            <button type="submit" class="btn btn-sm btn-warning">
+              開啟點名
+            </button>
+          </form>
+          {{/if}}
+          {{else}}
+          {{#if this.canComplete}}
+          <form action="/admin/courses/{{../course.id}}/sessions/{{this.id}}/complete?_method=PUT&amp;page={{../page}}"
+            method="POST" style="display: inline;" onsubmit="return confirm('確定完成這堂課嗎？完成後，老師將無法再新增或更正點名。')">
+            <button type="submit" class="btn btn-sm btn-success">
+              完成課堂
+            </button>
+          </form>
+          {{/if}}
+        
+          {{#if this.canCancel}}
+          <form action="/admin/courses/{{../course.id}}/sessions/{{this.id}}/cancel?_method=PUT&amp;page={{../page}}"
+            method="POST" style="display: inline;" onsubmit="return confirm('確定取消這堂課嗎？')">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              取消課堂
+            </button>
+          </form>
+          {{else}}
+          <span class="text-muted">—</span>
           {{/if}}
         {{/if}}
       </td>
