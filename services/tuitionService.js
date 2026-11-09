@@ -13,6 +13,11 @@ async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth
   if (typeof billingMonth !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)) {
     return { ok: false, code: 'INVALID_BILLING_MONTH' }
   }
+  const [year, month] = billingMonth.split('-').map(Number)
+  const monthStart = `${billingMonth}-01`
+  const nextMonthStart = month === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(month + 1).padStart(2, '0')}-01`
 
   const monthStartAt = parseTaipeiDateTime(`${monthStart}T00:00`)
   const nextMonthStartAt = parseTaipeiDateTime(`${nextMonthStart}T00:00`)
@@ -21,6 +26,10 @@ async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth
     return { ok: false, code: 'INVALID_BILLING_MONTH' }
   }
 
+  const isKnownDate = value =>
+    typeof value === 'string' &&
+    parseTaipeiDateTime(`${value}T00:00`) !== null
+    
   if (!isKnownDate(monthStart) || !isKnownDate(nextMonthStart)) {
     return { ok: false, code: 'INVALID_BILLING_MONTH' }
   }
