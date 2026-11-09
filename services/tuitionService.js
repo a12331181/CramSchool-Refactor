@@ -1,5 +1,6 @@
 const { Op } = require('sequelize')
-const { Calendar, Enrollment, sequelize } = require('../models')
+const { Calendar, Course, Enrollment, sequelize } = require('../models')
+const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
@@ -161,7 +162,56 @@ async function getTuitionCalendars({ courseId, studentId, billingMonth } = {}) {
   return { ok: true, billingMonth, billableCount: calendars.length, calendars }
 }
 
+async function getTuitionPreview({ courseId, studentId, billingMonth } = {}) {
+  const result = await getTuitionCalendars({ courseId, studentId, billingMonth })
+
+  if (!result.ok) return result
+
+  const course = await Course.findByPk(courseId, {
+    attributes: ['id', 'name', 'type', 'price'],
+    raw: true
+  })
+
+  if (!course) {
+    return { ok: false, code: 'COURSE_NOT_FOUND' }
+  }
+
+  const isMonthly = course.type === COURSE_TYPES.MONTHLY
+  const isPerLesson = course.type === COURSE_TYPES.PER_LESSON
+
+  if (typeof course.type !== 'string' || (!isMonthly && !isPerLesson)) {
+    return { ok: false, code: 'INVALID_BILLING_TYPE' }
+  }
+
+  if (!Number.isSafeInteger(course.price) || course.price < 0) {
+    return { ok: false, code: 'INVALID_PRICE' }
+  }
+
+  const quantity = isMonthly ? 1 : result.billableCount
+  const unitPrice = course.price
+  const baseAmount = quantity * unitPrice
+
+  if (!Number.isSafeInteger(baseAmount)) {
+    return { ok: false, code: 'INVALID_AMOUNT' }
+  }
+
+  return {
+    ...result,
+    studentId,
+    course: {
+      id: course.id,
+      name: course.name,
+      type: course.type
+    },
+    currency: 'TWD',
+    quantity,
+    unitPrice,
+    baseAmount
+  }
+}
+
 module.exports = { 
   getTuitionEnrollmentsForMonth,
-  getTuitionCalendars
+  getTuitionCalendars,
+  getTuitionPreview
 }
