@@ -1,0 +1,61 @@
+<h1 class="mt-3">學費預覽</h1>
+
+<form method="GET" action="{{previewUrl}}" class="mb-3">
+  <label for="billing-month">計費月份</label>
+  <input id="billing-month" type="month" name="billingMonth" value="{{billingMonth}}" required>
+  <button type="submit" class="btn btn-sm btn-primary">查看試算</button>
+</form>
+
+{{#if errorMessage}}
+<p class="alert alert-warning">
+  {{errorMessage}}
+  {{#if enrollmentId}}（選課 #{{enrollmentId}}）{{/if}}
+  {{#if calendarId}}（課堂 #{{calendarId}}）{{/if}}
+</p>
+{{/if}}
+
+{{#if preview}}
+<h2 class="h5">{{preview.course.name}}｜學生 #{{preview.studentId}}</h2>
+
+{{#if preview.calendarReviewCount}}
+<p class="alert alert-warning">
+  本課程有 {{preview.calendarReviewCount}} 筆課堂資料待核對。
+  開始時間不明的紀錄尚未歸入月份；下方堂數只包含已確認的正式課堂。
+</p>
+{{/if}}
+
+<p>計費方式：{{preview.course.type}}</p>
+<p>本月適用課堂：{{preview.billableCount}} 堂</p>
+<p>
+  基本學費試算：{{preview.quantity}} × NT$ {{preview.unitPrice}}
+  ＝ <strong>NT$ {{preview.baseAmount}}</strong>
+</p>
+<p class="text-muted">依現行課程價格試算，尚未發單。</p>
+
+{{#unless preview.billableCount}}
+<p class="alert alert-warning">本月沒有符合條件的正式課堂，請先核對排課與選課期間。</p>
+{{/unless}}
+
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th scope="col">課堂編號</th>
+      <th scope="col">上課日期（台北）</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each preview.calendars}}
+    <tr>
+      <th scope="row">#{{this.id}}</th>
+      <td>{{this.calendarDate}}</td>
+    </tr>
+    {{else}}
+    <tr>
+      <td colspan="2">沒有適用課堂。</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+{{/if}}
+
+<a href="{{listUrl}}">回到歷期學費表</a>

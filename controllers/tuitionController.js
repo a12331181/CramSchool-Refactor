@@ -8,6 +8,8 @@ const ExtraFee = db.ExtraFee
 const Payment = db.Payment
 const moment = require('moment')
 const calendarService = require('../services/calendarService')
+const tuitionService = require('../services/tuitionService')
+const { getTaipeiDate } = require('../utils/date')
 const NO_LEGACY_PERIOD_MESSAGE =
   '這門課程沒有原有期數，無法使用按期建立學費表。'
 
@@ -45,6 +47,47 @@ const tuitionController = {
     })
   },
   
+  getTuitionPreview: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    const studentId = Number(req.params.studentId)
+
+    if (![courseId, studentId].every(id => Number.isSafeInteger(id) && id > 0)) {
+      return res.status(400).send('課程與學生 ID 必須是正整數')
+    }
+
+    const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
+    const listUrl = `/cramschool/tuition/courses/${courseId}/students/${studentId}`
+    const result = await tuitionService.getTuitionPreview({
+      courseId,
+      studentId,
+      billingMonth
+    })
+
+    const errors = {
+      INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
+      UTC_TIMEZONE_REQUIRED: '系統時間設定異常，暫時無法試算。',
+      ENROLLMENT_NOT_FOUND: '找不到這位學生在本課程的選課紀錄。',
+      NOT_ENROLLED_IN_BILLING_MONTH: '這位學生在本月沒有有效的選課期間。',
+      ENROLLMENT_UNCONFIRMED: '選課期間有缺漏或重疊，請先核對。',
+      CALENDAR_REQUIRES_REVIEW: '課堂時間資料需要先核對。',
+      COURSE_NOT_FOUND: '找不到課程。',
+      STUDENT_NOT_FOUND: '找不到學生。',
+      INVALID_BILLING_TYPE: '請先核對課程的計費方式。',
+      INVALID_PRICE: '請先核對課程價格。',
+      INVALID_AMOUNT: '試算金額超出可處理範圍。'
+    }
+
+    return res.render('tuitionpreview', {
+      listUrl,
+      previewUrl: `${listUrl}/preview`,
+      billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
+      preview: result.ok ? result : null,
+      errorMessage: result.ok ? null : (errors[result.code] ?? '目前無法試算學費。'),
+      calendarId: result.calendarId,
+      enrollmentId: result.enrollmentId
+    })
+  },
+
   createTuition: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const studentId = Number(req.params.studentId)
