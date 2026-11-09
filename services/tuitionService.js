@@ -159,7 +159,44 @@ async function getTuitionCalendars({ courseId, studentId, billingMonth } = {}) {
     })
   }
 
-  return { ok: true, billingMonth, billableCount: calendars.length, calendars }
+  const calendarReviewCount = await Calendar.count({
+    where: {
+      CourseId: courseId,
+      [Op.or]: [
+        { startAt: null, status: null },
+        {
+          startAt: null,
+          status: { [Op.ne]: CALENDAR_STATUS.CANCELLED }
+        },
+        {
+          startAt: {
+            [Op.gte]: monthStartAt,
+            [Op.lt]: nextMonthStartAt
+          },
+          [Op.or]: [
+            { status: null },
+            {
+              status: {
+                [Op.notIn]: [
+                  CALENDAR_STATUS.SCHEDULED,
+                  CALENDAR_STATUS.COMPLETED,
+                  CALENDAR_STATUS.CANCELLED
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  })
+
+  return {
+    ok: true,
+    billingMonth,
+    billableCount: calendars.length,
+    calendars,
+    calendarReviewCount
+  }
 }
 
 async function getTuitionPreview({ courseId, studentId, billingMonth } = {}) {
