@@ -24,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
       })
     }
   }
-
+  
   TuitionBillItem.init({
     TuitionBillId: { type: DataTypes.INTEGER, allowNull: false },
     CourseId: { type: DataTypes.INTEGER, allowNull: true },
@@ -35,6 +35,11 @@ module.exports = (sequelize, DataTypes) => {
     unitPrice: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
     amount: { type: DataTypes.INTEGER, allowNull: false },
     reason: { type: DataTypes.STRING(255), allowNull: true },
+    ActiveLeaveAttendId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      unique: true
+    },
     sourceSnapshot: { type: DataTypes.JSON, allowNull: true }
   }, {
     sequelize,
