@@ -4,6 +4,78 @@
   <label for="billing-month">計費月份</label>
   <input id="billing-month" type="month" name="billingMonth" value="{{billingMonth}}" required>
   <button type="submit" class="btn btn-sm btn-primary">查看試算</button>
+
+  {{#with leaveReviewPanel}}
+  <section class="my-4" aria-labelledby="leave-review-title">
+    <h2 id="leave-review-title" class="h5">{{reviewMonth}} 請假審核</h2>
+    <p class="text-muted">這裡審核請假原因，折抵金額會另行核對。</p>
+  
+    {{#if timezoneError}}
+    <p class="alert alert-warning">系統時間設定異常，暫時無法讀取請假。</p>
+    {{else}}
+    <div class="table-responsive">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th scope="col">上課時間（台北）</th>
+            <th scope="col">課程</th>
+            <th scope="col">請假原因</th>
+            <th scope="col">審核結果</th>
+            <th scope="col">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each rows}}
+          <tr>
+            <td>{{classAtText}}</td>
+            <td>{{courseName}}</td>
+            <td>{{#if leaveReason}}{{leaveReason}}{{else}}未填寫{{/if}}</td>
+            <td>
+              {{decisionText}}
+              {{#if reviewReason}}
+              <div class="small text-muted">{{reviewReason}}</div>
+              {{/if}}
+            </td>
+            <td>
+              {{#if canReview}}
+              <details>
+                <summary>審核請假原因</summary>
+                <form method="POST" action="{{../actionBase}}/{{attendId}}" class="mt-2">
+                  <input type="hidden" name="tuitionFormToken" value="{{../formToken}}">
+                  <input type="hidden" name="billingMonth" value="{{../billingMonth}}">
+                  <input type="hidden" name="attendVersion" value="{{attendVersion}}">
+                  <input type="hidden" name="reviewId" value="{{reviewId}}">
+  
+                  <label for="leave-decision-{{attendId}}">審核結果</label>
+                  <select id="leave-decision-{{attendId}}" name="decision" class="form-control mb-2" required>
+                    <option value="" selected disabled>請選擇</option>
+                    <option value="approved">核准原因</option>
+                    <option value="rejected">駁回</option>
+                  </select>
+  
+                  <label for="leave-note-{{attendId}}">審核備註</label>
+                  <input id="leave-note-{{attendId}}" name="reviewReason" type="text" class="form-control mb-2"
+                    value="{{reviewReason}}" maxlength="255" required>
+  
+                  <button type="submit" class="btn btn-sm btn-primary">儲存審核</button>
+                </form>
+              </details>
+              {{else}}
+              <span class="text-muted">請先核對點名資料</span>
+              {{/if}}
+            </td>
+          </tr>
+          {{else}}
+          <tr>
+            <td colspan="5">上月沒有符合條件的請假紀錄。</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+    {{/if}}
+  </section>
+  {{/with}}
 </form>
 
 {{#if errorMessage}}

@@ -161,11 +161,34 @@ const tuitionController = {
       : []
     
     const hasSubtotal = result.ok && Number.isSafeInteger(result.baseSubtotal)
-    let draftFormToken = null
 
-    if (hasSubtotal) {
+    const leaveData = result.ok
+      ? await tuitionService.getPreviousMonthLeaveReviews({ studentId, billingMonth })
+      : null
+
+    const leaveRows = (leaveData?.rows ?? []).map(row => ({
+      ...row,
+      canReview:
+        Number.isSafeInteger(row.attendVersion) &&
+        row.attendVersion >= 0 &&
+        typeof row.leaveReason === 'string' &&
+        row.leaveReason.trim() !== ''
+    }))
+
+    const hasLeaveReviewForm = leaveRows.some(row => row.canReview)
+
+    if (hasSubtotal || hasLeaveReviewForm) {
       req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
-      draftFormToken = req.session.tuitionFormToken
+    }
+
+    const draftFormToken = hasSubtotal ? req.session.tuitionFormToken : null
+
+    const leaveReviewPanel = leaveData && {
+      ...leaveData,
+      rows: leaveRows,
+      billingMonth,
+      formToken: hasLeaveReviewForm ? req.session.tuitionFormToken : null,
+      actionBase: `/cramschool/tuition/students/${studentId}/leave-reviews`
     }
 
     res.set('Cache-Control', 'no-store')
@@ -178,8 +201,62 @@ const tuitionController = {
       draftAction: `/cramschool/tuition/students/${studentId}/bills/draft`,
       courseRows,
       reviewRows,
+      leaveReviewPanel,
       errorMessage: result.ok ? null : (messages[result.code] ?? '目前無法試算。')
     })
+  },
+
+  postLeaveReview: async (req, res) => {
+    const body = req.body ?? {}
+    const token = body.tuitionFormToken
+    const expected = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
+
+    if (
+      !isToken(token) || !isToken(expected) ||
+      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟學費預覽再試。')
+    }
+
+    const readInt = value =>
+      typeof value === 'string' && value !== '' && !/\D/.test(value)
+        ? Number(value)
+        : NaN
+
+    const studentId = readInt(req.params.studentId)
+    const result = await tuitionService.recordPreviousMonthLeaveReview({
+      studentId,
+      billingMonth: body.billingMonth,
+      attendId: readInt(req.params.attendId),
+      attendVersion: readInt(body.attendVersion),
+      reviewId: readInt(body.reviewId),
+      decision: body.decision,
+      reason: body.reviewReason,
+      actorId: req.user.id
+    })
+
+    if (result.code === 'INVALID_INPUT') {
+      return res.status(400).send('審核資料格式不正確，請重新確認結果和備註。')
+    }
+
+    const errors = {
+      UTC_REQUIRED: '系統時間設定異常，暫時無法儲存審核。',
+      LEAVE_UNAVAILABLE: '這筆請假已無法審核，請先核對點名資料。',
+      ATTEND_CHANGED: '老師已更正點名，請核對新的請假原因。',
+      REVIEW_CHANGED: '審核已更新，請核對目前的結果。'
+    }
+
+    req.flash(
+      result.ok ? 'success_messages' : 'error_messages',
+      result.ok
+        ? (result.changed ? '已儲存請假審核。' : '審核結果沒有變更。')
+        : errors[result.code] ?? '目前無法儲存審核。'
+    )
+
+    const query = new URLSearchParams({ billingMonth: body.billingMonth })
+    return res.redirect(303, `/cramschool/tuition/students/${studentId}/preview?${query}`)
   },
 
   createTuitionBillDraft: async (req, res) => {

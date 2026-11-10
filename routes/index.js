@@ -56,6 +56,7 @@ module.exports = (app, passport) => {
   app.get('/cramschool/tuition/courses/:courseId/students/:studentId', authenticatedAdmin, tuitionController.getCourseTuitionList)
   app.get('/cramschool/tuition/courses/:courseId/students/:studentId/preview', authenticatedAdmin, tuitionController.getTuitionPreview)
   app.get('/cramschool/tuition/students/:studentId/preview', authenticatedAdmin, tuitionController.getStudentTuitionPreview)
+  app.post('/cramschool/tuition/students/:studentId/leave-reviews/:attendId', authenticatedAdmin, tuitionController.postLeaveReview)
   app.get('/cramschool/tuition/students', authenticatedAdmin, tuitionController.getStudentTuitionList)
   app.post('/cramschool/tuition/students/:studentId/bills/draft', authenticatedAdmin, tuitionController.createTuitionBillDraft)
   app.get('/cramschool/tuition/bills/:billId', authenticatedAdmin, tuitionController.getTuitionBillDetails)
