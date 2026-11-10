@@ -1489,6 +1489,79 @@ async function issueTuitionBill({ billId, billVersion, actorId } = {}) {
   })
 }
 
+async function recordTuitionBillPayment({ billId, amount, actorId } = {}) {
+  if (
+    ![billId, actorId].every(id => Number.isSafeInteger(id) && id > 0) ||
+    !Number.isSafeInteger(amount) || amount < 1 || amount > 2_147_483_647
+  ) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  return sequelize.transaction(async transaction => {
+    const bill = await TuitionBill.findByPk(billId, {
+      attributes: ['id', 'status'],
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+    if (bill.status !== 'issued') {
+      return { ok: false, code: 'BILL_NOT_ISSUED' }
+    }
+
+    const paymentStatus = await getTuitionBillPaymentStatus(bill.id, transaction)
+    if (!paymentStatus.ok) return paymentStatus
+
+    const { totalAmount, paidAmount, remainingAmount, isFullyPaid } = paymentStatus
+
+    if (isFullyPaid) {
+      return { ok: true, changed: false, billId: bill.id, paidAmount, remainingAmount }
+    }
+
+    if (remainingAmount === 0) {
+      return { ok: false, code: 'BILL_NO_PAYMENT_REQUIRED' }
+    }
+
+    if (amount !== remainingAmount) {
+      return { ok: false, code: 'PAYMENT_AMOUNT_MISMATCH', remainingAmount }
+    }
+
+    const now = new Date()
+    const payment = await Payment.create({
+      TuitionBillId: bill.id,
+      TuitionId: null,
+      amount,
+      isPaid: true,
+      time: getTaipeiDate(now)
+    }, { transaction })
+
+    await AuditLog.create({
+      actorId,
+      entityType: 'TuitionBill',
+      entityId: bill.id,
+      action: 'update',
+      before: { paidAmount, remainingAmount },
+      after: {
+        paymentId: payment.id,
+        receivedAmount: amount,
+        paidAmount: totalAmount,
+        remainingAmount: 0,
+        recordedAt: now.toISOString()
+      },
+      reason: '登記帳單收款'
+    }, { transaction })
+
+    return {
+      ok: true,
+      changed: true,
+      billId: bill.id,
+      paymentId: payment.id,
+      paidAmount: totalAmount,
+      remainingAmount: 0
+    }
+  })
+}
+
 function buildLeaveCreditBillItem({ draftBillId, candidate }) {
   const { attendId, source } = candidate
   const unitPrice = source.originalUnitPrice
@@ -1558,5 +1631,6 @@ module.exports = {
   findPreviousMonthLeaveBillSource,
   getTuitionBillPaymentStatus,
   getPreviousMonthLeaveCreditCandidate,
-  issueTuitionBill
+  issueTuitionBill,
+  recordTuitionBillPayment
 }
