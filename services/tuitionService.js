@@ -1,5 +1,5 @@
 const { Op, UniqueConstraintError } = require('sequelize')
-const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, sequelize } = require('../models')
+const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, Payment, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
@@ -1074,6 +1074,61 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
   }
 }
 
+async function getTuitionBillPaymentStatus(billId) {
+  if (!Number.isSafeInteger(billId) || billId < 1) {
+    return { ok: false, code: 'INVALID_BILL_ID' }
+  }
+
+  const bill = await TuitionBill.findByPk(billId, {
+    attributes: ['id', 'status', 'totalAmount'],
+    raw: true
+  })
+
+  if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+  if (bill.status !== 'issued') return { ok: false, code: 'BILL_NOT_ISSUED' }
+
+  const { totalAmount } = bill
+  if (!Number.isSafeInteger(totalAmount) || totalAmount < 0) {
+    return { ok: false, code: 'INVALID_BILL_AMOUNT' }
+  }
+
+  const payments = await Payment.findAll({
+    attributes: ['TuitionId', 'amount'],
+    where: { TuitionBillId: bill.id, isPaid: true },
+    raw: true
+  })
+
+  let paidAmount = 0
+
+  for (const payment of payments) {
+    if (payment.TuitionId !== null) {
+      return { ok: false, code: 'PAYMENT_LINK_CONFLICT' }
+    }
+
+    if (!Number.isSafeInteger(payment.amount) || payment.amount <= 0) {
+      return { ok: false, code: 'INVALID_PAYMENT_AMOUNT' }
+    }
+
+    paidAmount += payment.amount
+    if (!Number.isSafeInteger(paidAmount)) {
+      return { ok: false, code: 'INVALID_PAYMENT_AMOUNT' }
+    }
+  }
+
+  if (paidAmount > totalAmount) {
+    return { ok: false, code: 'PAYMENT_TOTAL_EXCEEDS_BILL', totalAmount, paidAmount }
+  }
+
+  return {
+    ok: true,
+    billId: bill.id,
+    totalAmount,
+    paidAmount,
+    remainingAmount: totalAmount - paidAmount,
+    isFullyPaid: totalAmount > 0 && paidAmount === totalAmount
+  }
+}
+
 function previousMonthWindow(billingMonth) {
   if (
     typeof billingMonth !== 'string' ||
@@ -1109,5 +1164,7 @@ module.exports = {
   getTuitionBillDetails,
   addTuitionBillExtraFee,
   getPreviousMonthLeaveReviews,
-  recordPreviousMonthLeaveReview
+  recordPreviousMonthLeaveReview,
+  findPreviousMonthLeaveBillSource,
+  getTuitionBillPaymentStatus
 }
