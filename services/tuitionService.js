@@ -1,4 +1,5 @@
 const { Op, Transaction, UniqueConstraintError, ValidationError } = require('sequelize')
+const { isDeepStrictEqual } = require('node:util')
 const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, Payment, AuditLog, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
@@ -7,6 +8,7 @@ const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
+const MAX_UNSIGNED_INT = 4_294_967_295
 const DRAFT_NON_BLOCKING_REVIEW_CODES = new Set([
   'NO_BILLABLE_CALENDARS',
   'CALENDAR_REVIEW_UNAVAILABLE',
@@ -541,6 +543,83 @@ async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
   return { ok: true, rows, totalCount: result.count }
 }
 
+function buildDraftCourseFeeItems(preview) {
+  if (!preview.ok) return preview
+
+  const blockedItems = preview.reviewItems.filter(item =>
+    !DRAFT_NON_BLOCKING_REVIEW_CODES.has(item.code)
+  )
+
+  if (blockedItems.length > 0) {
+    return {
+      ok: false,
+      code: 'DRAFT_REQUIRES_REVIEW',
+      reviewItems: blockedItems
+    }
+  }
+
+  if (preview.courses.length === 0) {
+    return { ok: false, code: 'NO_COURSES_IN_BILLING_MONTH' }
+  }
+
+  const maxLineAmount = 2147483647
+  const items = []
+  let totalAmount = 0
+
+  for (const entry of preview.courses) {
+    const { course, quantity, unitPrice, baseAmount } = entry
+
+    if (
+      typeof course.name !== 'string' ||
+      !course.name.trim() ||
+      course.name.trim().length > 255
+    ) {
+      return { ok: false, code: 'COURSE_NAME_UNCONFIRMED', courseId: course.id }
+    }
+
+    if (
+      ![quantity, unitPrice, baseAmount].every(value =>
+        Number.isSafeInteger(value) && value >= 0
+      ) ||
+      quantity > MAX_UNSIGNED_INT ||
+      unitPrice > MAX_UNSIGNED_INT ||
+      baseAmount > maxLineAmount ||
+      baseAmount !== quantity * unitPrice
+    ) {
+      return { ok: false, code: 'INVALID_AMOUNT', courseId: course.id }
+    }
+
+    totalAmount += baseAmount
+
+    if (totalAmount > MAX_UNSIGNED_INT) {
+      return { ok: false, code: 'INVALID_AMOUNT' }
+    }
+
+    items.push({
+      CourseId: course.id,
+      kind: 'course_fee',
+      descriptionSnapshot: course.name.trim(),
+      quantity,
+      unitPrice,
+      amount: baseAmount,
+      sourceSnapshot: {
+        billingType: course.type,
+        billableCount: entry.billableCount,
+        calendars: entry.calendars.map(calendar => ({
+          calendarId: calendar.id,
+          enrollmentId: calendar.enrollmentId,
+          startAt: calendar.startAt.toISOString(),
+          endAt: calendar.endAt.toISOString(),
+          status: calendar.status
+        })),
+        reviewItems: preview.reviewItems.filter(item => item.courseId === course.id)
+      }
+    })
+  }
+
+  return { ok: true, items, totalAmount }
+}
+
 async function createTuitionBillDraft({ studentId, billingMonth } = {}) {
   if (!Number.isSafeInteger(studentId) || studentId < 1) {
     return { ok: false, code: 'INVALID_INPUT' }
@@ -574,79 +653,9 @@ async function createTuitionBillDraft({ studentId, billingMonth } = {}) {
 
   const preview = await getStudentTuitionPreview({ studentId, billingMonth })
 
-  if (!preview.ok) return preview
-
-  const blockedItems = preview.reviewItems.filter(item =>
-    !DRAFT_NON_BLOCKING_REVIEW_CODES.has(item.code)
-  )
-
-  if (blockedItems.length > 0) {
-    return {
-      ok: false,
-      code: 'DRAFT_REQUIRES_REVIEW',
-      reviewItems: blockedItems
-    }
-  }
-
-  if (preview.courses.length === 0) {
-    return { ok: false, code: 'NO_COURSES_IN_BILLING_MONTH' }
-  }
-
-  const maxUnsignedInt = 4294967295
-  const maxLineAmount = 2147483647
-  const items = []
-  let totalAmount = 0
-
-  for (const entry of preview.courses) {
-    const { course, quantity, unitPrice, baseAmount } = entry
-
-    if (
-      typeof course.name !== 'string' ||
-      !course.name.trim() ||
-      course.name.trim().length > 255
-    ) {
-      return { ok: false, code: 'COURSE_NAME_UNCONFIRMED', courseId: course.id }
-    }
-
-    if (
-      ![quantity, unitPrice, baseAmount].every(value =>
-        Number.isSafeInteger(value) && value >= 0
-      ) ||
-      quantity > maxUnsignedInt ||
-      unitPrice > maxUnsignedInt ||
-      baseAmount > maxLineAmount ||
-      baseAmount !== quantity * unitPrice
-    ) {
-      return { ok: false, code: 'INVALID_AMOUNT', courseId: course.id }
-    }
-
-    totalAmount += baseAmount
-
-    if (totalAmount > maxUnsignedInt) {
-      return { ok: false, code: 'INVALID_AMOUNT' }
-    }
-
-    items.push({
-      CourseId: course.id,
-      kind: 'course_fee',
-      descriptionSnapshot: course.name.trim(),
-      quantity,
-      unitPrice,
-      amount: baseAmount,
-      sourceSnapshot: {
-        billingType: course.type,
-        billableCount: entry.billableCount,
-        calendars: entry.calendars.map(calendar => ({
-          calendarId: calendar.id,
-          enrollmentId: calendar.enrollmentId,
-          startAt: calendar.startAt,
-          endAt: calendar.endAt,
-          status: calendar.status
-        })),
-        reviewItems: preview.reviewItems.filter(item => item.courseId === course.id)
-      }
-    })
-  }
+  const fees = buildDraftCourseFeeItems(preview)
+  if (!fees.ok) return fees
+  const { items, totalAmount } = fees
 
   try {
     return await sequelize.transaction(async transaction => {
@@ -709,6 +718,106 @@ async function createTuitionBillDraft({ studentId, billingMonth } = {}) {
 
     return { ok: true, created: false, bill: current }
   }
+}
+
+async function refreshTuitionBillDraft({ billId, billVersion, actorId } = {}) {
+  const isId = n => Number.isSafeInteger(n) && n > 0
+  if (
+    ![billId, actorId].every(isId) ||
+    !Number.isSafeInteger(billVersion) || billVersion < 0 ||
+    billVersion >= 2_147_483_647
+  ) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  return sequelize.transaction({
+    isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED
+  }, async transaction => {
+    const owner = await TuitionBill.findByPk(billId, {
+      attributes: ['StudentId'],
+      raw: true,
+      transaction
+    })
+    if (!owner) return { ok: false, code: 'BILL_NOT_FOUND' }
+
+    // 與正式出帳相同：先鎖學生和草稿，再讀取計費資料。
+    const locked = { transaction, lock: transaction.LOCK.UPDATE }
+    const student = await Student.findByPk(owner.StudentId, { ...locked, attributes: ['id'] })
+    const bill = await TuitionBill.findByPk(billId, locked)
+
+    if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+    if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+    if (bill.version !== billVersion || bill.StudentId !== owner.StudentId) {
+      return { ok: false, code: 'BILL_VERSION_CONFLICT' }
+    }
+    if (!student) return { ok: false, code: 'STUDENT_NOT_FOUND' }
+
+    const savedItems = await TuitionBillItem.findAll({
+      attributes: ['CourseId', 'kind', 'descriptionSnapshot', 'quantity', 'unitPrice', 'amount', 'sourceSnapshot'],
+      where: { TuitionBillId: bill.id },
+      order: [['CourseId', 'ASC'], ['id', 'ASC']],
+      raw: true,
+      transaction
+    })
+
+    if (savedItems.length === 0) return { ok: false, code: 'BILL_HAS_NO_ITEMS' }
+    if (savedItems.some(item => !Number.isSafeInteger(item.amount))) {
+      return { ok: false, code: 'INVALID_BILL_AMOUNT' }
+    }
+
+    const savedTotal = savedItems.reduce((sum, item) => sum + item.amount, 0)
+    if (!Number.isSafeInteger(savedTotal) || savedTotal < 0 || savedTotal !== bill.totalAmount) {
+      return { ok: false, code: 'DRAFT_TOTAL_MISMATCH' }
+    }
+
+    const preview = await getStudentTuitionPreview({
+      studentId: bill.StudentId,
+      billingMonth: bill.billingMonth
+    }, transaction)
+    const fees = buildDraftCourseFeeItems(preview)
+    if (!fees.ok) return fees
+
+    const preservedTotal = savedItems.reduce((sum, item) =>
+      item.kind === 'course_fee' ? sum : sum + item.amount, 0
+    )
+    const totalAmount = fees.totalAmount + preservedTotal
+    if (!Number.isSafeInteger(totalAmount) || totalAmount > MAX_UNSIGNED_INT) {
+      return { ok: false, code: 'INVALID_AMOUNT' }
+    }
+    if (totalAmount < 0) {
+      return { ok: false, code: 'DRAFT_CREDITS_EXCEED_UPDATED_TOTAL' }
+    }
+
+    const savedCourseFees = savedItems.filter(item => item.kind === 'course_fee')
+    if (isDeepStrictEqual(savedCourseFees, fees.items)) {
+      return { ok: true, changed: false, billId: bill.id, totalAmount, version: bill.version }
+    }
+
+    const before = { totalAmount: bill.totalAmount, version: bill.version, courseFees: savedCourseFees }
+    const version = bill.version + 1
+
+    await TuitionBillItem.destroy({
+      where: { TuitionBillId: bill.id, kind: 'course_fee' },
+      transaction
+    })
+    await TuitionBillItem.bulkCreate(fees.items.map(item => ({
+      ...item,
+      TuitionBillId: bill.id
+    })), { transaction })
+    await bill.update({ totalAmount, version }, { transaction })
+
+    await AuditLog.create({
+      actorId,
+      entityType: 'TuitionBill',
+      entityId: bill.id,
+      action: 'update',
+      before,
+      after: { totalAmount, version, courseFees: fees.items },
+      reason: '更新草稿課程明細'
+    }, { transaction })
+
+    return { ok: true, changed: true, billId: bill.id, totalAmount, version }
+  })
 }
 
 async function getTuitionBillDetails(billId) {
@@ -1705,6 +1814,7 @@ module.exports = {
   getStudentTuitionPreview,
   getStudentTuitionList,
   createTuitionBillDraft,
+  refreshTuitionBillDraft,
   getTuitionBillDetails,
   addTuitionBillExtraFee,
   getPreviousMonthLeaveReviews,
