@@ -335,14 +335,21 @@ const tuitionController = {
     const { bill, extraFees, leaveCreditData } = result
     const isDraft = bill.status === 'draft'
     const hasExtraFeeForm = isDraft && extraFees.length > 0
-    const hasLeaveCreditForm =
-      isDraft && leaveCreditData?.ok === true && leaveCreditData.options.length > 0
+    const hasLeaveCreditForm = isDraft && leaveCreditData?.ok === true && leaveCreditData.options.length > 0
 
-    if (hasExtraFeeForm || hasLeaveCreditForm) {
+    if (isDraft) {
       req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
     }
 
     const extraFeeFormToken = hasExtraFeeForm ? req.session.tuitionFormToken : null
+
+    const issueForm = isDraft
+      ? {
+          action: `/cramschool/tuition/bills/${bill.id}/issue`,
+          billVersion: bill.version,
+          formToken: req.session.tuitionFormToken
+        }
+      : null
 
     const creditMessages = {
       UTC_REQUIRED: '系統時間設定異常，暫時無法取得折抵。',
@@ -407,6 +414,7 @@ const tuitionController = {
       previewUrl,
       isDraft, 
       leaveCreditPanel,
+      issueForm,
       extraFees, 
       extraFeeFormToken
     })
@@ -611,6 +619,66 @@ const tuitionController = {
       prevUrl: page > 1 ? pageUrl(pagination.prev) : null,
       nextUrl: page < pagination.totalPages ? pageUrl(pagination.next) : null
     })
+  },
+
+  issueTuitionBill: async (req, res) => {
+    const body = req.body ?? {}
+    const token = body.tuitionFormToken
+    const expected = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
+
+    if (
+      !isToken(token) || !isToken(expected) ||
+      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+    }
+
+    const readInt = value =>
+      typeof value === 'string' && value !== '' && !/\D/.test(value)
+        ? Number(value)
+        : NaN
+
+    const billId = readInt(req.params.billId)
+    if (!Number.isSafeInteger(billId) || billId < 1) {
+      return res.status(400).send('帳單 ID 不正確。')
+    }
+
+    const result = await tuitionService.issueTuitionBill({
+      billId,
+      billVersion: readInt(body.billVersion),
+      actorId: req.user.id
+    })
+
+    if (result.code === 'INVALID_INPUT') {
+      return res.status(400).send('出帳資料格式不正確，請重新開啟帳單再試。')
+    }
+
+    if (result.code === 'BILL_NOT_FOUND') {
+      return res.status(404).send('找不到這張帳單。')
+    }
+
+    const errors = {
+      BILL_NOT_DRAFT: '只有草稿可以正式出帳。',
+      BILL_VERSION_CONFLICT: '草稿已更新，請核對目前明細後再出帳。',
+      BILL_HAS_NO_ITEMS: '帳單沒有明細，暫時不能出帳。',
+      INVALID_BILL_AMOUNT: '帳單明細的金額需要核對。',
+      DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不一致，請先核對。',
+      LEAVE_REVIEW_UNAVAILABLE: '目前無法核對上月請假，暫時不能出帳。',
+      LEAVE_CREDIT_REQUIRES_REVIEW: '草稿裡有折抵需要重新核對，暫時不能出帳。'
+    }
+
+    let message = errors[result.code] ?? '暫時無法正式出帳。'
+
+    if (result.ok) {
+      message = result.changed ? '已正式出帳。' : '這張帳單已經出帳。'
+    } else if (result.code === 'PENDING_LEAVE_REVIEWS') {
+      message = `上月還有 ${result.pendingCount} 筆請假待審核，請回到合併預覽處理後再出帳。`
+    }
+
+    req.flash(result.ok ? 'success_messages' : 'error_messages', message)
+    return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
   },
 
   createTuition: async (req, res) => {

@@ -105,5 +105,20 @@
 <p><a href="/admin/extrafees">管理額外費用目錄</a></p>
 {{/if}}
 
+{{#with issueForm}}
+<section class="my-4" aria-labelledby="issue-bill-heading">
+  <h2 id="issue-bill-heading" class="h5">正式出帳</h2>
+  <p class="text-muted">
+    請核對上方的明細與應收金額 NT$ {{../bill.totalAmount}}。
+    出帳後，這張帳單的明細與金額會固定。
+  </p>
+
+  <form method="POST" action="{{action}}" onsubmit="return confirm('確認明細與金額，正式出帳？')">
+    <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
+    <input type="hidden" name="billVersion" value="{{billVersion}}">
+    <button type="submit" class="btn btn-primary">正式出帳</button>
+  </form>
+</section>
+{{/with}}
 
 <a href="{{previewUrl}}">回到同月合併預覽</a>
