@@ -1,4 +1,4 @@
-const { Op, UniqueConstraintError } = require('sequelize')
+const { Op, UniqueConstraintError, ValidationError } = require('sequelize')
 const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, Payment, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
@@ -978,7 +978,7 @@ async function recordPreviousMonthLeaveReview({
   })
 }
 
-async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMonth } = {}) {
+async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMonth } = {}, transaction) {
   const range = previousMonthWindow(billingMonth)
   const isId = value => Number.isSafeInteger(value) && value > 0
 
@@ -989,7 +989,8 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
   const attend = await Attend.findOne({
     attributes: ['id', 'CalendarId', 'version'],
     where: { id: attendId, StudentId: studentId, status: ATTEND_STATUS.EXCUSED },
-    raw: true
+    raw: true,
+    transaction
   })
 
   if (
@@ -1003,7 +1004,8 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
     attributes: ['id', 'attendVersion', 'decision'],
     where: { AttendId: attend.id },
     order: [['id', 'DESC']],
-    raw: true
+    raw: true,
+    transaction
   })
 
   if (review?.decision !== 'approved' || review.attendVersion !== attend.version) {
@@ -1018,7 +1020,8 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
       status: { [Op.in]: ['draft', 'issued'] }
     },
     limit: 2,
-    raw: true
+    raw: true,
+    transaction
   })
 
   if (bills.length === 0) return { ok: false, code: 'SOURCE_BILL_NOT_FOUND' }
@@ -1028,7 +1031,8 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
   const items = await TuitionBillItem.findAll({
     attributes: ['id', 'CourseId', 'quantity', 'unitPrice', 'sourceSnapshot'],
     where: { TuitionBillId: bill.id, kind: 'course_fee' },
-    raw: true
+    raw: true,
+    transaction
   })
 
   const matches = []
@@ -1074,14 +1078,15 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
   }
 }
 
-async function getTuitionBillPaymentStatus(billId) {
+async function getTuitionBillPaymentStatus(billId, transaction) {
   if (!Number.isSafeInteger(billId) || billId < 1) {
     return { ok: false, code: 'INVALID_BILL_ID' }
   }
 
   const bill = await TuitionBill.findByPk(billId, {
     attributes: ['id', 'status', 'totalAmount'],
-    raw: true
+    raw: true,
+    transaction
   })
 
   if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
@@ -1095,7 +1100,8 @@ async function getTuitionBillPaymentStatus(billId) {
   const payments = await Payment.findAll({
     attributes: ['TuitionId', 'amount'],
     where: { TuitionBillId: bill.id, isPaid: true },
-    raw: true
+    raw: true,
+    transaction
   })
 
   let paidAmount = 0
@@ -1131,12 +1137,12 @@ async function getTuitionBillPaymentStatus(billId) {
 
 async function getPreviousMonthLeaveCreditCandidate({
   studentId, attendId, billingMonth
-} = {}) {
+} = {}, transaction) {
   const result = await findPreviousMonthLeaveBillSource({
     studentId,
     attendId,
     billingMonth
-  })
+  }, transaction)
   if (!result.ok) return result
 
   const { source } = result
@@ -1152,7 +1158,8 @@ async function getPreviousMonthLeaveCreditCandidate({
   const existingCredit = await TuitionBillItem.findOne({
     attributes: ['id', 'TuitionBillId'],
     where: { ActiveLeaveAttendId: attendId },
-    raw: true
+    raw: true,
+    transaction
   })
 
   if (existingCredit) {
@@ -1164,7 +1171,7 @@ async function getPreviousMonthLeaveCreditCandidate({
     }
   }
 
-  const payment = await getTuitionBillPaymentStatus(source.billId)
+  const payment = await getTuitionBillPaymentStatus(source.billId, transaction)
   if (!payment.ok) return payment
 
   if (!payment.isFullyPaid) {
@@ -1185,6 +1192,146 @@ async function getPreviousMonthLeaveCreditCandidate({
       targetBillingMonth: billingMonth,
       source,
       amount: source.originalUnitPrice
+    }
+  }
+}
+
+async function addLeaveCreditToDraft({ billId, attendId, billVersion } = {}) {
+  const isId = n => Number.isSafeInteger(n) && n > 0
+
+  if (
+    ![billId, attendId].every(isId) ||
+    !Number.isSafeInteger(billVersion) || billVersion < 0 ||
+    billVersion >= 2_147_483_647
+  ) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  const info = await TuitionBill.findByPk(billId, {
+    attributes: ['id', 'StudentId', 'billingMonth', 'status'],
+    raw: true
+  })
+  if (!info) return { ok: false, code: 'BILL_NOT_FOUND' }
+  if (info.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+
+  const input = {
+    studentId: info.StudentId,
+    attendId,
+    billingMonth: info.billingMonth
+  }
+
+  const preview = await getPreviousMonthLeaveCreditCandidate(input)
+  if (!preview.ok) return preview
+  const sourceBillId = preview.candidate.source.billId
+
+  try {
+    return await sequelize.transaction(async transaction => {
+      const locked = { transaction, lock: transaction.LOCK.UPDATE }
+
+      const attend = await Attend.findOne({
+        ...locked,
+        attributes: ['id'],
+        where: { id: attendId, StudentId: info.StudentId }
+      })
+      if (!attend) return { ok: false, code: 'LEAVE_UNAVAILABLE' }
+
+      const sourceBill = await TuitionBill.findByPk(sourceBillId, locked)
+      if (sourceBill?.status !== 'issued') {
+        return { ok: false, code: 'BILL_NOT_ISSUED' }
+      }
+
+      const bill = await TuitionBill.findByPk(billId, locked)
+      if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+      if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+
+      if (
+        bill.version !== billVersion || bill.StudentId !== info.StudentId ||
+        bill.billingMonth !== info.billingMonth
+      ) {
+        return { ok: false, code: 'BILL_VERSION_CONFLICT' }
+      }
+
+      const checked = await getPreviousMonthLeaveCreditCandidate(input, transaction)
+      if (!checked.ok) return checked
+      if (checked.candidate.source.billId !== sourceBillId) {
+        return { ok: false, code: 'CREDIT_SOURCE_CHANGED' }
+      }
+
+      const itemData = buildLeaveCreditBillItem({
+        draftBillId: bill.id,
+        candidate: checked.candidate
+      })
+
+      if (!Number.isSafeInteger(bill.totalAmount) || bill.totalAmount < 0) {
+        return { ok: false, code: 'INVALID_BILL_AMOUNT' }
+      }
+
+      const totalAmount = bill.totalAmount + itemData.amount
+      if (totalAmount < 0) {
+        return { ok: false, code: 'CREDIT_EXCEEDS_DRAFT_TOTAL' }
+      }
+
+      const item = await TuitionBillItem.create(itemData, { transaction })
+      const version = bill.version + 1
+      await bill.update({ totalAmount, version }, { transaction })
+
+      return { ok: true, billId: bill.id, billItemId: item.id, totalAmount, version }
+    })
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      const existing = await TuitionBillItem.findOne({
+        attributes: ['id', 'TuitionBillId'],
+        where: { ActiveLeaveAttendId: attendId },
+        raw: true
+      })
+      if (!existing) throw error
+
+      return {
+        ok: false,
+        code: 'LEAVE_CREDIT_ALREADY_IN_USE',
+        usedByBillId: existing.TuitionBillId,
+        usedByBillItemId: existing.id
+      }
+    }
+
+    if (error instanceof ValidationError) {
+      return {
+        ok: false,
+        code: 'LEAVE_CREDIT_VALIDATION_FAILED',
+        fields: [...new Set(error.errors.map(item => item.path).filter(Boolean))]
+      }
+    }
+
+    throw error
+  }
+}
+
+function buildLeaveCreditBillItem({ draftBillId, candidate }) {
+  const { attendId, source } = candidate
+  const unitPrice = source.originalUnitPrice
+
+  if (!Number.isSafeInteger(unitPrice) || unitPrice <= 0 || unitPrice > 2_147_483_647) {
+    throw new RangeError('請假折抵金額超出可儲存範圍。')
+  }
+
+  return {
+    TuitionBillId: draftBillId,
+    CourseId: source.courseId,
+    ExtraFeeId: null,
+    kind: 'leave_credit',
+    descriptionSnapshot: source.billingMonth + ' 請假折抵',
+    quantity: 1,
+    unitPrice,
+    amount: -unitPrice,
+    reason: '上期已核准的請假',
+    ActiveLeaveAttendId: attendId,
+    sourceSnapshot: {
+      attendId,
+      calendarId: source.calendarId,
+      sourceBillId: source.billId,
+      sourceBillItemId: source.billItemId,
+      sourceBillingMonth: source.billingMonth,
+      originalUnitPrice: unitPrice
     }
   }
 }
