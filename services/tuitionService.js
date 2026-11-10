@@ -1,5 +1,5 @@
 const { Op } = require('sequelize')
-const { Calendar, Course, Enrollment, Attend, sequelize } = require('../models')
+const { Attend, Calendar, Course, Enrollment, Student, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
@@ -343,9 +343,129 @@ async function getTuitionAttendanceSummary({ studentId, calendars }) {
   return { counts, reviewCount, items }
 }
 
+async function getStudentTuitionPreview({ studentId, billingMonth } = {}) {
+  if (!Number.isSafeInteger(studentId) || studentId < 1) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  if (
+    typeof billingMonth !== 'string' ||
+    !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth) ||
+    !parseTaipeiDateTime(`${billingMonth}-01T00:00`)
+  ) {
+    return { ok: false, code: 'INVALID_BILLING_MONTH' }
+  }
+
+  const student = await Student.findByPk(studentId, {
+    attributes: ['id', 'name'],
+    raw: true
+  })
+
+  if (!student) {
+    return { ok: false, code: 'STUDENT_NOT_FOUND' }
+  }
+
+  const rows = await Enrollment.findAll({
+    attributes: ['id', 'CourseId'],
+    where: { StudentId: studentId },
+    order: [['CourseId', 'ASC'], ['id', 'ASC']],
+    raw: true
+  })
+
+  const courseIds = new Set()
+  const reviewItems = []
+
+  for (const row of rows) {
+    if (!Number.isSafeInteger(row.CourseId) || row.CourseId < 1) {
+      reviewItems.push({
+        code: 'ENROLLMENT_COURSE_UNCONFIRMED',
+        enrollmentId: row.id
+      })
+      continue
+    }
+
+    courseIds.add(row.CourseId)
+  }
+
+  const courses = []
+  let baseSubtotal = 0
+
+  for (const courseId of courseIds) {
+    const preview = await getTuitionPreview({ courseId, studentId, billingMonth })
+
+    if (!preview.ok) {
+      if (preview.code === 'NOT_ENROLLED_IN_BILLING_MONTH') continue
+
+      if (
+        preview.code === 'INVALID_BILLING_MONTH' ||
+        preview.code === 'UTC_TIMEZONE_REQUIRED'
+      ) {
+        return preview
+      }
+
+      reviewItems.push({
+        courseId,
+        code: preview.code,
+        enrollmentId: preview.enrollmentId,
+        calendarId: preview.calendarId
+      })
+      continue
+    }
+
+    baseSubtotal += preview.baseAmount
+
+    if (!Number.isSafeInteger(baseSubtotal)) {
+      return { ok: false, code: 'INVALID_AMOUNT' }
+    }
+
+    courses.push(preview)
+
+    if (preview.billableCount === 0) {
+      reviewItems.push({ courseId, code: 'NO_BILLABLE_CALENDARS' })
+    }
+
+    if (preview.calendarReviewCount == null) {
+      reviewItems.push({ courseId, code: 'CALENDAR_REVIEW_UNAVAILABLE' })
+    } else if (preview.calendarReviewCount > 0) {
+      reviewItems.push({
+        courseId,
+        code: 'CALENDARS_REQUIRE_REVIEW',
+        count: preview.calendarReviewCount
+      })
+    }
+
+    const attendanceReviewCount = preview.attendanceSummary?.reviewCount
+
+    if (attendanceReviewCount == null) {
+      reviewItems.push({ courseId, code: 'ATTENDANCE_SUMMARY_UNAVAILABLE' })
+    } else if (attendanceReviewCount > 0) {
+      reviewItems.push({
+        courseId,
+        code: 'ATTENDANCE_REQUIRES_REVIEW',
+        count: attendanceReviewCount
+      })
+    }
+  }
+
+  if (courses.length === 0 && reviewItems.length === 0) {
+    return { ok: false, code: 'NO_COURSES_IN_BILLING_MONTH' }
+  }
+
+  return {
+    ok: true,
+    student,
+    billingMonth,
+    currency: 'TWD',
+    baseSubtotal: courses.length > 0 ? baseSubtotal : null,
+    courses,
+    reviewItems
+  }
+}
+
 module.exports = { 
   getTuitionEnrollmentsForMonth,
   getTuitionCalendars,
   getTuitionPreview,
-  getTuitionAttendanceSummary
+  getTuitionAttendanceSummary,
+  getStudentTuitionPreview
 }
