@@ -80,7 +80,7 @@ const schoolController = {
 
   deletePayment: (req, res) => {
     Payment.findByPk(req.params.id,{
-      include: [Tuition]
+      include: [{ model: Tuition, required: true }]
     }).then(payment => {
       Tuition.findByPk(payment.dataValues.Tuition.id).then(tuition => {
         Promise.all([
@@ -90,6 +90,9 @@ const schoolController = {
           tuition.destroy(),
           payment.destroy()
         ]).then(([destroyFeelists, destroyTuition, destroyPayment]) => {
+          if (!payment) {
+            return res.status(404).send('找不到可操作的舊制收款紀錄。')
+          }
           destroyPayment = destroyPayment.toJSON()
           let courseId = destroyPayment.Tuition.CourseId
           let studentId = destroyPayment.Tuition.StudentId
@@ -103,8 +106,11 @@ const schoolController = {
 
   paymentPaid: (req, res) => {
     Payment.findByPk(req.params.id,{
-      include: [Tuition]
+      include: [{ model: Tuition, required: true }]
     }).then((payment) => {
+      if (!payment) {
+        return res.status(404).send('找不到可操作的舊制收款紀錄。')
+      }
       payment.update({
         isPaid: true
       }).then((editPayment) => {
