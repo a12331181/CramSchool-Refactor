@@ -1,5 +1,5 @@
-const { Op } = require('sequelize')
-const { Attend, Calendar, Course, Enrollment, Student, sequelize } = require('../models')
+const { Op, UniqueConstraintError } = require('sequelize')
+const { Attend, Calendar, Course, Enrollment, Student, TuitionBill, TuitionBillItem, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
@@ -515,11 +515,190 @@ async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
   return { ok: true, rows, totalCount: result.count }
 }
 
+async function createTuitionBillDraft({ studentId, billingMonth } = {}) {
+  if (!Number.isSafeInteger(studentId) || studentId < 1) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  if (
+    typeof billingMonth !== 'string' ||
+    !parseTaipeiDateTime(`${billingMonth}-01T00:00`)
+  ) {
+    return { ok: false, code: 'INVALID_BILLING_MONTH' }
+  }
+
+  const where = {
+    StudentId: studentId,
+    billingMonth,
+    status: { [Op.in]: ['draft', 'issued'] }
+  }
+
+  const findActiveBill = (options = {}) => TuitionBill.findOne({
+    attributes: ['id', 'status', 'totalAmount'],
+    where,
+    raw: true,
+    ...options
+  })
+
+  const existing = await findActiveBill()
+
+  if (existing) {
+    return { ok: true, created: false, bill: existing }
+  }
+
+  const preview = await getStudentTuitionPreview({ studentId, billingMonth })
+
+  if (!preview.ok) return preview
+
+  const draftReviewCodes = new Set([
+    'NO_BILLABLE_CALENDARS',
+    'CALENDAR_REVIEW_UNAVAILABLE',
+    'CALENDARS_REQUIRE_REVIEW',
+    'ATTENDANCE_SUMMARY_UNAVAILABLE',
+    'ATTENDANCE_REQUIRES_REVIEW'
+  ])
+
+  const blockedItems = preview.reviewItems.filter(item =>
+    !draftReviewCodes.has(item.code)
+  )
+
+  if (blockedItems.length > 0) {
+    return {
+      ok: false,
+      code: 'DRAFT_REQUIRES_REVIEW',
+      reviewItems: blockedItems
+    }
+  }
+
+  if (preview.courses.length === 0) {
+    return { ok: false, code: 'NO_COURSES_IN_BILLING_MONTH' }
+  }
+
+  const maxUnsignedInt = 4294967295
+  const maxLineAmount = 2147483647
+  const items = []
+  let totalAmount = 0
+
+  for (const entry of preview.courses) {
+    const { course, quantity, unitPrice, baseAmount } = entry
+
+    if (
+      typeof course.name !== 'string' ||
+      !course.name.trim() ||
+      course.name.trim().length > 255
+    ) {
+      return { ok: false, code: 'COURSE_NAME_UNCONFIRMED', courseId: course.id }
+    }
+
+    if (
+      ![quantity, unitPrice, baseAmount].every(value =>
+        Number.isSafeInteger(value) && value >= 0
+      ) ||
+      quantity > maxUnsignedInt ||
+      unitPrice > maxUnsignedInt ||
+      baseAmount > maxLineAmount ||
+      baseAmount !== quantity * unitPrice
+    ) {
+      return { ok: false, code: 'INVALID_AMOUNT', courseId: course.id }
+    }
+
+    totalAmount += baseAmount
+
+    if (totalAmount > maxUnsignedInt) {
+      return { ok: false, code: 'INVALID_AMOUNT' }
+    }
+
+    items.push({
+      CourseId: course.id,
+      kind: 'course_fee',
+      descriptionSnapshot: course.name.trim(),
+      quantity,
+      unitPrice,
+      amount: baseAmount,
+      sourceSnapshot: {
+        billingType: course.type,
+        billableCount: entry.billableCount,
+        calendars: entry.calendars.map(calendar => ({
+          calendarId: calendar.id,
+          enrollmentId: calendar.enrollmentId,
+          startAt: calendar.startAt,
+          endAt: calendar.endAt,
+          status: calendar.status
+        })),
+        reviewItems: preview.reviewItems.filter(item => item.courseId === course.id)
+      }
+    })
+  }
+
+  try {
+    return await sequelize.transaction(async transaction => {
+      const locked = { transaction, lock: transaction.LOCK.UPDATE }
+
+      const student = await Student.findByPk(studentId, {
+        ...locked,
+        attributes: ['id', 'name']
+      })
+
+      if (!student) {
+        return { ok: false, code: 'STUDENT_NOT_FOUND' }
+      }
+
+      const current = await findActiveBill(locked)
+
+      if (current) {
+        return { ok: true, created: false, bill: current }
+      }
+
+      if (
+        typeof student.name !== 'string' ||
+        !student.name.trim() ||
+        student.name.trim().length > 255
+      ) {
+        return { ok: false, code: 'STUDENT_NAME_UNCONFIRMED' }
+      }
+
+      const bill = await TuitionBill.create({
+        StudentId: studentId,
+        billingMonth,
+        studentNameSnapshot: student.name.trim(),
+        currency: 'TWD',
+        status: 'draft',
+        totalAmount
+      }, { transaction })
+
+      await TuitionBillItem.bulkCreate(items.map(item => ({
+        ...item,
+        TuitionBillId: bill.id
+      })), { transaction })
+
+      return {
+        ok: true,
+        created: true,
+        bill: { id: bill.id, status: bill.status, totalAmount: bill.totalAmount }
+      }
+    })
+  } catch (error) {
+    if (
+      !(error instanceof UniqueConstraintError) ||
+      !Object.hasOwn(error.fields ?? {}, 'uq_tuition_bills_active_month')
+    ) {
+      throw error
+    }
+
+    const current = await findActiveBill()
+
+    if (!current) throw error
+
+    return { ok: true, created: false, bill: current }
+  }
+}
+
 module.exports = { 
   getTuitionEnrollmentsForMonth,
   getTuitionCalendars,
   getTuitionPreview,
   getTuitionAttendanceSummary,
   getStudentTuitionPreview,
-  getStudentTuitionList
+  getStudentTuitionList,
+  createTuitionBillDraft
 }
