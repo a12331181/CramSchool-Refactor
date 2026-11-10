@@ -1,5 +1,5 @@
 const { Op, UniqueConstraintError, ValidationError } = require('sequelize')
-const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, Payment, sequelize } = require('../models')
+const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, Payment, AuditLog, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
@@ -800,7 +800,7 @@ async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersio
   })
 }
 
-async function getPreviousMonthLeaveReviews({ studentId, billingMonth }) {
+async function getPreviousMonthLeaveReviews({ studentId, billingMonth }, transaction) {
   const range = previousMonthWindow(billingMonth)
   if (!Number.isSafeInteger(studentId) || studentId < 1 || !range) return null
 
@@ -827,6 +827,7 @@ async function getPreviousMonthLeaveReviews({ studentId, billingMonth }) {
       include: [{ model: Course, required: true, attributes: ['name'] }]
     }],
     order: [[Calendar, 'startAt', 'ASC'], ['id', 'ASC']],
+    transaction,
     raw: true,
     nest: true
   })
@@ -837,6 +838,7 @@ async function getPreviousMonthLeaveReviews({ studentId, billingMonth }) {
     const reviews = await TuitionLeaveReview.findAll({
       where: { AttendId: { [Op.in]: attends.map(attend => attend.id) } },
       order: [['id', 'DESC']],
+      transaction,
       raw: true
     })
 
@@ -1367,6 +1369,126 @@ async function getDraftLeaveCreditOptions(bill) {
   return { ok: true, reviewMonth: leaveData.reviewMonth, options, blocked }
 }
 
+async function issueTuitionBill({ billId, billVersion, actorId } = {}) {
+  const isId = n => Number.isSafeInteger(n) && n > 0
+  if (
+    ![billId, actorId].every(isId) ||
+    !Number.isSafeInteger(billVersion) || billVersion < 0 ||
+    billVersion >= 2_147_483_647
+  ) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  return sequelize.transaction(async transaction => {
+    const bill = await TuitionBill.findByPk(billId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+    if (bill.status === 'issued') return { ok: true, changed: false, billId }
+    if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+    if (bill.version !== billVersion) {
+      return { ok: false, code: 'BILL_VERSION_CONFLICT' }
+    }
+
+    const items = await TuitionBillItem.findAll({
+      attributes: [
+        'id', 'kind', 'CourseId', 'quantity', 'unitPrice', 'amount',
+        'ActiveLeaveAttendId', 'sourceSnapshot'
+      ],
+      where: { TuitionBillId: bill.id },
+      raw: true,
+      transaction
+    })
+
+    if (items.length === 0) return { ok: false, code: 'BILL_HAS_NO_ITEMS' }
+    if (items.some(item => !Number.isSafeInteger(item.amount))) {
+      return { ok: false, code: 'INVALID_BILL_AMOUNT' }
+    }
+
+    const total = items.reduce((sum, item) => sum + item.amount, 0)
+    if (!Number.isSafeInteger(total) || total < 0 || total !== bill.totalAmount) {
+      return { ok: false, code: 'DRAFT_TOTAL_MISMATCH' }
+    }
+
+    const input = { studentId: bill.StudentId, billingMonth: bill.billingMonth }
+    const leaveData = await getPreviousMonthLeaveReviews(input, transaction)
+    if (!leaveData || leaveData.timezoneError) {
+      return { ok: false, code: 'LEAVE_REVIEW_UNAVAILABLE' }
+    }
+
+    const pendingCount = leaveData.rows.filter(row =>
+      !['approved', 'rejected'].includes(row.reviewDecision)
+    ).length
+    if (pendingCount > 0) {
+      return { ok: false, code: 'PENDING_LEAVE_REVIEWS', pendingCount }
+    }
+
+    const approvedIds = new Set(
+      leaveData.rows
+        .filter(row => row.reviewDecision === 'approved')
+        .map(row => row.attendId)
+    )
+
+    for (const item of items) {
+      if (item.kind !== 'leave_credit') continue
+
+      const invalid = {
+        ok: false,
+        code: 'LEAVE_CREDIT_REQUIRES_REVIEW',
+        billItemId: item.id
+      }
+      const attendId = item.ActiveLeaveAttendId
+      const snapshot = item.sourceSnapshot
+
+      if (
+        !approvedIds.has(attendId) || snapshot?.attendId !== attendId ||
+        item.quantity !== 1 || !Number.isSafeInteger(item.unitPrice) ||
+        item.unitPrice <= 0 || item.amount !== -item.unitPrice
+      ) return invalid
+
+      const result = await findPreviousMonthLeaveBillSource({ ...input, attendId }, transaction)
+      const source = result.source
+      if (
+        !result.ok || source.billStatus !== 'issued' ||
+        source.billId !== snapshot.sourceBillId ||
+        source.billItemId !== snapshot.sourceBillItemId ||
+        source.calendarId !== snapshot.calendarId ||
+        source.billingMonth !== snapshot.sourceBillingMonth ||
+        source.courseId !== item.CourseId ||
+        source.originalUnitPrice !== item.unitPrice ||
+        snapshot.originalUnitPrice !== item.unitPrice
+      ) return invalid
+
+      const payment = await getTuitionBillPaymentStatus(source.billId, transaction)
+      if (!payment.ok || !payment.isFullyPaid) return invalid
+    }
+
+    const issuedAt = new Date()
+    const version = bill.version + 1
+    const before = {
+      status: bill.status,
+      issuedAt: bill.issuedAt ?? null,
+      totalAmount: bill.totalAmount,
+      version: bill.version
+    }
+
+    await bill.update({ status: 'issued', issuedAt, version }, { transaction })
+    await AuditLog.create({
+      actorId,
+      entityType: 'TuitionBill',
+      entityId: bill.id,
+      action: 'update',
+      before,
+      after: { ...before, status: 'issued', issuedAt: issuedAt.toISOString(), version },
+      reason: '正式出帳'
+    }, { transaction })
+
+    return { ok: true, changed: true, billId: bill.id, issuedAt, version }
+  })
+}
+
 function buildLeaveCreditBillItem({ draftBillId, candidate }) {
   const { attendId, source } = candidate
   const unitPrice = source.originalUnitPrice
@@ -1435,5 +1557,6 @@ module.exports = {
   recordPreviousMonthLeaveReview,
   findPreviousMonthLeaveBillSource,
   getTuitionBillPaymentStatus,
-  getPreviousMonthLeaveCreditCandidate
+  getPreviousMonthLeaveCreditCandidate,
+  issueTuitionBill
 }
