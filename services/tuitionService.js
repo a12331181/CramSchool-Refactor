@@ -1632,5 +1632,6 @@ module.exports = {
   getTuitionBillPaymentStatus,
   getPreviousMonthLeaveCreditCandidate,
   issueTuitionBill,
-  recordTuitionBillPayment
+  recordTuitionBillPayment,
+  addLeaveCreditToDraft
 }
