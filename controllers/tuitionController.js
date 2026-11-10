@@ -3,7 +3,6 @@ const Tuition = db.Tuition
 const Course = db.Course
 const Student = db.Student
 const FeeList = db.FeeList
-const Calendar = db.Calendar
 const ExtraFee = db.ExtraFee
 const Payment = db.Payment
 const moment = require('moment')
@@ -11,6 +10,7 @@ const calendarService = require('../services/calendarService')
 const tuitionService = require('../services/tuitionService')
 const { getTaipeiDate } = require('../utils/date')
 const { getPagination } = require('../utils/pagination')
+const { randomBytes, timingSafeEqual } = require('node:crypto')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const NO_LEGACY_PERIOD_MESSAGE =
   '這門課程沒有原有期數，無法使用按期建立學費表。'
@@ -159,15 +159,122 @@ const tuitionController = {
           message: messages[item.code] ?? '這筆資料需要先核對。'
         }))
       : []
+    
+    const hasSubtotal = result.ok && Number.isSafeInteger(result.baseSubtotal)
+    let draftFormToken = null
 
+    if (hasSubtotal) {
+      req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
+      draftFormToken = req.session.tuitionFormToken
+    }
+
+    res.set('Cache-Control', 'no-store')
     return res.render('studenttuitionpreview', {
       previewUrl: `/cramschool/tuition/students/${studentId}/preview`,
       billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
       preview: result.ok ? result : null,
-      hasSubtotal: result.ok && Number.isSafeInteger(result.baseSubtotal),
+      hasSubtotal,
+      draftFormToken,
+      draftAction: `/cramschool/tuition/students/${studentId}/bills/draft`,
       courseRows,
       reviewRows,
       errorMessage: result.ok ? null : (messages[result.code] ?? '目前無法試算。')
+    })
+  },
+
+  createTuitionBillDraft: async (req, res) => {
+    const studentId = Number(req.params.studentId)
+    const { billingMonth, tuitionFormToken } = req.body ?? {}
+
+    if (
+      !Number.isSafeInteger(studentId) ||
+      studentId < 1 ||
+      typeof billingMonth !== 'string' ||
+      !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)
+    ) {
+      return res.status(400).send('學生 ID 或計費月份不正確。')
+    }
+
+    const expectedToken = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)
+
+    if (
+      !isToken(tuitionFormToken) ||
+      !isToken(expectedToken) ||
+      !timingSafeEqual(
+        Buffer.from(tuitionFormToken, 'hex'),
+        Buffer.from(expectedToken, 'hex')
+      )
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟合併預覽再試。')
+    }
+
+    const result = await tuitionService.createTuitionBillDraft({
+      studentId,
+      billingMonth
+    })
+
+    if (!result.ok) {
+      const errors = {
+        DRAFT_REQUIRES_REVIEW: '有課程還無法試算，請核對後再儲存草稿。',
+        NO_COURSES_IN_BILLING_MONTH: '本月沒有可儲存的課程明細。',
+        INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
+        UTC_TIMEZONE_REQUIRED: '系統時間設定異常，暫時無法儲存。',
+        STUDENT_NOT_FOUND: '找不到學生。',
+        STUDENT_NAME_UNCONFIRMED: '請先核對學生姓名。',
+        COURSE_NAME_UNCONFIRMED: '請先核對課程名稱。',
+        INVALID_AMOUNT: '金額超出可儲存的範圍。'
+      }
+
+      req.flash('error_messages', errors[result.code] ?? '目前無法儲存草稿。')
+
+      const previewUrl = `/cramschool/tuition/students/${studentId}/preview?` +
+        new URLSearchParams({ billingMonth })
+
+      return res.redirect(303, previewUrl)
+    }
+
+    req.flash(
+      'success_messages',
+      result.created ? '已儲存帳單草稿。' : '本月已有帳單，已開啟原單。'
+    )
+
+    return res.redirect(303, `/cramschool/tuition/bills/${result.bill.id}`)
+  },
+
+  getTuitionBillDetails: async (req, res) => {
+    const result = await tuitionService.getTuitionBillDetails(
+      Number(req.params.billId)
+    )
+
+    if (!result.ok) {
+      const invalidId = result.code === 'INVALID_BILL_ID'
+
+      return res.status(invalidId ? 400 : 404)
+        .send(invalidId ? '帳單 ID 不正確。' : '找不到這張帳單。')
+    }
+
+    const { bill } = result
+    const labels = { draft: '草稿', issued: '已發單', void: '已作廢' }
+
+    const items = bill.items.map(item => ({
+      ...item,
+      reviewCount: Array.isArray(item.sourceSnapshot?.reviewItems)
+        ? item.sourceSnapshot.reviewItems.length
+        : 0
+    }))
+
+    const previewUrl = `/cramschool/tuition/students/${bill.StudentId}/preview?` +
+      new URLSearchParams({ billingMonth: bill.billingMonth })
+
+    res.set('Cache-Control', 'no-store')
+
+    return res.render('tuitionbilldetail', {
+      bill,
+      items,
+      statusText: labels[bill.status] ?? '待核對',
+      previewUrl
     })
   },
 

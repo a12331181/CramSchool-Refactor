@@ -62,6 +62,13 @@
 {{else}}
 <p>目前還無法計算小計，請先核對上方資料。</p>
 {{/if}}
+{{#if draftFormToken}}
+<form method="POST" action="{{draftAction}}" class="mb-3">
+  <input type="hidden" name="billingMonth" value="{{preview.billingMonth}}">
+  <input type="hidden" name="tuitionFormToken" value="{{draftFormToken}}">
+  <button type="submit" class="btn btn-primary">儲存草稿</button>
+</form>
+{{/if}}
 {{/if}}
 
 <a href="/cramschool/payment">回到繳費紀錄</a>

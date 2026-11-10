@@ -693,6 +693,32 @@ async function createTuitionBillDraft({ studentId, billingMonth } = {}) {
   }
 }
 
+async function getTuitionBillDetails(billId) {
+  if (!Number.isSafeInteger(billId) || billId < 1) {
+    return { ok: false, code: 'INVALID_BILL_ID' }
+  }
+
+  const bill = await TuitionBill.findByPk(billId, {
+    attributes: [
+      'id', 'StudentId', 'billingMonth', 'studentNameSnapshot',
+      'status', 'totalAmount'
+    ],
+    include: [{
+      model: TuitionBillItem,
+      as: 'items',
+      attributes: [
+        'id', 'descriptionSnapshot', 'quantity', 'unitPrice',
+        'amount', 'reason', 'sourceSnapshot'
+      ]
+    }],
+    order: [[{ model: TuitionBillItem, as: 'items' }, 'id', 'ASC']]
+  })
+
+  if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+
+  return { ok: true, bill: bill.toJSON() }
+}
+
 module.exports = { 
   getTuitionEnrollmentsForMonth,
   getTuitionCalendars,
@@ -700,5 +726,6 @@ module.exports = {
   getTuitionAttendanceSummary,
   getStudentTuitionPreview,
   getStudentTuitionList,
-  createTuitionBillDraft
+  createTuitionBillDraft,
+  getTuitionBillDetails
 }

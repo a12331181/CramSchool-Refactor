@@ -1,0 +1,35 @@
+<h1 class="mt-3">月帳單明細 #{{bill.id}}</h1>
+<p>{{bill.studentNameSnapshot}}｜{{bill.billingMonth}}｜{{statusText}}</p>
+
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th scope="col">項目</th>
+      <th scope="col">數量</th>
+      <th scope="col">單價</th>
+      <th scope="col">金額</th>
+      <th scope="col">核對提醒</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each items}}
+    <tr>
+      <th scope="row">{{this.descriptionSnapshot}}</th>
+      <td>{{this.quantity}}</td>
+      <td>NT$ {{this.unitPrice}}</td>
+      <td>NT$ {{this.amount}}</td>
+      <td>
+        {{#if this.reviewCount}}待核對（{{this.reviewCount}} 項）{{else}}—{{/if}}
+        {{#if this.reason}}<div>{{this.reason}}</div>{{/if}}
+      </td>
+    </tr>
+    {{else}}
+    <tr>
+      <td colspan="5">目前沒有帳單明細。</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+
+<p><strong>帳單金額：NT$ {{bill.totalAmount}}</strong></p>
+<a href="{{previewUrl}}">回到同月合併預覽</a>
