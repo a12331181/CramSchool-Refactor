@@ -105,6 +105,71 @@ const tuitionController = {
     })
   },
 
+  getStudentTuitionPreview: async (req, res) => {
+    const studentId = Number(req.params.studentId)
+
+    if (!Number.isSafeInteger(studentId) || studentId < 1) {
+      return res.status(400).send('學生 ID 必須是正整數')
+    }
+
+    const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
+    const result = await tuitionService.getStudentTuitionPreview({
+      studentId,
+      billingMonth
+    })
+
+    const messages = {
+      INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
+      UTC_TIMEZONE_REQUIRED: '系統時間設定異常，暫時無法試算。',
+      STUDENT_NOT_FOUND: '找不到學生。',
+      NO_COURSES_IN_BILLING_MONTH: '這位學生在本月沒有有效選課的課程。',
+      ENROLLMENT_COURSE_UNCONFIRMED: '這筆選課的課程資料需要核對。',
+      ENROLLMENT_NOT_FOUND: '找不到選課紀錄，請先核對。',
+      ENROLLMENT_UNCONFIRMED: '選課期間或狀態需要核對。',
+      COURSE_NOT_FOUND: '找不到課程，請先核對。',
+      INVALID_BILLING_TYPE: '課程的計費方式需要核對。',
+      INVALID_PRICE: '課程價格需要核對。',
+      INVALID_AMOUNT: '試算金額超出可處理範圍。',
+      CALENDAR_REQUIRES_REVIEW: '課堂時間需要核對。',
+      NO_BILLABLE_CALENDARS: '本月沒有符合條件的正式課堂。',
+      CALENDAR_REVIEW_UNAVAILABLE: '尚未取得課堂核對資訊。',
+      CALENDARS_REQUIRE_REVIEW: '有課堂日期或狀態需要核對。',
+      ATTENDANCE_SUMMARY_UNAVAILABLE: '尚未取得點名摘要。',
+      ATTENDANCE_REQUIRES_REVIEW: '有點名項目需要人工核對。'
+    }
+
+    const courses = result.ok ? result.courses : []
+    const courseNames = new Map(
+      courses.map(item => [item.course.id, item.course.name])
+    )
+
+    const courseRows = courses.map(item => ({
+      ...item,
+      detailUrl:
+        `/cramschool/tuition/courses/${item.course.id}/students/${studentId}/preview` +
+        `?billingMonth=${encodeURIComponent(result.billingMonth)}`
+    }))
+
+    const reviewRows = result.ok
+      ? result.reviewItems.map(item => ({
+          ...item,
+          label: courseNames.get(item.courseId) ??
+            (item.courseId ? `課程 #${item.courseId}` : '選課資料'),
+          message: messages[item.code] ?? '這筆資料需要先核對。'
+        }))
+      : []
+
+    return res.render('studenttuitionpreview', {
+      previewUrl: `/cramschool/tuition/students/${studentId}/preview`,
+      billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
+      preview: result.ok ? result : null,
+      hasSubtotal: result.ok && Number.isSafeInteger(result.baseSubtotal),
+      courseRows,
+      reviewRows,
+      errorMessage: result.ok ? null : (messages[result.code] ?? '目前無法試算。')
+    })
+  },
+
   createTuition: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const studentId = Number(req.params.studentId)

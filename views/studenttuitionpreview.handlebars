@@ -1,0 +1,67 @@
+<h1 class="mt-3">學生月費合併預覽</h1>
+
+<form method="GET" action="{{previewUrl}}" class="mb-3">
+  <label for="billing-month">計費月份</label>
+  <input id="billing-month" type="month" name="billingMonth" value="{{billingMonth}}" required>
+  <button type="submit" class="btn btn-sm btn-primary">查看試算</button>
+</form>
+
+{{#if errorMessage}}
+<p class="alert alert-warning">{{errorMessage}}</p>
+{{/if}}
+
+{{#if preview}}
+<h2 class="h5">{{preview.student.name}}｜{{preview.billingMonth}}</h2>
+<p class="text-muted">依現行課程價格試算。小計只包含已試算的基本學費。</p>
+
+{{#if reviewRows.length}}
+<div class="alert alert-warning">
+  <h3 class="h6">待核對項目</h3>
+  <ul class="mb-0">
+    {{#each reviewRows}}
+    <li>
+      {{this.label}}：{{this.message}}
+      {{#if this.count}}（{{this.count}} 筆）{{/if}}
+      {{#if this.enrollmentId}}（選課 #{{this.enrollmentId}}）{{/if}}
+      {{#if this.calendarId}}（課堂 #{{this.calendarId}}）{{/if}}
+    </li>
+    {{/each}}
+  </ul>
+</div>
+{{/if}}
+
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th scope="col">課程</th>
+      <th scope="col">計費方式</th>
+      <th scope="col">適用堂數</th>
+      <th scope="col">基本學費</th>
+      <th scope="col">明細</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each courseRows}}
+    <tr>
+      <th scope="row">{{this.course.name}}</th>
+      <td>{{this.course.type}}</td>
+      <td>{{this.billableCount}}</td>
+      <td>{{this.quantity}} × NT$ {{this.unitPrice}} ＝ NT$ {{this.baseAmount}}</td>
+      <td><a href="{{this.detailUrl}}">單課預覽</a></td>
+    </tr>
+    {{else}}
+    <tr>
+      <td colspan="5">目前沒有可顯示試算的課程。</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+
+{{#if hasSubtotal}}
+<p><strong>已試算課程小計：NT$ {{preview.baseSubtotal}}</strong></p>
+{{else}}
+<p>目前還無法計算小計，請先核對上方資料。</p>
+{{/if}}
+{{/if}}
+
+<a href="/cramschool/payment">回到繳費紀錄</a>
