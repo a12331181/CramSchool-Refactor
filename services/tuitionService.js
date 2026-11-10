@@ -978,6 +978,102 @@ async function recordPreviousMonthLeaveReview({
   })
 }
 
+async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMonth } = {}) {
+  const range = previousMonthWindow(billingMonth)
+  const isId = value => Number.isSafeInteger(value) && value > 0
+
+  if (!range || ![studentId, attendId].every(isId)) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  const attend = await Attend.findOne({
+    attributes: ['id', 'CalendarId', 'version'],
+    where: { id: attendId, StudentId: studentId, status: ATTEND_STATUS.EXCUSED },
+    raw: true
+  })
+
+  if (
+    !attend || !isId(attend.CalendarId) ||
+    !Number.isSafeInteger(attend.version) || attend.version < 0
+  ) {
+    return { ok: false, code: 'LEAVE_UNAVAILABLE' }
+  }
+
+  const review = await TuitionLeaveReview.findOne({
+    attributes: ['id', 'attendVersion', 'decision'],
+    where: { AttendId: attend.id },
+    order: [['id', 'DESC']],
+    raw: true
+  })
+
+  if (review?.decision !== 'approved' || review.attendVersion !== attend.version) {
+    return { ok: false, code: 'LEAVE_NOT_APPROVED' }
+  }
+
+  const bills = await TuitionBill.findAll({
+    attributes: ['id', 'status'],
+    where: {
+      StudentId: studentId,
+      billingMonth: range.reviewMonth,
+      status: { [Op.in]: ['draft', 'issued'] }
+    },
+    limit: 2,
+    raw: true
+  })
+
+  if (bills.length === 0) return { ok: false, code: 'SOURCE_BILL_NOT_FOUND' }
+  if (bills.length > 1) return { ok: false, code: 'SOURCE_BILL_AMBIGUOUS' }
+
+  const [bill] = bills
+  const items = await TuitionBillItem.findAll({
+    attributes: ['id', 'CourseId', 'quantity', 'unitPrice', 'sourceSnapshot'],
+    where: { TuitionBillId: bill.id, kind: 'course_fee' },
+    raw: true
+  })
+
+  const matches = []
+  let needsReview = false
+
+  for (const item of items) {
+    const snapshot = item.sourceSnapshot
+    if (snapshot?.billingType === COURSE_TYPES.MONTHLY) continue
+
+    const ids = Array.isArray(snapshot?.calendars)
+      ? snapshot.calendars.map(calendar => calendar?.calendarId)
+      : null
+
+    if (
+      snapshot?.billingType !== COURSE_TYPES.PER_LESSON || !ids ||
+      ids.length !== item.quantity || snapshot.billableCount !== item.quantity ||
+      !ids.every(isId) || new Set(ids).size !== ids.length ||
+      !Number.isSafeInteger(item.unitPrice) || item.unitPrice < 0
+    ) {
+      needsReview = true
+      continue
+    }
+
+    if (ids.includes(attend.CalendarId)) matches.push(item)
+  }
+
+  if (matches.length > 1) return { ok: false, code: 'SOURCE_ITEM_AMBIGUOUS' }
+  if (needsReview) return { ok: false, code: 'SOURCE_SNAPSHOT_UNCONFIRMED' }
+  if (matches.length === 0) return { ok: false, code: 'SOURCE_ITEM_NOT_FOUND' }
+
+  const [item] = matches
+  return {
+    ok: true,
+    source: {
+      billingMonth: range.reviewMonth,
+      billId: bill.id,
+      billStatus: bill.status,
+      billItemId: item.id,
+      courseId: item.CourseId,
+      calendarId: attend.CalendarId,
+      originalUnitPrice: item.unitPrice
+    }
+  }
+}
+
 function previousMonthWindow(billingMonth) {
   if (
     typeof billingMonth !== 'string' ||
