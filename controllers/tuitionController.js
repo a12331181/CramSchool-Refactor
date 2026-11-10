@@ -666,6 +666,7 @@ const tuitionController = {
       BILL_HAS_NO_ITEMS: '帳單沒有明細，暫時不能出帳。',
       INVALID_BILL_AMOUNT: '帳單明細的金額需要核對。',
       DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不一致，請先核對。',
+      DRAFT_COURSE_FEES_REQUIRE_REVIEW: '草稿的課程明細已變動或無法核對，請回到同月合併預覽查看最新試算。',
       LEAVE_REVIEW_UNAVAILABLE: '目前無法核對上月請假，暫時不能出帳。',
       LEAVE_CREDIT_REQUIRES_REVIEW: '草稿裡有折抵需要重新核對，暫時不能出帳。'
     }
