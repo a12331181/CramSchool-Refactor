@@ -32,4 +32,34 @@
 </table>
 
 <p><strong>帳單金額：NT$ {{bill.totalAmount}}</strong></p>
+
+{{#if isDraft}}
+<h2 class="h5">加入額外費用</h2>
+
+{{#if extraFeeFormToken}}
+<form method="POST" action="/cramschool/tuition/bills/{{bill.id}}/extra-fees" class="mb-3">
+  <input type="hidden" name="tuitionFormToken" value="{{extraFeeFormToken}}">
+  <input type="hidden" name="billVersion" value="{{bill.version}}">
+
+  <label for="bill-extra-fee">費用項目</label>
+  <select id="bill-extra-fee" name="extraFeeId" class="form-control mb-2" required>
+    <option value="" selected disabled>請選擇</option>
+    {{#each extraFees}}
+    <option value="{{id}}">{{name}}（NT$ {{price}}）</option>
+    {{/each}}
+  </select>
+
+  <label for="bill-extra-quantity">數量</label>
+  <input id="bill-extra-quantity" name="quantity" type="number" class="form-control mb-2" value="1" min="1" max="999"
+    step="1" required>
+
+  <button type="submit" class="btn btn-primary">加入帳單</button>
+</form>
+{{else}}
+<p class="text-muted">目前沒有可加入的費用，或所有項目都已加入。</p>
+{{/if}}
+
+<p><a href="/admin/extrafees">管理額外費用目錄</a></p>
+{{/if}}
+
 <a href="{{previewUrl}}">回到同月合併預覽</a>

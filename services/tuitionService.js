@@ -1,11 +1,12 @@
 const { Op, UniqueConstraintError } = require('sequelize')
-const { Attend, Calendar, Course, Enrollment, Student, TuitionBill, TuitionBillItem, sequelize } = require('../models')
+const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
+const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
 
 async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth } = {}) {
   if (![courseId, studentId].every(id => Number.isSafeInteger(id) && id > 0)) {
@@ -701,14 +702,14 @@ async function getTuitionBillDetails(billId) {
   const bill = await TuitionBill.findByPk(billId, {
     attributes: [
       'id', 'StudentId', 'billingMonth', 'studentNameSnapshot',
-      'status', 'totalAmount'
+      'status', 'totalAmount', 'version'
     ],
     include: [{
       model: TuitionBillItem,
       as: 'items',
       attributes: [
         'id', 'descriptionSnapshot', 'quantity', 'unitPrice',
-        'amount', 'reason', 'sourceSnapshot'
+        'amount', 'reason', 'sourceSnapshot', 'ExtraFeeId'
       ]
     }],
     order: [[{ model: TuitionBillItem, as: 'items' }, 'id', 'ASC']]
@@ -716,7 +717,93 @@ async function getTuitionBillDetails(billId) {
 
   if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
 
-  return { ok: true, bill: bill.toJSON() }
+  const savedBill = bill.toJSON()
+  const addedFeeIds = new Set(savedBill.items.map(item => item.ExtraFeeId))
+
+  const extraFees = savedBill.status === 'draft'
+    ? (await ExtraFee.findAll({
+        attributes: ['id', 'name', 'price'],
+        order: [['name', 'ASC'], ['id', 'ASC']],
+        raw: true
+      })).filter(fee => isUsableBillExtraFee(fee) && !addedFeeIds.has(fee.id))
+    : []
+
+  return { ok: true, bill: savedBill, extraFees }
+}
+
+async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersion }) {
+  if (
+    ![billId, extraFeeId, quantity].every(n => Number.isSafeInteger(n) && n > 0) ||
+    quantity > 999 ||
+    !Number.isSafeInteger(billVersion) ||
+    billVersion < 0
+  ) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  return sequelize.transaction(async transaction => {
+    const bill = await TuitionBill.findByPk(billId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+    if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+    if (bill.version !== billVersion) {
+      return { ok: false, code: 'BILL_VERSION_CONFLICT' }
+    }
+
+    const existing = await TuitionBillItem.findOne({
+      where: { TuitionBillId: bill.id, ExtraFeeId: extraFeeId },
+      attributes: ['id'],
+      transaction
+    })
+    if (existing) return { ok: false, code: 'EXTRA_FEE_ALREADY_ADDED' }
+
+    const fee = await ExtraFee.findByPk(extraFeeId, {
+      attributes: ['name', 'price'],
+      transaction,
+      lock: transaction.LOCK.SHARE
+    })
+    if (!isUsableBillExtraFee(fee)) {
+      return { ok: false, code: 'EXTRA_FEE_UNAVAILABLE' }
+    }
+
+    const amount = fee.price * quantity
+    const totalAmount = bill.totalAmount + amount
+
+    if (
+      !Number.isInteger(bill.totalAmount) || bill.totalAmount < 0 ||
+      totalAmount > MAX_EXTRA_FEE_BILL_AMOUNT ||
+      billVersion >= MAX_EXTRA_FEE_BILL_AMOUNT
+    ) {
+      return { ok: false, code: 'INVALID_AMOUNT' }
+    }
+
+    await TuitionBillItem.create({
+      TuitionBillId: bill.id,
+      kind: 'extra_fee',
+      CourseId: null,
+      ExtraFeeId: extraFeeId,
+      descriptionSnapshot: fee.name.trim(),
+      quantity,
+      unitPrice: fee.price,
+      amount,
+      reason: '',
+      sourceSnapshot: { extraFeeId }
+    }, { transaction })
+
+    await bill.update({ totalAmount, version: billVersion + 1 }, { transaction })
+    return { ok: true }
+  })
+}
+
+function isUsableBillExtraFee(fee) {
+  return typeof fee?.name === 'string' &&
+    fee.name.trim() !== '' &&
+    Number.isInteger(fee.price) &&
+    fee.price > 0 &&
+    fee.price <= MAX_EXTRA_FEE_BILL_AMOUNT
 }
 
 module.exports = { 
@@ -727,5 +814,6 @@ module.exports = {
   getStudentTuitionPreview,
   getStudentTuitionList,
   createTuitionBillDraft,
-  getTuitionBillDetails
+  getTuitionBillDetails,
+  addTuitionBillExtraFee
 }

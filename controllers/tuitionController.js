@@ -255,7 +255,14 @@ const tuitionController = {
         .send(invalidId ? '帳單 ID 不正確。' : '找不到這張帳單。')
     }
 
-    const { bill } = result
+    const { bill, extraFees } = result
+    const isDraft = bill.status === 'draft'
+    let extraFeeFormToken = null
+
+    if (isDraft && extraFees.length > 0) {
+      req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
+      extraFeeFormToken = req.session.tuitionFormToken
+    }
     const labels = { draft: '草稿', issued: '已發單', void: '已作廢' }
 
     const items = bill.items.map(item => ({
@@ -274,8 +281,63 @@ const tuitionController = {
       bill,
       items,
       statusText: labels[bill.status] ?? '待核對',
-      previewUrl
+      previewUrl,
+      isDraft, 
+      extraFees, 
+      extraFeeFormToken
     })
+  },
+
+  addTuitionBillExtraFee: async (req, res) => {
+    const billId = Number(req.params.billId)
+    if (!Number.isSafeInteger(billId) || billId < 1) {
+      return res.status(400).send('帳單 ID 不正確。')
+    }
+
+    const body = req.body ?? {}
+    const token = body.tuitionFormToken
+    const expected = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
+
+    if (
+      !isToken(token) || !isToken(expected) ||
+      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+    }
+
+    const readInt = value =>
+      typeof value === 'string' && value !== '' && !/\D/.test(value)
+        ? Number(value)
+        : NaN
+
+    const result = await tuitionService.addTuitionBillExtraFee({
+      billId,
+      extraFeeId: readInt(body.extraFeeId),
+      quantity: readInt(body.quantity),
+      billVersion: readInt(body.billVersion)
+    })
+
+    if (result.code === 'BILL_NOT_FOUND') {
+      return res.status(404).send('找不到這張帳單。')
+    }
+
+    const errors = {
+      INVALID_INPUT: '請選擇費用項目，數量須為 1 到 999 的整數。',
+      BILL_NOT_DRAFT: '只有草稿可以加入額外費用。',
+      BILL_VERSION_CONFLICT: '帳單已更新，請核對目前明細後再試。',
+      EXTRA_FEE_ALREADY_ADDED: '這個費用項目已經在帳單上。',
+      EXTRA_FEE_UNAVAILABLE: '這個費用項目目前無法使用。',
+      INVALID_AMOUNT: '加入後的總額超出可儲存的範圍。'
+    }
+
+    req.flash(
+      result.ok ? 'success_messages' : 'error_messages',
+      result.ok ? '已加入額外費用。' : errors[result.code] ?? '無法加入額外費用。'
+    )
+
+    return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
   },
 
   getStudentTuitionList: async (req, res) => {
