@@ -1,4 +1,4 @@
-const { Op, UniqueConstraintError, ValidationError } = require('sequelize')
+const { Op, Transaction, UniqueConstraintError, ValidationError } = require('sequelize')
 const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, Payment, AuditLog, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
@@ -7,8 +7,15 @@ const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
+const DRAFT_NON_BLOCKING_REVIEW_CODES = new Set([
+  'NO_BILLABLE_CALENDARS',
+  'CALENDAR_REVIEW_UNAVAILABLE',
+  'CALENDARS_REQUIRE_REVIEW',
+  'ATTENDANCE_SUMMARY_UNAVAILABLE',
+  'ATTENDANCE_REQUIRES_REVIEW'
+])
 
-async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth } = {}) {
+async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth } = {}, transaction) {
   if (![courseId, studentId].every(id => Number.isSafeInteger(id) && id > 0)) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
@@ -40,7 +47,8 @@ async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth
   const rows = await Enrollment.findAll({
     attributes: ['id', 'startsOn', 'endsOn', 'status'],
     where: { CourseId: courseId, StudentId: studentId },
-    raw: true
+    raw: true,
+    transaction
   })
 
   if (rows.length === 0) {
@@ -95,7 +103,7 @@ async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth
   }
 }
 
-async function getTuitionCalendars({ courseId, studentId, billingMonth } = {}) {
+async function getTuitionCalendars({ courseId, studentId, billingMonth } = {}, transaction) {
   const driverTimezone = sequelize.options.dialectOptions?.timezone
 
   if (
@@ -109,7 +117,7 @@ async function getTuitionCalendars({ courseId, studentId, billingMonth } = {}) {
     courseId,
     studentId,
     billingMonth
-  })
+  }, transaction)
 
   if (!result.ok) return result
 
@@ -128,7 +136,8 @@ async function getTuitionCalendars({ courseId, studentId, billingMonth } = {}) {
       }
     },
     order: [['startAt', 'ASC'], ['id', 'ASC']],
-    raw: true
+    raw: true,
+    transaction
   })
 
   const calendars = []
@@ -199,7 +208,8 @@ async function getTuitionCalendars({ courseId, studentId, billingMonth } = {}) {
           ]
         }
       ]
-    }
+    },
+    transaction
   })
 
   return {
@@ -211,14 +221,15 @@ async function getTuitionCalendars({ courseId, studentId, billingMonth } = {}) {
   }
 }
 
-async function getTuitionPreview({ courseId, studentId, billingMonth } = {}) {
-  const result = await getTuitionCalendars({ courseId, studentId, billingMonth })
+async function getTuitionPreview({ courseId, studentId, billingMonth } = {}, transaction) {
+  const result = await getTuitionCalendars({ courseId, studentId, billingMonth }, transaction)
 
   if (!result.ok) return result
 
   const course = await Course.findByPk(courseId, {
     attributes: ['id', 'name', 'type', 'price'],
-    raw: true
+    raw: true,
+    transaction
   })
 
   if (!course) {
@@ -247,7 +258,7 @@ async function getTuitionPreview({ courseId, studentId, billingMonth } = {}) {
   const attendanceSummary = await getTuitionAttendanceSummary({
     studentId,
     calendars: result.calendars
-  })
+  }, transaction)
 
   return {
     ...result,
@@ -265,7 +276,7 @@ async function getTuitionPreview({ courseId, studentId, billingMonth } = {}) {
   }
 }
 
-async function getTuitionAttendanceSummary({ studentId, calendars }) {
+async function getTuitionAttendanceSummary({ studentId, calendars }, transaction) {
   const counts = {
     [ATTEND_STATUS.PRESENT]: 0,
     [ATTEND_STATUS.ABSENT]: 0,
@@ -283,7 +294,8 @@ async function getTuitionAttendanceSummary({ studentId, calendars }) {
           StudentId: studentId,
           CalendarId: { [Op.in]: calendars.map(calendar => calendar.id) }
         },
-        raw: true
+        raw: true,
+        transaction
       })
 
   const attendByCalendarId = new Map()
@@ -345,7 +357,7 @@ async function getTuitionAttendanceSummary({ studentId, calendars }) {
   return { counts, reviewCount, items }
 }
 
-async function getStudentTuitionPreview({ studentId, billingMonth } = {}) {
+async function getStudentTuitionPreview({ studentId, billingMonth } = {}, transaction) {
   if (!Number.isSafeInteger(studentId) || studentId < 1) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
@@ -360,7 +372,8 @@ async function getStudentTuitionPreview({ studentId, billingMonth } = {}) {
 
   const student = await Student.findByPk(studentId, {
     attributes: ['id', 'name'],
-    raw: true
+    raw: true,
+    transaction
   })
 
   if (!student) {
@@ -371,7 +384,8 @@ async function getStudentTuitionPreview({ studentId, billingMonth } = {}) {
     attributes: ['id', 'CourseId'],
     where: { StudentId: studentId },
     order: [['CourseId', 'ASC'], ['id', 'ASC']],
-    raw: true
+    raw: true,
+    transaction
   })
 
   const courseIds = new Set()
@@ -389,11 +403,22 @@ async function getStudentTuitionPreview({ studentId, billingMonth } = {}) {
     courseIds.add(row.CourseId)
   }
 
+  // 正式出帳已鎖定學生。鎖住課程以等候既有改價／排課交易，並避免比對後又變動。
+  if (transaction && courseIds.size > 0) {
+    await Course.findAll({
+      attributes: ['id'],
+      where: { id: { [Op.in]: [...courseIds] } },
+      order: [['id', 'ASC']],
+      transaction,
+      lock: transaction.LOCK.SHARE
+    })
+  }
+
   const courses = []
   let baseSubtotal = 0
 
   for (const courseId of courseIds) {
-    const preview = await getTuitionPreview({ courseId, studentId, billingMonth })
+    const preview = await getTuitionPreview({ courseId, studentId, billingMonth }, transaction)
 
     if (!preview.ok) {
       if (preview.code === 'NOT_ENROLLED_IN_BILLING_MONTH') continue
@@ -551,16 +576,8 @@ async function createTuitionBillDraft({ studentId, billingMonth } = {}) {
 
   if (!preview.ok) return preview
 
-  const draftReviewCodes = new Set([
-    'NO_BILLABLE_CALENDARS',
-    'CALENDAR_REVIEW_UNAVAILABLE',
-    'CALENDARS_REQUIRE_REVIEW',
-    'ATTENDANCE_SUMMARY_UNAVAILABLE',
-    'ATTENDANCE_REQUIRES_REVIEW'
-  ])
-
   const blockedItems = preview.reviewItems.filter(item =>
-    !draftReviewCodes.has(item.code)
+    !DRAFT_NON_BLOCKING_REVIEW_CODES.has(item.code)
   )
 
   if (blockedItems.length > 0) {
@@ -1369,6 +1386,47 @@ async function getDraftLeaveCreditOptions(bill) {
   return { ok: true, reviewMonth: leaveData.reviewMonth, options, blocked }
 }
 
+function hasMatchingDraftCourseFees(items, courses) {
+  const savedByCourse = new Map()
+
+  for (const item of items) {
+    if (item.kind !== 'course_fee') continue
+    if (savedByCourse.has(item.CourseId)) return false
+    savedByCourse.set(item.CourseId, item)
+  }
+
+  if (savedByCourse.size === 0 || savedByCourse.size !== courses.length) {
+    return false
+  }
+
+  return courses.every(entry => {
+    const saved = savedByCourse.get(entry.course.id)
+    const snapshot = saved?.sourceSnapshot
+
+    if (
+      !saved ||
+      saved.quantity !== entry.quantity ||
+      saved.unitPrice !== entry.unitPrice ||
+      saved.amount !== entry.baseAmount ||
+      snapshot?.billingType !== entry.course.type ||
+      snapshot.billableCount !== entry.billableCount ||
+      !Array.isArray(snapshot.calendars) ||
+      snapshot.calendars.length !== entry.calendars.length
+    ) {
+      return false
+    }
+
+    // 計費堂次依開始時間及 ID 排序；已排定改為已完成不影響原定堂次。
+    return snapshot.calendars.every((calendar, index) => {
+      const latest = entry.calendars[index]
+      return calendar?.calendarId === latest.id &&
+        calendar.enrollmentId === latest.enrollmentId &&
+        new Date(calendar.startAt).getTime() === latest.startAt.getTime() &&
+        new Date(calendar.endAt).getTime() === latest.endAt.getTime()
+    })
+  })
+}
+
 async function issueTuitionBill({ billId, billVersion, actorId } = {}) {
   const isId = n => Number.isSafeInteger(n) && n > 0
   if (
@@ -1379,11 +1437,20 @@ async function issueTuitionBill({ billId, billVersion, actorId } = {}) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
 
-  return sequelize.transaction(async transaction => {
-    const bill = await TuitionBill.findByPk(billId, {
-      transaction,
-      lock: transaction.LOCK.UPDATE
+  return sequelize.transaction({
+    isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED
+  }, async transaction => {
+    const owner = await TuitionBill.findByPk(billId, {
+      attributes: ['StudentId'],
+      raw: true,
+      transaction
     })
+    if (!owner) return { ok: false, code: 'BILL_NOT_FOUND' }
+
+    // 和建立草稿、異動選課維持相同順序：先鎖學生。
+    const locked = { transaction, lock: transaction.LOCK.UPDATE }
+    const student = await Student.findByPk(owner.StudentId, { ...locked, attributes: ['id'] })
+    const bill = await TuitionBill.findByPk(billId, locked)
 
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
     if (bill.status === 'issued') return { ok: true, changed: false, billId }
@@ -1412,7 +1479,21 @@ async function issueTuitionBill({ billId, billVersion, actorId } = {}) {
       return { ok: false, code: 'DRAFT_TOTAL_MISMATCH' }
     }
 
+    if (!student || bill.StudentId !== owner.StudentId) {
+      return { ok: false, code: 'DRAFT_COURSE_FEES_REQUIRE_REVIEW' }
+    }
+
     const input = { studentId: bill.StudentId, billingMonth: bill.billingMonth }
+    const preview = await getStudentTuitionPreview(input, transaction)
+
+    if (
+      !preview.ok ||
+      preview.reviewItems.some(item => !DRAFT_NON_BLOCKING_REVIEW_CODES.has(item.code)) ||
+      !hasMatchingDraftCourseFees(items, preview.courses)
+    ) {
+      return { ok: false, code: 'DRAFT_COURSE_FEES_REQUIRE_REVIEW' }
+    }
+
     const leaveData = await getPreviousMonthLeaveReviews(input, transaction)
     if (!leaveData || leaveData.timezoneError) {
       return { ok: false, code: 'LEAVE_REVIEW_UNAVAILABLE' }
