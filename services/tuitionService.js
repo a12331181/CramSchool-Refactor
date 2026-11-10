@@ -1,11 +1,11 @@
 const { Op, UniqueConstraintError } = require('sequelize')
-const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, sequelize } = require('../models')
+const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
-const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
+const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
 
 async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth } = {}) {
@@ -798,6 +798,103 @@ async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersio
   })
 }
 
+async function getPreviousMonthLeaveReviews({ studentId, billingMonth }) {
+  const range = previousMonthWindow(billingMonth)
+  if (!Number.isSafeInteger(studentId) || studentId < 1 || !range) return null
+
+  const driverTimezone = sequelize.options.dialectOptions?.timezone
+  if (
+    sequelize.options.timezone !== '+00:00' ||
+    (driverTimezone !== undefined && driverTimezone !== '+00:00')
+  ) {
+    return { reviewMonth: range.reviewMonth, rows: [], timezoneError: true }
+  }
+
+  const attends = await Attend.findAll({
+    attributes: ['id', 'reason', 'version'],
+    where: { StudentId: studentId, status: ATTEND_STATUS.EXCUSED },
+    include: [{
+      model: Calendar,
+      required: true,
+      attributes: ['startAt'],
+      where: {
+        status: { [Op.in]: [CALENDAR_STATUS.SCHEDULED, CALENDAR_STATUS.COMPLETED] },
+        startAt: { [Op.gte]: range.from, [Op.lt]: range.until },
+        endAt: { [Op.lte]: new Date() }
+      },
+      include: [{ model: Course, required: true, attributes: ['name'] }]
+    }],
+    order: [[Calendar, 'startAt', 'ASC'], ['id', 'ASC']],
+    raw: true,
+    nest: true
+  })
+
+  const latestReviewByAttendId = new Map()
+
+  if (attends.length > 0) {
+    const reviews = await TuitionLeaveReview.findAll({
+      where: { AttendId: { [Op.in]: attends.map(attend => attend.id) } },
+      order: [['id', 'DESC']],
+      raw: true
+    })
+
+    for (const review of reviews) {
+      if (!latestReviewByAttendId.has(review.AttendId)) {
+        latestReviewByAttendId.set(review.AttendId, review)
+      }
+    }
+  }
+
+  const labels = {
+    approved: '原因已核准',
+    rejected: '已駁回'
+  }
+
+  return {
+    reviewMonth: range.reviewMonth,
+    rows: attends.map(attend => {
+      const latest = latestReviewByAttendId.get(attend.id)
+      const current = latest && latest.attendVersion === attend.version
+        ? latest
+        : null
+
+      let decisionText = '待審核'
+
+      if (current) {
+        decisionText = labels[current.decision] ?? '待核對'
+      } else if (latest) {
+        decisionText = '點名已更正，待重審'
+      }
+
+      return {
+        attendId: attend.id,
+        attendVersion: attend.version,
+        classAtText: formatTaipeiDateTime(attend.Calendar.startAt),
+        courseName: attend.Calendar.Course.name,
+        leaveReason: attend.reason,
+        decisionText,
+        reviewReason: current?.reason ?? ''
+      }
+    })
+  }
+}
+
+function previousMonthWindow(billingMonth) {
+  if (
+    typeof billingMonth !== 'string' ||
+    billingMonth.length !== 7 ||
+    !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)
+  ) return null
+
+  const until = parseTaipeiDateTime(`${billingMonth}-01T00:00`)
+  if (!until) return null
+
+  const reviewMonth = getTaipeiDate(new Date(until.getTime() - 1)).slice(0, 7)
+  const from = parseTaipeiDateTime(`${reviewMonth}-01T00:00`)
+
+  return from ? { reviewMonth, from, until } : null
+}
+
 function isUsableBillExtraFee(fee) {
   return typeof fee?.name === 'string' &&
     fee.name.trim() !== '' &&
@@ -815,5 +912,6 @@ module.exports = {
   getStudentTuitionList,
   createTuitionBillDraft,
   getTuitionBillDetails,
-  addTuitionBillExtraFee
+  addTuitionBillExtraFee,
+  getPreviousMonthLeaveReviews 
 }
