@@ -332,13 +332,59 @@ const tuitionController = {
         .send(invalidId ? '帳單 ID 不正確。' : '找不到這張帳單。')
     }
 
-    const { bill, extraFees } = result
+    const { bill, extraFees, leaveCreditData } = result
     const isDraft = bill.status === 'draft'
-    let extraFeeFormToken = null
+    const hasExtraFeeForm = isDraft && extraFees.length > 0
+    const hasLeaveCreditForm =
+      isDraft && leaveCreditData?.ok === true && leaveCreditData.options.length > 0
 
-    if (isDraft && extraFees.length > 0) {
+    if (hasExtraFeeForm || hasLeaveCreditForm) {
       req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
-      extraFeeFormToken = req.session.tuitionFormToken
+    }
+
+    const extraFeeFormToken = hasExtraFeeForm ? req.session.tuitionFormToken : null
+
+    const creditMessages = {
+      UTC_REQUIRED: '系統時間設定異常，暫時無法取得折抵。',
+      INVALID_BILL_AMOUNT: '草稿金額需要核對。',
+      SOURCE_BILL_NOT_FOUND: '找不到上期帳單。',
+      BILL_NOT_ISSUED: '原帳單目前不在已出帳狀態。',
+      SOURCE_BILL_NOT_FULLY_PAID: '原帳單尚未收清。',
+      SOURCE_ITEM_NOT_FOUND: '原帳單沒有這堂課的計費明細。',
+      SOURCE_SNAPSHOT_UNCONFIRMED: '原帳單的計費堂次需要核對。',
+      SOURCE_LESSON_HAS_NO_CHARGE: '這堂課原本沒有收費。',
+      LEAVE_NOT_APPROVED: '請假審核結果已變動，請重新核對。',
+      CREDIT_EXCEEDS_DRAFT_TOTAL: '折抵金額超過目前草稿總額。'
+    }
+
+    let leaveCreditPanel = null
+
+    if (isDraft && leaveCreditData) {
+      if (!leaveCreditData.ok) {
+        leaveCreditPanel = {
+          errorMessage: creditMessages[leaveCreditData.code] ?? '暫時無法取得折抵清單。'
+        }
+      } else {
+        const blocked = leaveCreditData.blocked.map(row => {
+          let statusText = creditMessages[row.code] ?? '請核對原帳單或收款資料。'
+
+          if (row.code === 'LEAVE_CREDIT_ALREADY_IN_USE') {
+            statusText = row.usedByBillId === bill.id
+              ? '已加入本張草稿。'
+              : `已由帳單 #${row.usedByBillId} 使用。`
+          }
+
+          return { ...row, statusText }
+        })
+
+        leaveCreditPanel = {
+          ...leaveCreditData,
+          blocked,
+          billVersion: bill.version,
+          formToken: hasLeaveCreditForm ? req.session.tuitionFormToken : null,
+          action: `/cramschool/tuition/bills/${bill.id}/leave-credits`
+        }
+      }
     }
     const labels = { draft: '草稿', issued: '已發單', void: '已作廢' }
 
@@ -360,6 +406,7 @@ const tuitionController = {
       statusText: labels[bill.status] ?? '待核對',
       previewUrl,
       isDraft, 
+      leaveCreditPanel,
       extraFees, 
       extraFeeFormToken
     })
@@ -414,6 +461,78 @@ const tuitionController = {
       result.ok ? '已加入額外費用。' : errors[result.code] ?? '無法加入額外費用。'
     )
 
+    return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
+  },
+
+  addLeaveCreditToDraft: async (req, res) => {
+    const body = req.body ?? {}
+    const token = body.tuitionFormToken
+    const expected = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
+
+    if (
+      !isToken(token) || !isToken(expected) ||
+      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+    }
+
+    const readInt = value =>
+      typeof value === 'string' && value !== '' && !/\D/.test(value)
+        ? Number(value)
+        : NaN
+
+    const billId = readInt(req.params.billId)
+    if (!Number.isSafeInteger(billId) || billId < 1) {
+      return res.status(400).send('帳單 ID 不正確。')
+    }
+
+    const result = await tuitionService.addLeaveCreditToDraft({
+      billId,
+      attendId: readInt(body.attendId),
+      billVersion: readInt(body.billVersion)
+    })
+
+    if (result.code === 'INVALID_INPUT') {
+      return res.status(400).send('折抵資料格式不正確，請重新開啟帳單再試。')
+    }
+
+    if (result.code === 'BILL_NOT_FOUND') {
+      return res.status(404).send('找不到要核對的帳單。')
+    }
+
+    const errors = {
+      BILL_NOT_DRAFT: '只有草稿可以加入折抵。',
+      BILL_VERSION_CONFLICT: '草稿已更新，請核對目前明細後再試。',
+      LEAVE_UNAVAILABLE: '找不到這筆可折抵的請假紀錄。',
+      LEAVE_NOT_APPROVED: '這筆請假尚未核准，或點名更正後需要重審。',
+      BILL_NOT_ISSUED: '原帳單目前不在已出帳狀態。',
+      SOURCE_BILL_NOT_FOUND: '找不到上期原帳單。',
+      SOURCE_BILL_AMBIGUOUS: '找到多張上期帳單，請先核對原單。',
+      SOURCE_ITEM_NOT_FOUND: '原帳單沒有這堂課的計費明細。',
+      SOURCE_ITEM_AMBIGUOUS: '這堂課對到多筆原明細，請先核對。',
+      SOURCE_SNAPSHOT_UNCONFIRMED: '上期帳單的計費堂次需要核對。',
+      SOURCE_LESSON_HAS_NO_CHARGE: '這堂課原本沒有收費。',
+      SOURCE_BILL_NOT_FULLY_PAID: '原帳單尚未收清，暫時不能折抵。',
+      PAYMENT_LINK_CONFLICT: '原帳單的收款連結需要核對。',
+      INVALID_PAYMENT_AMOUNT: '原帳單的收款金額需要核對。',
+      PAYMENT_TOTAL_EXCEEDS_BILL: '原帳單的收款超過帳單金額，請先核對。',
+      CREDIT_SOURCE_CHANGED: '折抵來源已變動，請重新核對。',
+      INVALID_BILL_AMOUNT: '帳單金額需要核對。',
+      CREDIT_EXCEEDS_DRAFT_TOTAL: '折抵金額超過目前草稿總額。',
+      LEAVE_CREDIT_VALIDATION_FAILED: '折抵明細未通過資料檢查。'
+    }
+
+    let message = errors[result.code] ?? '暫時無法加入折抵。'
+
+    if (result.ok) {
+      message = '已加入請假折抵。'
+    } else if (result.code === 'LEAVE_CREDIT_ALREADY_IN_USE') {
+      message = `這筆請假已由帳單 #${result.usedByBillId} 使用。`
+    }
+
+    req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
   },
 

@@ -728,7 +728,9 @@ async function getTuitionBillDetails(billId) {
       })).filter(fee => isUsableBillExtraFee(fee) && !addedFeeIds.has(fee.id))
     : []
 
-  return { ok: true, bill: savedBill, extraFees }
+  const leaveCreditData = await getDraftLeaveCreditOptions(savedBill)
+
+  return { ok: true, bill: savedBill, extraFees, leaveCreditData }
 }
 
 async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersion }) {
@@ -874,6 +876,7 @@ async function getPreviousMonthLeaveReviews({ studentId, billingMonth }) {
         courseName: attend.Calendar.Course.name,
         leaveReason: attend.reason,
         decisionText,
+        reviewDecision: current?.decision ?? null,
         reviewReason: current?.reason ?? ''
       }
     })
@@ -1304,6 +1307,64 @@ async function addLeaveCreditToDraft({ billId, attendId, billVersion } = {}) {
 
     throw error
   }
+}
+
+async function getDraftLeaveCreditOptions(bill) {
+  if (bill.status !== 'draft') return null
+
+  if (!Number.isSafeInteger(bill.totalAmount) || bill.totalAmount < 0) {
+    return { ok: false, code: 'INVALID_BILL_AMOUNT' }
+  }
+
+  const studentId = bill.StudentId
+  const billingMonth = bill.billingMonth
+  const leaveData = await getPreviousMonthLeaveReviews({ studentId, billingMonth })
+
+  if (!leaveData) return { ok: false, code: 'INVALID_INPUT' }
+  if (leaveData.timezoneError) return { ok: false, code: 'UTC_REQUIRED' }
+
+  const options = []
+  const blocked = []
+
+  for (const row of leaveData.rows) {
+    if (row.reviewDecision !== 'approved') continue
+
+    const display = {
+      attendId: row.attendId,
+      courseName: row.courseName,
+      classAtText: row.classAtText
+    }
+
+    const result = await getPreviousMonthLeaveCreditCandidate({
+      studentId,
+      attendId: row.attendId,
+      billingMonth
+    })
+
+    if (!result.ok) {
+      blocked.push({
+        ...display,
+        code: result.code,
+        usedByBillId: result.usedByBillId ?? null,
+        remainingAmount: result.remainingAmount ?? null
+      })
+      continue
+    }
+
+    const { candidate } = result
+    if (candidate.amount > bill.totalAmount) {
+      blocked.push({ ...display, code: 'CREDIT_EXCEEDS_DRAFT_TOTAL' })
+      continue
+    }
+
+    options.push({
+      ...display,
+      amount: candidate.amount,
+      sourceBillId: candidate.source.billId
+    })
+  }
+
+  return { ok: true, reviewMonth: leaveData.reviewMonth, options, blocked }
 }
 
 function buildLeaveCreditBillItem({ draftBillId, candidate }) {

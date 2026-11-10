@@ -36,6 +36,49 @@
 {{#if isDraft}}
 <h2 class="h5">加入額外費用</h2>
 
+{{#with leaveCreditPanel}}
+<section class="my-4" aria-labelledby="leave-credit-heading">
+  <h2 id="leave-credit-heading" class="h5">
+    {{#if reviewMonth}}{{reviewMonth}} {{/if}}請假折抵
+  </h2>
+
+  {{#if errorMessage}}
+  <p class="alert alert-warning">{{errorMessage}}</p>
+  {{else}}
+  {{#if options.length}}
+  <ul class="list-group mb-3">
+    {{#each options}}
+    <li class="list-group-item">
+      <div><strong>{{courseName}}</strong>｜{{classAtText}}</div>
+      <div>可折抵 NT$ {{amount}}（原帳單 #{{sourceBillId}}）</div>
+
+      {{#if ../formToken}}
+      <form method="POST" action="{{../action}}" class="mt-2">
+        <input type="hidden" name="tuitionFormToken" value="{{../formToken}}">
+        <input type="hidden" name="billVersion" value="{{../billVersion}}">
+        <input type="hidden" name="attendId" value="{{attendId}}">
+        <button type="submit" class="btn btn-sm btn-primary">加入折抵</button>
+      </form>
+      {{/if}}
+    </li>
+    {{/each}}
+  </ul>
+  {{else}}
+  <p class="text-muted">目前沒有可加入的請假折抵。</p>
+  {{/if}}
+
+  {{#if blocked.length}}
+  <h3 class="h6">其餘已核准請假</h3>
+  <ul class="mb-0">
+    {{#each blocked}}
+    <li>{{courseName}}｜{{classAtText}}：{{statusText}}</li>
+    {{/each}}
+  </ul>
+  {{/if}}
+  {{/if}}
+</section>
+{{/with}}
+
 {{#if extraFeeFormToken}}
 <form method="POST" action="/cramschool/tuition/bills/{{bill.id}}/extra-fees" class="mb-3">
   <input type="hidden" name="tuitionFormToken" value="{{extraFeeFormToken}}">
@@ -61,5 +104,6 @@
 
 <p><a href="/admin/extrafees">管理額外費用目錄</a></p>
 {{/if}}
+
 
 <a href="{{previewUrl}}">回到同月合併預覽</a>
