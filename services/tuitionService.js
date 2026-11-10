@@ -869,6 +869,7 @@ async function getPreviousMonthLeaveReviews({ studentId, billingMonth }) {
       return {
         attendId: attend.id,
         attendVersion: attend.version,
+        reviewId: latest?.id ?? 0,
         classAtText: formatTaipeiDateTime(attend.Calendar.startAt),
         courseName: attend.Calendar.Course.name,
         leaveReason: attend.reason,
@@ -877,6 +878,104 @@ async function getPreviousMonthLeaveReviews({ studentId, billingMonth }) {
       }
     })
   }
+}
+
+async function recordPreviousMonthLeaveReview({
+  studentId, billingMonth, attendId, attendVersion, reviewId, decision, reason, actorId
+}) {
+  const range = previousMonthWindow(billingMonth)
+  const isId = n => Number.isSafeInteger(n) && n > 0
+  const isVersion = n => Number.isSafeInteger(n) && n >= 0
+  const note = typeof reason === 'string' ? reason.trim() : ''
+
+  if (
+    !range || ![studentId, attendId, actorId].every(isId) ||
+    ![attendVersion, reviewId].every(isVersion) ||
+    !['approved', 'rejected'].includes(decision) ||
+    !note || note.length > 255
+  ) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  const driverTimezone = sequelize.options.dialectOptions?.timezone
+  if (
+    sequelize.options.timezone !== '+00:00' ||
+    (driverTimezone !== undefined && driverTimezone !== '+00:00')
+  ) {
+    return { ok: false, code: 'UTC_REQUIRED' }
+  }
+
+  const whereAttend = { id: attendId, StudentId: studentId }
+  const target = await Attend.findOne({
+    where: whereAttend,
+    attributes: ['CalendarId']
+  })
+  if (!target) return { ok: false, code: 'LEAVE_UNAVAILABLE' }
+
+  return sequelize.transaction(async transaction => {
+    const locked = { transaction, lock: transaction.LOCK.UPDATE }
+
+    const calendar = await Calendar.findOne({
+      ...locked,
+      where: {
+        id: target.CalendarId,
+        status: { [Op.in]: [CALENDAR_STATUS.SCHEDULED, CALENDAR_STATUS.COMPLETED] },
+        startAt: { [Op.gte]: range.from, [Op.lt]: range.until },
+        endAt: { [Op.lte]: new Date() }
+      }
+    })
+
+    if (
+      !calendar || !(calendar.startAt instanceof Date) ||
+      !(calendar.endAt instanceof Date) || !(calendar.startAt < calendar.endAt)
+    ) {
+      return { ok: false, code: 'LEAVE_UNAVAILABLE' }
+    }
+
+    const attend = await Attend.findOne({
+      ...locked,
+      where: { ...whereAttend, CalendarId: calendar.id }
+    })
+
+    if (
+      !attend || attend.status !== ATTEND_STATUS.EXCUSED ||
+      !isVersion(attend.version) ||
+      typeof attend.reason !== 'string' || !attend.reason.trim()
+    ) {
+      return { ok: false, code: 'LEAVE_UNAVAILABLE' }
+    }
+
+    if (attend.version !== attendVersion) {
+      return { ok: false, code: 'ATTEND_CHANGED' }
+    }
+
+    const latest = await TuitionLeaveReview.findOne({
+      where: { AttendId: attend.id },
+      order: [['id', 'DESC']],
+      transaction
+    })
+
+    if ((latest?.id ?? 0) !== reviewId) {
+      return { ok: false, code: 'REVIEW_CHANGED' }
+    }
+
+    if (
+      latest?.attendVersion === attendVersion &&
+      latest.decision === decision && latest.reason === note
+    ) {
+      return { ok: true, changed: false }
+    }
+
+    await TuitionLeaveReview.create({
+      AttendId: attend.id,
+      attendVersion,
+      decision,
+      reason: note,
+      reviewedBy: actorId
+    }, { transaction })
+
+    return { ok: true, changed: true }
+  })
 }
 
 function previousMonthWindow(billingMonth) {
@@ -913,5 +1012,6 @@ module.exports = {
   createTuitionBillDraft,
   getTuitionBillDetails,
   addTuitionBillExtraFee,
-  getPreviousMonthLeaveReviews 
+  getPreviousMonthLeaveReviews,
+  recordPreviousMonthLeaveReview
 }
