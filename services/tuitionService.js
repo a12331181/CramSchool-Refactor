@@ -4,6 +4,7 @@ const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
+const STUDENT_STATUS = require('../constants/studentStatus')
 const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
 
 async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth } = {}) {
@@ -462,10 +463,63 @@ async function getStudentTuitionPreview({ studentId, billingMonth } = {}) {
   }
 }
 
+async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
+  if (
+    typeof billingMonth !== 'string' ||
+    !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth) ||
+    !parseTaipeiDateTime(`${billingMonth}-01T00:00`)
+  ) {
+    return { ok: false, code: 'INVALID_BILLING_MONTH' }
+  }
+
+  if (
+    !Number.isSafeInteger(page) || page < 1 ||
+    !Number.isSafeInteger(pageSize) || pageSize < 1 ||
+    !Number.isSafeInteger((page - 1) * pageSize)
+  ) {
+    return { ok: false, code: 'INVALID_PAGE' }
+  }
+
+  const result = await Student.findAndCountAll({
+    attributes: ['id', 'name'],
+    where: { status: STUDENT_STATUS.ACTIVE },
+    order: [['id', 'ASC']],
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    raw: true
+  })
+
+  const rows = []
+
+  for (const student of result.rows) {
+    const preview = await getStudentTuitionPreview({
+      studentId: student.id,
+      billingMonth
+    })
+
+    if (
+      !preview.ok &&
+      ['INVALID_BILLING_MONTH', 'UTC_TIMEZONE_REQUIRED'].includes(preview.code)
+    ) {
+      return preview
+    }
+
+    rows.push({
+      student,
+      baseSubtotal: preview.ok ? preview.baseSubtotal : null,
+      reviewCount: preview.ok ? preview.reviewItems.length : null,
+      code: preview.ok ? null : preview.code
+    })
+  }
+
+  return { ok: true, rows, totalCount: result.count }
+}
+
 module.exports = { 
   getTuitionEnrollmentsForMonth,
   getTuitionCalendars,
   getTuitionPreview,
   getTuitionAttendanceSummary,
-  getStudentTuitionPreview
+  getStudentTuitionPreview,
+  getStudentTuitionList
 }

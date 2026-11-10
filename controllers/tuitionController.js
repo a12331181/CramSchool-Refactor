@@ -10,6 +10,7 @@ const moment = require('moment')
 const calendarService = require('../services/calendarService')
 const tuitionService = require('../services/tuitionService')
 const { getTaipeiDate } = require('../utils/date')
+const { getPagination } = require('../utils/pagination')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const NO_LEGACY_PERIOD_MESSAGE =
   '這門課程沒有原有期數，無法使用按期建立學費表。'
@@ -167,6 +168,83 @@ const tuitionController = {
       courseRows,
       reviewRows,
       errorMessage: result.ok ? null : (messages[result.code] ?? '目前無法試算。')
+    })
+  },
+
+  getStudentTuitionList: async (req, res) => {
+    const listUrl = '/cramschool/tuition/students'
+    const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
+    const page = Number(req.query.page ?? 1)
+    const pageSize = 12
+
+    const viewData = {
+      listUrl,
+      billingMonth: typeof billingMonth === 'string' ? billingMonth : ''
+    }
+
+    const result = await tuitionService.getStudentTuitionList({
+      billingMonth,
+      page,
+      pageSize
+    })
+
+    if (!result.ok) {
+      const errors = {
+        INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
+        INVALID_PAGE: '頁碼不正確。',
+        UTC_TIMEZONE_REQUIRED: '系統時間設定異常，暫時無法試算。'
+      }
+
+      return res.render('studenttuitionlist', {
+        ...viewData,
+        errorMessage: errors[result.code] ?? '目前無法取得學生學費列表。'
+      })
+    }
+
+    const pagination = getPagination({
+      page,
+      pageSize,
+      totalCount: result.totalCount
+    })
+
+    const pageUrl = targetPage => `${listUrl}?${new URLSearchParams({
+      billingMonth,
+      page: String(targetPage)
+    })}`
+
+    if (page > pagination.totalPages) {
+      return res.redirect(pageUrl(pagination.totalPages))
+    }
+
+    const rows = result.rows.map(row => {
+      const hasSubtotal = Number.isSafeInteger(row.baseSubtotal)
+      let statusText = '已試算'
+
+      if (row.code === 'NO_COURSES_IN_BILLING_MONTH') {
+        statusText = '本月無有效選課'
+      } else if (row.reviewCount > 0) {
+        statusText = `待核對（${row.reviewCount} 項）`
+      } else if (row.code || !hasSubtotal) {
+        statusText = '待核對'
+      }
+
+      return {
+        ...row,
+        hasSubtotal,
+        statusText,
+        previewUrl: `${listUrl}/${row.student.id}/preview?${new URLSearchParams({
+          billingMonth
+        })}`
+      }
+    })
+
+    return res.render('studenttuitionlist', {
+      ...viewData,
+      rows,
+      totalCount: result.totalCount,
+      pagination,
+      prevUrl: page > 1 ? pageUrl(pagination.prev) : null,
+      nextUrl: page < pagination.totalPages ? pageUrl(pagination.next) : null
     })
   },
 
