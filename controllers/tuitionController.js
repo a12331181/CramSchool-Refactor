@@ -100,6 +100,7 @@ const tuitionController = {
       previewUrl: `${listUrl}/preview`,
       billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
       preview: result.ok ? result : null,
+      attendanceItems,
       errorMessage: result.ok ? null : (errors[result.code] ?? '目前無法試算學費。'),
       calendarId: result.calendarId,
       enrollmentId: result.enrollmentId
