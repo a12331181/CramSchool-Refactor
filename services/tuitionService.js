@@ -1,8 +1,9 @@
 const { Op } = require('sequelize')
-const { Calendar, Course, Enrollment, sequelize } = require('../models')
+const { Calendar, Course, Enrollment, Attend, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
+const ATTEND_STATUS = require('../constants/attendStatus')
 const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
 
 async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth } = {}) {
@@ -29,7 +30,7 @@ async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth
   const isKnownDate = value =>
     typeof value === 'string' &&
     parseTaipeiDateTime(`${value}T00:00`) !== null
-    
+
   if (!isKnownDate(monthStart) || !isKnownDate(nextMonthStart)) {
     return { ok: false, code: 'INVALID_BILLING_MONTH' }
   }
@@ -241,6 +242,11 @@ async function getTuitionPreview({ courseId, studentId, billingMonth } = {}) {
     return { ok: false, code: 'INVALID_AMOUNT' }
   }
 
+  const attendanceSummary = await getTuitionAttendanceSummary({
+    studentId,
+    calendars: result.calendars
+  })
+
   return {
     ...result,
     studentId,
@@ -252,12 +258,94 @@ async function getTuitionPreview({ courseId, studentId, billingMonth } = {}) {
     currency: 'TWD',
     quantity,
     unitPrice,
-    baseAmount
+    baseAmount,
+    attendanceSummary
   }
+}
+
+async function getTuitionAttendanceSummary({ studentId, calendars }) {
+  const counts = {
+    [ATTEND_STATUS.PRESENT]: 0,
+    [ATTEND_STATUS.ABSENT]: 0,
+    [ATTEND_STATUS.EXCUSED]: 0,
+    [ATTEND_STATUS.UNMARKED]: 0,
+    not_due: 0,
+    requires_review: 0
+  }
+
+  const attends = calendars.length === 0
+    ? []
+    : await Attend.findAll({
+        attributes: ['CalendarId', 'EnrollmentId', 'status', 'reason'],
+        where: {
+          StudentId: studentId,
+          CalendarId: { [Op.in]: calendars.map(calendar => calendar.id) }
+        },
+        raw: true
+      })
+
+  const attendByCalendarId = new Map()
+
+  for (const attend of attends) {
+    attendByCalendarId.set(
+      attend.CalendarId,
+      attendByCalendarId.has(attend.CalendarId) ? null : attend
+    )
+  }
+
+  const validStatuses = [
+    ATTEND_STATUS.PRESENT,
+    ATTEND_STATUS.ABSENT,
+    ATTEND_STATUS.EXCUSED,
+    ATTEND_STATUS.UNMARKED
+  ]
+  const now = Date.now()
+
+  const items = calendars.map(calendar => {
+    const attend = attendByCalendarId.get(calendar.id)
+    let status
+    let reason = ''
+
+    if (
+      attendByCalendarId.has(calendar.id) &&
+      (!attend ||
+        attend.EnrollmentId !== calendar.enrollmentId ||
+        !validStatuses.includes(attend.status))
+    ) {
+      status = 'requires_review'
+    } else if (!attend || attend.status === ATTEND_STATUS.UNMARKED) {
+      status =
+        calendar.status === CALENDAR_STATUS.SCHEDULED &&
+        calendar.endAt.getTime() > now
+          ? 'not_due'
+          : ATTEND_STATUS.UNMARKED
+    } else {
+      status = attend.status
+      reason = attend.reason ?? ''
+    }
+
+    counts[status] += 1
+
+    return {
+      calendarId: calendar.id,
+      calendarDate: calendar.calendarDate,
+      status,
+      reason
+    }
+  })
+
+  const reviewCount =
+    counts[ATTEND_STATUS.ABSENT] +
+    counts[ATTEND_STATUS.EXCUSED] +
+    counts[ATTEND_STATUS.UNMARKED] +
+    counts.requires_review
+
+  return { counts, reviewCount, items }
 }
 
 module.exports = { 
   getTuitionEnrollmentsForMonth,
   getTuitionCalendars,
-  getTuitionPreview
+  getTuitionPreview,
+  getTuitionAttendanceSummary
 }

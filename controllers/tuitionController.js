@@ -10,6 +10,7 @@ const moment = require('moment')
 const calendarService = require('../services/calendarService')
 const tuitionService = require('../services/tuitionService')
 const { getTaipeiDate } = require('../utils/date')
+const ATTEND_STATUS = require('../constants/attendStatus')
 const NO_LEGACY_PERIOD_MESSAGE =
   '這門課程沒有原有期數，無法使用按期建立學費表。'
 
@@ -76,6 +77,22 @@ const tuitionController = {
       INVALID_PRICE: '請先核對課程價格。',
       INVALID_AMOUNT: '試算金額超出可處理範圍。'
     }
+    
+     const attendanceLabels = {
+      [ATTEND_STATUS.PRESENT]: '出席',
+      [ATTEND_STATUS.ABSENT]: '缺席',
+      [ATTEND_STATUS.EXCUSED]: '請假',
+      [ATTEND_STATUS.UNMARKED]: '未點名',
+      not_due: '尚未到結束時間',
+      requires_review: '待核對'
+    }
+
+    const attendanceItems = result.ok
+      ? result.attendanceSummary.items.map(item => ({
+          ...item,
+          statusText: attendanceLabels[item.status] ?? '待核對'
+        }))
+      : []
 
     return res.render('tuitionpreview', {
       listUrl,

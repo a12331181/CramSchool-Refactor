@@ -36,22 +36,37 @@
 <p class="alert alert-warning">本月沒有符合條件的正式課堂，請先核對排課與選課期間。</p>
 {{/unless}}
 
+<h3 class="h5">點名摘要</h3>
+<p>
+  出席 {{preview.attendanceSummary.counts.present}} 堂、
+  請假 {{preview.attendanceSummary.counts.excused}} 堂、
+  缺席 {{preview.attendanceSummary.counts.absent}} 堂、
+  未點名 {{preview.attendanceSummary.counts.unmarked}} 堂、
+  尚未到結束時間 {{preview.attendanceSummary.counts.not_due}} 堂、
+  點名資料待核對 {{preview.attendanceSummary.counts.requires_review}} 堂。
+</p>
+<p>共 {{preview.attendanceSummary.reviewCount}} 堂需要人工查看。</p>
+
 <table class="table table-bordered">
   <thead>
     <tr>
       <th scope="col">課堂編號</th>
       <th scope="col">上課日期（台北）</th>
+      <th scope="col">點名</th>
+      <th scope="col">原因</th>
     </tr>
   </thead>
   <tbody>
-    {{#each preview.calendars}}
+    {{#each attendanceItems}}
     <tr>
-      <th scope="row">#{{this.id}}</th>
+      <th scope="row">#{{this.calendarId}}</th>
       <td>{{this.calendarDate}}</td>
+      <td>{{this.statusText}}</td>
+      <td>{{#if this.reason}}{{this.reason}}{{else}}—{{/if}}</td>
     </tr>
     {{else}}
     <tr>
-      <td colspan="2">沒有適用課堂。</td>
+      <td colspan="4">沒有適用課堂。</td>
     </tr>
     {{/each}}
   </tbody>
