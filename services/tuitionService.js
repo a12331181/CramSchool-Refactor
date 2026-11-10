@@ -1129,6 +1129,51 @@ async function getTuitionBillPaymentStatus(billId) {
   }
 }
 
+async function getPreviousMonthLeaveCreditCandidate({
+  studentId, attendId, billingMonth
+} = {}) {
+  const result = await findPreviousMonthLeaveBillSource({
+    studentId,
+    attendId,
+    billingMonth
+  })
+  if (!result.ok) return result
+
+  const { source } = result
+
+  if (source.billStatus !== 'issued') {
+    return { ok: false, code: 'BILL_NOT_ISSUED' }
+  }
+
+  if (source.originalUnitPrice === 0) {
+    return { ok: false, code: 'SOURCE_LESSON_HAS_NO_CHARGE' }
+  }
+
+  const payment = await getTuitionBillPaymentStatus(source.billId)
+  if (!payment.ok) return payment
+
+  if (!payment.isFullyPaid) {
+    return {
+      ok: false,
+      code: 'SOURCE_BILL_NOT_FULLY_PAID',
+      billId: source.billId,
+      paidAmount: payment.paidAmount,
+      remainingAmount: payment.remainingAmount
+    }
+  }
+
+  return {
+    ok: true,
+    candidate: {
+      studentId,
+      attendId,
+      targetBillingMonth: billingMonth,
+      source,
+      amount: source.originalUnitPrice
+    }
+  }
+}
+
 function previousMonthWindow(billingMonth) {
   if (
     typeof billingMonth !== 'string' ||
@@ -1166,5 +1211,6 @@ module.exports = {
   getPreviousMonthLeaveReviews,
   recordPreviousMonthLeaveReview,
   findPreviousMonthLeaveBillSource,
-  getTuitionBillPaymentStatus
+  getTuitionBillPaymentStatus,
+  getPreviousMonthLeaveCreditCandidate
 }
