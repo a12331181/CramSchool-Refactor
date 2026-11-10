@@ -1149,6 +1149,21 @@ async function getPreviousMonthLeaveCreditCandidate({
     return { ok: false, code: 'SOURCE_LESSON_HAS_NO_CHARGE' }
   }
 
+  const existingCredit = await TuitionBillItem.findOne({
+    attributes: ['id', 'TuitionBillId'],
+    where: { ActiveLeaveAttendId: attendId },
+    raw: true
+  })
+
+  if (existingCredit) {
+    return {
+      ok: false,
+      code: 'LEAVE_CREDIT_ALREADY_IN_USE',
+      usedByBillId: existingCredit.TuitionBillId,
+      usedByBillItemId: existingCredit.id
+    }
+  }
+
   const payment = await getTuitionBillPaymentStatus(source.billId)
   if (!payment.ok) return payment
 
