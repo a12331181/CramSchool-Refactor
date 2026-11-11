@@ -133,36 +133,50 @@ function buildTuitionBillHistory({ logs, actors, limit }) {
 }
 
 const tuitionController = {
-  getCourseTuitionList: (req, res) => {
-    Promise.all([
-      Tuition.findAll({
-        raw: true,
-        nest: true,
-        include: [Payment],
-        where: { StudentId: req.params.studentId, CourseId: req.params.courseId },
-      }),
-      Course.findOne({
-        where: { id: req.params.courseId, isActive: true }
-      }),
-      Student.findOne({
-        where: { id: req.params.studentId, status: 1 }
-      })
-    ]).then(([tuitions, course, student]) => {
-      if (course === null || student === null) {
-        console.log('Not found!')
-        res.redirect('/cramschool/payment')
-      } else {
-        let tuitionNotExist = false
-        if (tuitions.length === 0) {
-          tuitionNotExist = true
-        }
-        return res.render('tuition', {
-          tuitions: tuitions,
-          course: course.toJSON(),
-          student: student.toJSON(),
-          tuitionNotExist: tuitionNotExist
-        })
+  getCourseTuitionList: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    const studentId = Number(req.params.studentId)
+    const result = await tuitionService.getCourseStudentTuitionHistory({ courseId, studentId })
+
+    res.set('Cache-Control', 'no-store')
+
+    if (!result.ok) {
+      if (result.code === 'INVALID_INPUT') {
+        return res.status(400).send('課程與學生 ID 必須是正整數。')
       }
+      return res.status(404).send(result.code === 'COURSE_NOT_FOUND' ? '找不到課程。' : '找不到學生。')
+    }
+
+    const { billingMonth } = req.query
+    const monthQuery = typeof billingMonth === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)
+      ? `?${new URLSearchParams({ billingMonth })}`
+      : ''
+    const rows = result.rows.map(({ bill, courseAmount, paymentStatus }) => {
+      const isIssued = bill.status === 'issued'
+      const paidOnText = isIssued && (!paymentStatus?.ok || paymentStatus.paidAmount > 0)
+        ? paymentStatus?.lastPaidOn ?? '待核對'
+        : '—'
+
+      return {
+        billId: bill.id,
+        billingMonth: bill.billingMonth,
+        issuedOnText: isIssued ? (formatTaipeiDateTime(bill.issuedAt)?.slice(0, 10) ?? '待核對') : '—',
+        courseAmount,
+        hasCourseAmount: Number.isSafeInteger(courseAmount),
+        statusText: isIssued ? getTuitionBillPaymentStatusText(paymentStatus) : '未出帳',
+        paidOnText,
+        detailUrl: `/cramschool/tuition/bills/${bill.id}${isIssued ? '#payment-summary-heading' : ''}`,
+        detailText: isIssued ? '查看收款資訊' : '查看草稿'
+      }
+    })
+
+    return res.render('tuition', {
+      course: result.course,
+      student: result.student,
+      rows,
+      coursePreviewUrl: `/cramschool/tuition/courses/${courseId}/students/${studentId}/preview${monthQuery}`,
+      studentPreviewUrl: `/cramschool/tuition/students/${studentId}/preview${monthQuery}`,
+      courseMonthlyUrl: `/cramschool/tuition/courses/${courseId}/monthly${monthQuery}`
     })
   },
   
@@ -871,6 +885,7 @@ const tuitionController = {
         hasRemainingAmount,
         remainingAmount: hasRemainingAmount ? paymentStatus.remainingAmount : null,
         billUrl: bill ? `/cramschool/tuition/bills/${bill.id}` : null,
+        historyUrl: student ? `/cramschool/tuition/courses/${courseId}/students/${studentId}?${monthQuery}` : null,
         previewUrl: student ? `/cramschool/tuition/students/${studentId}/preview?${monthQuery}` : null
       }
     })
@@ -1142,58 +1157,6 @@ const tuitionController = {
 
     req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
-  },
-
-  createTuition: async (req, res) => {
-    const courseId = Number(req.params.courseId)
-    const studentId = Number(req.params.studentId)
-
-    if (
-      !Number.isSafeInteger(courseId) || courseId < 1 ||
-      !Number.isSafeInteger(studentId) || studentId < 1
-    ) {
-      return res.status(400).send('課程與學生 ID 必須是正整數')
-    }
-
-    const [calendarPeriod, course] = await Promise.all([
-      calendarService.getLatestLegacyPeriod(courseId),
-      Course.findOne({
-        where: { id: courseId, isActive: true },
-        attributes: ['id', 'price'],
-        raw: true
-      })
-    ])
-
-    if (!course) {
-      req.flash('error_messages', '找不到可建立學費表的課程')
-      return res.redirect(303, '/cramschool/payment')
-    }
-
-    const url = `/cramschool/tuition/courses/${course.id}/students/${studentId}`
-
-    if (calendarPeriod === null) {
-      req.flash('error_messages', NO_LEGACY_PERIOD_MESSAGE)
-      return res.redirect(303, url)
-    }
-
-    const currentPeriod = await Tuition.max('period', {
-      where: { CourseId: course.id, StudentId: studentId }
-    })
-
-    if ((currentPeriod ?? 0) >= calendarPeriod) {
-      req.flash('error_messages', '已有最新一期的學費表')
-      return res.redirect(303, url)
-    }
-
-    await Tuition.create({
-      amounts: course.price,
-      CourseId: course.id,
-      StudentId: studentId,
-      period: calendarPeriod
-    })
-
-    req.flash('success_messages', '已成功建立收費表')
-    return res.redirect(303, url)
   },
 
   voidIssuedTuitionBill: async (req, res) => {

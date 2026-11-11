@@ -592,6 +592,51 @@ async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
   return { ok: true, rows, totalCount: result.count }
 }
 
+function sumCourseFeeAmounts(amounts) {
+  if (amounts.length === 0 || amounts.some(amount => !Number.isSafeInteger(amount) || amount < 0)) {
+    return null
+  }
+
+  const total = amounts.reduce((sum, amount) => sum + amount, 0)
+  return Number.isSafeInteger(total) ? total : null
+}
+
+async function getCourseStudentTuitionHistory({ courseId, studentId } = {}) {
+  if (![courseId, studentId].every(id => Number.isSafeInteger(id) && id > 0)) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  const [course, student] = await Promise.all([
+    Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true }),
+    Student.findByPk(studentId, { attributes: ['id', 'name'], raw: true })
+  ])
+  if (!course) return { ok: false, code: 'COURSE_NOT_FOUND' }
+  if (!student) return { ok: false, code: 'STUDENT_NOT_FOUND' }
+
+  const savedBills = await TuitionBill.findAll({
+    attributes: ['id', 'billingMonth', 'status', 'issuedAt', 'totalAmount'],
+    where: { StudentId: studentId, status: { [Op.in]: ['draft', 'issued'] } },
+    include: [{
+      model: TuitionBillItem,
+      as: 'items',
+      attributes: ['id', 'amount'],
+      where: { CourseId: courseId, kind: 'course_fee' },
+      required: true
+    }],
+    order: [['billingMonth', 'DESC'], ['id', 'DESC']]
+  })
+
+  const bills = savedBills.map(bill => bill.toJSON())
+  const paymentStatuses = await getIssuedTuitionBillPaymentStatuses(bills)
+  const rows = bills.map(({ items, ...bill }) => ({
+    bill,
+    courseAmount: sumCourseFeeAmounts(items.map(item => item.amount)),
+    paymentStatus: paymentStatuses.get(bill.id) ?? null
+  }))
+
+  return { ok: true, course, student, rows }
+}
+
 async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageSize } = {}) {
   if (!Number.isSafeInteger(courseId) || courseId < 1) {
     return { ok: false, code: 'INVALID_COURSE_ID' }
@@ -676,9 +721,6 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
     const student = studentsById.get(studentId) ?? null
     const bill = billsByStudentId.get(studentId) ?? null
     const amounts = courseFeesByBillId.get(bill?.id) ?? []
-    const total = amounts.length > 0 && amounts.every(amount => Number.isSafeInteger(amount) && amount >= 0)
-      ? amounts.reduce((sum, amount) => sum + amount, 0)
-      : null
 
     return {
       studentId,
@@ -686,7 +728,7 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
       bill,
       enrollmentNeedsReview: enrollmentReviewIds.has(studentId),
       hasCourseFee: amounts.length > 0,
-      courseAmount: Number.isSafeInteger(total) ? total : null,
+      courseAmount: sumCourseFeeAmounts(amounts),
       paymentStatus: paymentStatuses.get(bill?.id) ?? null
     }
   })
@@ -1629,7 +1671,7 @@ async function getIssuedTuitionBillPaymentStatuses(bills, transaction) {
   const billIds = issuedBills.map(bill => bill.id)
   const paymentsByBillId = new Map(billIds.map(id => [id, []]))
   const payments = await Payment.findAll({
-    attributes: ['TuitionBillId', 'TuitionId', 'amount'],
+    attributes: ['TuitionBillId', 'TuitionId', 'amount', 'time'],
     where: { TuitionBillId: { [Op.in]: billIds }, isPaid: true },
     raw: true,
     transaction
@@ -1643,6 +1685,15 @@ async function getIssuedTuitionBillPaymentStatuses(bills, transaction) {
     bill.id,
     summarizeTuitionBillPayments(bill, paymentsByBillId.get(bill.id))
   ]))
+}
+
+function getLastPaidOn(payments) {
+  let lastPaidOn = null
+  for (const { time } of payments) {
+    if (typeof time !== 'string' || !parseTaipeiDateTime(`${time}T00:00`)) return null
+    if (!lastPaidOn || time > lastPaidOn) lastPaidOn = time
+  }
+  return lastPaidOn
 }
 
 function summarizeTuitionBillPayments(bill, payments) {
@@ -1678,7 +1729,8 @@ function summarizeTuitionBillPayments(bill, payments) {
     totalAmount,
     paidAmount,
     remainingAmount: totalAmount - paidAmount,
-    isFullyPaid: totalAmount > 0 && paidAmount === totalAmount
+    isFullyPaid: totalAmount > 0 && paidAmount === totalAmount,
+    lastPaidOn: getLastPaidOn(payments)
   }
 }
 
@@ -2286,6 +2338,7 @@ module.exports = {
   getStudentTuitionPreview,
   getStudentTuitionBillsForMonth,
   getStudentTuitionList,
+  getCourseStudentTuitionHistory,
   getCourseMonthlyTuitionList,
   createTuitionBillDraft,
   refreshTuitionBillDraft,

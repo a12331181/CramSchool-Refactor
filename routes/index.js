@@ -70,7 +70,6 @@ module.exports = (app, passport) => {
   app.post('/cramschool/tuition/bills/:billId/issue', authenticatedAdmin, tuitionController.issueTuitionBill)
   app.post('/cramschool/tuition/bills/:billId/payments', authenticatedAdmin, tuitionController.recordTuitionBillPayment)
   app.get('/cramschool/tuition/:id', authenticatedAdmin, tuitionController.getTuition)
-  app.post('/cramschool/tuition/courses/:courseId/students/:studentId', authenticatedAdmin, tuitionController.createTuition)
   app.post('/cramschool/tuition/courses/:id/bulkcreate', authenticatedAdmin, tuitionController.createTuitions)
   app.get('/cramschool/tuition/:id/edit', authenticatedAdmin, tuitionController.editTuition)
   app.post('/cramschool/tuition/:tuitionId/extrafee/:extrafeeId', authenticatedAdmin, tuitionController.addFeeList)

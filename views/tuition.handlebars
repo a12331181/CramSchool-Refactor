@@ -1,71 +1,44 @@
-<br>
+<h1 class="mt-3">歷月學費</h1>
+<h2 class="h5">{{student.name}}｜{{course.name}}</h2>
 
-<h1>{{course.name}}</h1>
-
-<h5 class="ml-2" style="color: rgb(126, 120, 113);">{{student.name}} 的歷期學費表</h5>
-
-<a href="/cramschool/tuition/courses/{{course.id}}/students/{{student.id}}/preview"
-  class="btn btn-outline-primary mb-3">
-  查看學費預覽
-</a>
-
-<a href="/cramschool/tuition/students/{{student.id}}/preview" class="btn btn-outline-primary mb-3">
-  查看學生月費合併預覽
-</a>
-
-<table class="table table-bordered">
-  <thead>
-    <tr class="table-primary">
-      <th scope="col">#</th>
-      <th scope="col">期數</th>
-      <th scope="col">開立日期</th>
-      <th scope="col">狀態</th>
-      <th scope="col">#</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{#each tuitions}}
-    {{#ifCond this.Payment.id null}}
-    <tr class="table-light">
-      <th scope="row">{{this.id}}</th>
-      <td>{{this.period}}</td>
-      <td>{{#currentTime this.createdAt}}{{/currentTime}}</td>
-      <td style="color: rgb(204, 61, 57);">尚未遞交 ×</td>
-      <td>
-        <a href="/cramschool/tuition/{{this.id}}/edit" class="btn btn-sm btn-dark my-1">確認學費表費用</a>
-        <form action="/cramschool/tuition/{{this.id}}?_method=DELETE" method="POST" style="display: inline;">
-          <button type="submit" class="btn btn-sm btn-danger">刪除</button>
-        </form>
-      </td>
-    </tr>
-    {{else}}
-    <tr class="table-light">
-      <th scope="row">{{this.id}}</th>
-      <td>{{this.period}}</td>
-      <td>{{#currentTime this.createdAt}}{{/currentTime}}</td>
-      <td style="color: rgb(57, 167, 94);">已遞交 √</td>
-      <td>
-        <a href="/cramschool/tuition/{{this.id}}" class="btn btn-sm btn-link">費用明細</a>
-      </td>
-    </tr>
-    {{/ifCond}}
-    {{/each}}
-    {{#if tuitionNotExist}}
-    <tr class="table-light">
-      <th colspan="5" style="color: rgb(192, 72, 16);text-align: center;">目前暫時無學費紀錄</th>
-    </tr>
-    {{/if}}
-  </tbody>
-</table>
-
-<div class="row">
-  <form action='/cramschool/tuition/courses/{{course.id}}/students/{{student.id}}' method="POST" style="display: inline;">
-    <button type="submit" class="btn btn-primary ml-3">建立學費表</button>
-  </form>
-  <p class="mx-2 my-2" style="color: brown;">*此功能專為此學生建立學費表</p>
+<div class="mb-3">
+  <a href="{{coursePreviewUrl}}" class="btn btn-outline-primary btn-sm">查看單課試算</a>
+  <a href="{{studentPreviewUrl}}" class="btn btn-outline-primary btn-sm">查看學生月費合併預覽</a>
 </div>
 
+<p class="text-muted">
+  本課學費取自帳單明細；付款狀態和日期以整張月帳單為準。若有多筆付款，顯示最近一次付款日期。
+</p>
 
-<br />
-<br />
-<a href="/cramschool/payment/courses/{{course.id}}">回上一頁</a>
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <thead>
+      <tr class="table-primary">
+        <th scope="col">帳單編號</th>
+        <th scope="col">期數（月份）</th>
+        <th scope="col">開立日期</th>
+        <th scope="col">本課學費</th>
+        <th scope="col">付款狀態</th>
+        <th scope="col">付款日期</th>
+        <th scope="col">收款資訊</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each rows}}
+      <tr>
+        <th scope="row">#{{billId}}</th>
+        <td class="text-nowrap">{{billingMonth}}</td>
+        <td class="text-nowrap">{{issuedOnText}}</td>
+        <td class="text-nowrap">{{#if hasCourseAmount}}NT$ {{courseAmount}}{{else}}待核對{{/if}}</td>
+        <td class="text-nowrap">{{statusText}}</td>
+        <td class="text-nowrap">{{paidOnText}}</td>
+        <td><a href="{{detailUrl}}" class="btn btn-sm btn-outline-primary text-nowrap">{{detailText}}</a></td>
+      </tr>
+      {{else}}
+      <tr><td colspan="7">這位學生目前沒有含本課程的月帳單。</td></tr>
+      {{/each}}
+    </tbody>
+  </table>
+</div>
+
+<a href="{{courseMonthlyUrl}}">回到課程月學費</a>
