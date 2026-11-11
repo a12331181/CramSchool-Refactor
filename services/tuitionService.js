@@ -1,6 +1,6 @@
 const { Op, Transaction, UniqueConstraintError, ValidationError } = require('sequelize')
 const { isDeepStrictEqual } = require('node:util')
-const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, Payment, AuditLog, sequelize } = require('../models')
+const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, Payment, AuditLog, User, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
@@ -9,6 +9,7 @@ const STUDENT_STATUS = require('../constants/studentStatus')
 const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
 const MAX_UNSIGNED_INT = 4_294_967_295
+const TUITION_BILL_HISTORY_LIMIT = 20
 const DRAFT_NON_BLOCKING_REVIEW_CODES = new Set([
   'NO_BILLABLE_CALENDARS',
   'CALENDAR_REVIEW_UNAVAILABLE',
@@ -1065,7 +1066,38 @@ async function getTuitionBillDetails(billId) {
     paymentStatus.paidAmount === 0 &&
     !(await hasTuitionBillPayment(savedBill.id))
 
-  return { ok: true, bill: savedBill, extraFees, leaveCreditData, paymentStatus, canVoidIssuedBill }
+  const history = await getTuitionBillHistoryData(savedBill.id)
+
+  return {
+    ok: true,
+    bill: savedBill,
+    extraFees,
+    leaveCreditData,
+    paymentStatus,
+    canVoidIssuedBill,
+    history
+  }
+}
+
+async function getTuitionBillHistoryData(billId) {
+  const logs = await AuditLog.findAll({
+    attributes: ['actorId', 'before', 'after', 'reason', 'occurredAt'],
+    where: { entityType: 'TuitionBill', entityId: billId },
+    order: [['id', 'DESC']],
+    limit: TUITION_BILL_HISTORY_LIMIT,
+    raw: true
+  })
+
+  const actorIds = [...new Set(logs.map(log => log.actorId))]
+  const actors = actorIds.length === 0
+    ? []
+    : await User.findAll({
+        attributes: ['id', 'name', 'userNo'],
+        where: { id: { [Op.in]: actorIds } },
+        raw: true
+      })
+
+  return { logs, actors, limit: TUITION_BILL_HISTORY_LIMIT }
 }
 
 async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersion }) {

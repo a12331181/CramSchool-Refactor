@@ -8,12 +8,72 @@ const Payment = db.Payment
 const moment = require('moment')
 const calendarService = require('../services/calendarService')
 const tuitionService = require('../services/tuitionService')
-const { getTaipeiDate } = require('../utils/date')
+const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const { getPagination } = require('../utils/pagination')
 const { randomBytes, timingSafeEqual } = require('node:crypto')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const NO_LEGACY_PERIOD_MESSAGE =
   '這門課程沒有原有期數，無法使用按期建立學費表。'
+
+function describeTuitionBillChange({ before, after }) {
+  const hasTotal = Number.isSafeInteger(after?.totalAmount)
+  const amountText = hasTotal ? `帳單金額 NT$ ${after.totalAmount}` : '—'
+
+  if (before?.status === 'draft' && after?.status === 'issued') {
+    return { actionText: '正式出帳', detailText: amountText }
+  }
+
+  if (after?.status === 'void' && ['draft', 'issued'].includes(before?.status)) {
+    const releasedCount = Array.isArray(before.activeLeaveCredits) ? before.activeLeaveCredits.length : 0
+    return {
+      actionText: before.status === 'draft' ? '捨棄草稿' : '作廢帳單',
+      detailText: releasedCount > 0 ? `保留原明細，釋放 ${releasedCount} 筆請假折抵` : '保留原明細'
+    }
+  }
+
+  if (Number.isSafeInteger(after?.paymentId) && Number.isSafeInteger(after?.receivedAmount)) {
+    return {
+      actionText: '登記收款',
+      detailText: `NT$ ${after.receivedAmount}（收款 #${after.paymentId}）`
+    }
+  }
+
+  const amountChange = hasTotal && Number.isSafeInteger(before?.totalAmount) && before.totalAmount !== after.totalAmount
+    ? `帳單金額 NT$ ${before.totalAmount} → NT$ ${after.totalAmount}`
+    : amountText
+
+  if (Number.isSafeInteger(after?.removedBillItemId)) {
+    const { kind, descriptionSnapshot } = before?.item ?? {}
+    const labels = { leave_credit: '移除請假折抵', extra_fee: '移除額外費用' }
+    return {
+      actionText: labels[kind] ?? '移除明細',
+      detailText: descriptionSnapshot ? `${descriptionSnapshot}｜${amountChange}` : amountChange
+    }
+  }
+
+  return {
+    actionText: Array.isArray(after?.courseFees) ? '更新草稿' : '帳單異動',
+    detailText: amountChange
+  }
+}
+
+function buildTuitionBillHistory({ logs, actors, limit }) {
+  const actorNames = new Map(actors.map(actor => {
+    const name = actor.name?.trim() || '未設定名稱'
+    const account = actor.userNo || `帳號 #${actor.id}`
+    return [actor.id, `${account}｜${name}`]
+  }))
+
+  return {
+    limit,
+    rows: logs.map(log => ({
+      ...describeTuitionBillChange(log),
+      occurredAtText: formatTaipeiDateTime(log.occurredAt) ?? '待核對',
+      actorText: actorNames.get(log.actorId) ?? `帳號 #${log.actorId}`,
+      reason: log.reason?.trim() || '—'
+    }))
+  }
+}
 
 const tuitionController = {
   getCourseTuitionList: (req, res) => {
@@ -464,6 +524,7 @@ const tuitionController = {
       items,
       statusText: labels[bill.status] ?? '待核對',
       paymentSummary,
+      billHistory: buildTuitionBillHistory(result.history),
       previewUrl,
       isDraft, 
       leaveCreditPanel,

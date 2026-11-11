@@ -222,4 +222,37 @@
 </section>
 {{/with}}
 
+<details class="my-4">
+  <summary class="font-weight-bold">帳單異動紀錄</summary>
+  {{#if billHistory.rows.length}}
+  <p class="text-muted mt-2">最多顯示最近 {{billHistory.limit}} 筆操作。</p>
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered">
+      <thead>
+        <tr>
+          <th scope="col">時間（台北）</th>
+          <th scope="col">操作人</th>
+          <th scope="col">操作</th>
+          <th scope="col">異動內容</th>
+          <th scope="col">原因</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each billHistory.rows}}
+        <tr>
+          <td>{{occurredAtText}}</td>
+          <td>{{actorText}}</td>
+          <td>{{actionText}}</td>
+          <td>{{detailText}}</td>
+          <td>{{reason}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="text-muted mt-2">這張帳單目前沒有操作紀錄。</p>
+  {{/if}}
+</details>
+
 <a href="{{previewUrl}}">回到同月合併預覽</a>
