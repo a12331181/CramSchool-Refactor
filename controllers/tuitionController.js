@@ -683,6 +683,73 @@ const tuitionController = {
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
   },
 
+  refreshTuitionBillDraft: async (req, res) => {
+    const body = req.body ?? {}
+    const token = body.tuitionFormToken
+    const expected = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
+
+    if (
+      !isToken(token) || !isToken(expected) ||
+      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+    }
+
+    const readInt = value =>
+      typeof value === 'string' && value !== '' && !/\D/.test(value)
+        ? Number(value)
+        : NaN
+
+    const billId = readInt(req.params.billId)
+    const billVersion = readInt(body.billVersion)
+    const invalidInput = '帳單 ID 或草稿版本不正確，請重新開啟帳單再試。'
+
+    if (
+      !Number.isSafeInteger(billId) || billId < 1 ||
+      !Number.isSafeInteger(billVersion) || billVersion < 0
+    ) {
+      return res.status(400).send(invalidInput)
+    }
+
+    const result = await tuitionService.refreshTuitionBillDraft({
+      billId,
+      billVersion,
+      actorId: req.user.id
+    })
+
+    if (result.code === 'INVALID_INPUT') {
+      return res.status(400).send(invalidInput)
+    }
+    if (result.code === 'BILL_NOT_FOUND') {
+      return res.status(404).send('找不到這張帳單。')
+    }
+
+    const errors = {
+      BILL_NOT_DRAFT: '只有草稿可以更新課程明細。',
+      BILL_VERSION_CONFLICT: '草稿已變更，請核對重新載入的帳單後再試。',
+      STUDENT_NOT_FOUND: '找不到學生資料，無法更新草稿。',
+      BILL_HAS_NO_ITEMS: '草稿沒有明細，請先核對。',
+      INVALID_BILL_AMOUNT: '草稿明細的金額需要核對。',
+      DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不符，請先核對。',
+      INVALID_BILLING_MONTH: '帳單的計費月份需要核對。',
+      UTC_TIMEZONE_REQUIRED: '系統時間設定異常，暫時無法更新。',
+      DRAFT_REQUIRES_REVIEW: '仍有課程資料待核對，請回到同月合併預覽確認。',
+      NO_COURSES_IN_BILLING_MONTH: '本月沒有可建立明細的課程，草稿未更新。',
+      COURSE_NAME_UNCONFIRMED: '課程名稱需要核對，草稿未更新。',
+      INVALID_AMOUNT: '更新後的金額超出可儲存範圍，草稿未更新。',
+      DRAFT_CREDITS_EXCEED_UPDATED_TOTAL: '更新後的金額不足以扣抵原有折抵，請先核對。草稿未更新。'
+    }
+
+    const message = result.ok
+      ? (result.changed ? '已更新課程明細，請核對金額後再出帳。' : '課程明細沒有變動，草稿維持原樣。')
+      : errors[result.code] ?? '暫時無法更新草稿。'
+
+    req.flash(result.ok ? 'success_messages' : 'error_messages', message)
+    return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
+  },
+  
   createTuition: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const studentId = Number(req.params.studentId)
