@@ -1,13 +1,20 @@
 <h1 class="mt-3">歷月學費</h1>
-<h2 class="h5">{{student.name}}｜{{course.name}}</h2>
+<h2 class="h5">{{student.name}}{{#if course}}｜{{course.name}}{{/if}}</h2>
 
 <div class="mb-3">
+  {{#if coursePreviewUrl}}
   <a href="{{coursePreviewUrl}}" class="btn btn-outline-primary btn-sm">查看單課試算</a>
+  {{/if}}
   <a href="{{studentPreviewUrl}}" class="btn btn-outline-primary btn-sm">查看學生月費合併預覽</a>
 </div>
 
 <p class="text-muted">
-  本課學費取自帳單明細；付款狀態和日期以整張月帳單為準。若有多筆付款，顯示最近一次付款日期。
+  {{#if course}}
+  本課學費取自帳單明細；付款狀態和日期以整張月帳單為準。
+  {{else}}
+  帳單總額包含該學生當月所有課程、額外費用和折抵。
+  {{/if}}
+  若有多筆付款，顯示最近一次付款日期。
 </p>
 
 <div class="table-responsive">
@@ -17,7 +24,7 @@
         <th scope="col">帳單編號</th>
         <th scope="col">期數（月份）</th>
         <th scope="col">開立日期</th>
-        <th scope="col">本課學費</th>
+        <th scope="col">{{#if course}}本課學費{{else}}帳單總額{{/if}}</th>
         <th scope="col">付款狀態</th>
         <th scope="col">付款日期</th>
         <th scope="col">收款資訊</th>
@@ -29,16 +36,16 @@
         <th scope="row">#{{billId}}</th>
         <td class="text-nowrap">{{billingMonth}}</td>
         <td class="text-nowrap">{{issuedOnText}}</td>
-        <td class="text-nowrap">{{#if hasCourseAmount}}NT$ {{courseAmount}}{{else}}待核對{{/if}}</td>
+        <td class="text-nowrap">{{#if hasAmount}}NT$ {{amount}}{{else}}待核對{{/if}}</td>
         <td class="text-nowrap">{{statusText}}</td>
         <td class="text-nowrap">{{paidOnText}}</td>
         <td><a href="{{detailUrl}}" class="btn btn-sm btn-outline-primary text-nowrap">{{detailText}}</a></td>
       </tr>
       {{else}}
-      <tr><td colspan="7">這位學生目前沒有含本課程的月帳單。</td></tr>
+      <tr><td colspan="7">{{#if course}}這位學生目前沒有含本課程的月帳單。{{else}}這位學生目前沒有月帳單。{{/if}}</td></tr>
       {{/each}}
     </tbody>
   </table>
 </div>
 
-<a href="{{courseMonthlyUrl}}">回到課程月學費</a>
+<a href="{{backUrl}}">{{#if course}}回到課程月學費{{else}}回到學生學費列表{{/if}}</a>

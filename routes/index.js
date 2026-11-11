@@ -54,11 +54,12 @@ module.exports = (app, passport) => {
   app.get('/cramschool/students/:studentId/courses/:courseId/attend', authenticated, studentController.getStudentAttend)
   //學費表相關路由
   app.get('/cramschool/tuition/courses/:courseId/monthly', authenticatedAdmin, tuitionController.getCourseMonthlyTuitionList)
-  app.get('/cramschool/tuition/courses/:courseId/students/:studentId', authenticatedAdmin, tuitionController.getCourseTuitionList)
+  app.get('/cramschool/tuition/courses/:courseId/students/:studentId', authenticatedAdmin, tuitionController.getStudentTuitionHistory)
   app.get('/cramschool/tuition/courses/:courseId/students/:studentId/preview', authenticatedAdmin, tuitionController.getTuitionPreview)
   app.get('/cramschool/tuition/students/:studentId/preview', authenticatedAdmin, tuitionController.getStudentTuitionPreview)
   app.post('/cramschool/tuition/students/:studentId/leave-reviews/:attendId', authenticatedAdmin, tuitionController.postLeaveReview)
   app.get('/cramschool/tuition/students', authenticatedAdmin, tuitionController.getStudentTuitionList)
+  app.get('/cramschool/tuition/students/:studentId/history', authenticatedAdmin, tuitionController.getStudentTuitionHistory)
   app.post('/cramschool/tuition/students/:studentId/bills/draft', authenticatedAdmin, tuitionController.createTuitionBillDraft)
   app.get('/cramschool/tuition/bills/:billId', authenticatedAdmin, tuitionController.getTuitionBillDetails)
   app.post('/cramschool/tuition/bills/:billId/void', authenticatedAdmin, tuitionController.voidIssuedTuitionBill)
@@ -69,8 +70,6 @@ module.exports = (app, passport) => {
   app.post('/cramschool/tuition/bills/:billId/discard', authenticatedAdmin, tuitionController.discardTuitionBillDraft)
   app.post('/cramschool/tuition/bills/:billId/issue', authenticatedAdmin, tuitionController.issueTuitionBill)
   app.post('/cramschool/tuition/bills/:billId/payments', authenticatedAdmin, tuitionController.recordTuitionBillPayment)
-  app.get('/cramschool/tuition/:id', authenticatedAdmin, tuitionController.getTuition)
-  app.post('/cramschool/tuition/courses/:id/bulkcreate', authenticatedAdmin, tuitionController.createTuitions)
   app.get('/cramschool/tuition/:id/edit', authenticatedAdmin, tuitionController.editTuition)
   app.post('/cramschool/tuition/:tuitionId/extrafee/:extrafeeId', authenticatedAdmin, tuitionController.addFeeList)
   app.delete('/cramschool/tuition/:tuitionId/extrafee/:extrafeeId', authenticatedAdmin, tuitionController.removeFeeList)
@@ -78,8 +77,6 @@ module.exports = (app, passport) => {
   app.delete('/cramschool/tuition/:id', authenticatedAdmin, tuitionController.deleteTuition)
   //繳費紀錄相關路由
   app.get('/cramschool/payment', authenticatedAdmin, paymentController.getPaymentIndexPage)
-  app.get('/cramschool/payment/courses/:id', authenticatedAdmin, paymentController.getEnrolledStudents)
-  app.get('/cramschool/payment/courses/:courseId/students/:studentId', authenticatedAdmin, paymentController.getPayments)
   app.put('/cramschool/payment/:id/paid', authenticatedAdmin, paymentController.paymentPaid)
   app.delete('/cramschool/payment/:id', authenticatedAdmin, paymentController.deletePayment)
   //後台相關路由

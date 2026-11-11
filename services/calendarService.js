@@ -625,20 +625,6 @@ async function openLegacyCalendar(courseId, calendarId) {
   return setLegacyCalendarActive(courseId, calendarId, true)
 }
 
-async function getLatestLegacyPeriod(courseId) {
-  const period = await Calendar.max('period', {
-    where: {
-      CourseId: courseId,
-      status: null,
-      startAt: null,
-      endAt: null,
-      TeacherId: null
-    }
-  })
-
-  return Number.isSafeInteger(period) && period > 0 ? period : null
-}
-
 function prepareCalendarData({ startAt, endAt, teacherId, content = '' }) {
   const parsedStartAt = parseTaipeiDateTime(startAt)
   const parsedEndAt = parseTaipeiDateTime(endAt)
@@ -686,6 +672,5 @@ module.exports = {
   getLegacyCalendarEditData,
   updateLegacyCalendar,
   closeLegacyCalendar,
-  openLegacyCalendar,
-  getLatestLegacyPeriod
+  openLegacyCalendar
 }

@@ -601,28 +601,32 @@ function sumCourseFeeAmounts(amounts) {
   return Number.isSafeInteger(total) ? total : null
 }
 
-async function getCourseStudentTuitionHistory({ courseId, studentId } = {}) {
-  if (![courseId, studentId].every(id => Number.isSafeInteger(id) && id > 0)) {
+async function getStudentTuitionHistory({ courseId, studentId } = {}) {
+  const byCourse = courseId !== undefined
+  if (
+    !Number.isSafeInteger(studentId) || studentId < 1 ||
+    (byCourse && (!Number.isSafeInteger(courseId) || courseId < 1))
+  ) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
 
   const [course, student] = await Promise.all([
-    Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true }),
+    byCourse ? Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true }) : null,
     Student.findByPk(studentId, { attributes: ['id', 'name'], raw: true })
   ])
-  if (!course) return { ok: false, code: 'COURSE_NOT_FOUND' }
+  if (byCourse && !course) return { ok: false, code: 'COURSE_NOT_FOUND' }
   if (!student) return { ok: false, code: 'STUDENT_NOT_FOUND' }
 
   const savedBills = await TuitionBill.findAll({
     attributes: ['id', 'billingMonth', 'status', 'issuedAt', 'totalAmount'],
     where: { StudentId: studentId, status: { [Op.in]: ['draft', 'issued'] } },
-    include: [{
+    include: byCourse ? [{
       model: TuitionBillItem,
       as: 'items',
       attributes: ['id', 'amount'],
       where: { CourseId: courseId, kind: 'course_fee' },
       required: true
-    }],
+    }] : [],
     order: [['billingMonth', 'DESC'], ['id', 'DESC']]
   })
 
@@ -630,7 +634,7 @@ async function getCourseStudentTuitionHistory({ courseId, studentId } = {}) {
   const paymentStatuses = await getIssuedTuitionBillPaymentStatuses(bills)
   const rows = bills.map(({ items, ...bill }) => ({
     bill,
-    courseAmount: sumCourseFeeAmounts(items.map(item => item.amount)),
+    amount: byCourse ? sumCourseFeeAmounts(items.map(item => item.amount)) : bill.totalAmount,
     paymentStatus: paymentStatuses.get(bill.id) ?? null
   }))
 
@@ -2338,7 +2342,7 @@ module.exports = {
   getStudentTuitionPreview,
   getStudentTuitionBillsForMonth,
   getStudentTuitionList,
-  getCourseStudentTuitionHistory,
+  getStudentTuitionHistory,
   getCourseMonthlyTuitionList,
   createTuitionBillDraft,
   refreshTuitionBillDraft,
