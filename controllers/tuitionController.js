@@ -22,6 +22,52 @@ function getTuitionBillPaymentStatusText(paymentStatus) {
   return paymentStatus.paidAmount > 0 ? '部分收款' : '未收款'
 }
 
+function buildTuitionPaymentNotice(bill, paymentStatus) {
+  if (
+    bill.status !== 'issued' || !paymentStatus?.ok ||
+    !(paymentStatus.remainingAmount > 0) ||
+    paymentStatus.totalAmount !== bill.totalAmount ||
+    bill.items.length === 0
+  ) return null
+
+  const singleLine = text => typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : ''
+  const studentName = singleLine(bill.studentNameSnapshot)
+  if (!studentName || !/^\d{4}-(0[1-9]|1[0-2])$/.test(bill.billingMonth)) return null
+
+  const numbers = new Intl.NumberFormat('zh-TW')
+  const money = amount => `${amount < 0 ? '-' : ''}NT$ ${numbers.format(Math.abs(amount))}`
+  const itemLines = []
+  let itemTotal = 0
+
+  for (const { descriptionSnapshot, quantity, unitPrice, amount } of bill.items) {
+    const description = singleLine(descriptionSnapshot)
+    if (!description || !Number.isSafeInteger(amount)) return null
+
+    const calculation =
+      Number.isSafeInteger(quantity) && quantity > 1 &&
+      Number.isSafeInteger(unitPrice) && unitPrice >= 0 && quantity * unitPrice === amount
+        ? `（${quantity} × ${money(unitPrice)}）`
+        : ''
+    itemLines.push(`・${description}${calculation}：${money(amount)}`)
+    itemTotal += amount
+  }
+
+  if (itemTotal !== bill.totalAmount) return null
+
+  const { totalAmount, paidAmount, remainingAmount } = paymentStatus
+  return [
+    `家長您好，以下是 ${studentName} ${bill.billingMonth} 的學費明細：`,
+    '',
+    ...itemLines,
+    '',
+    `本期應收：${money(totalAmount)}`,
+    ...(paidAmount > 0 ? [`已收金額：${money(paidAmount)}`] : []),
+    `尚需繳費：${money(remainingAmount)}`,
+    '',
+    '再麻煩您確認，謝謝！'
+  ].join('\n')
+}
+
 function describeTuitionBillChange({ before, after }) {
   const hasTotal = Number.isSafeInteger(after?.totalAmount)
   const amountText = hasTotal ? `帳單金額 NT$ ${after.totalAmount}` : '—'
@@ -543,6 +589,7 @@ const tuitionController = {
       items,
       statusText: labels[bill.status] ?? '待核對',
       paymentSummary,
+      paymentNotice: buildTuitionPaymentNotice(bill, result.paymentStatus),
       billHistory: buildTuitionBillHistory(result.history),
       previewUrl,
       isDraft, 

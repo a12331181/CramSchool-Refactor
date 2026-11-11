@@ -83,6 +83,38 @@
 <p><strong>帳單金額：NT$ {{bill.totalAmount}}</strong></p>
 {{/with}}
 
+{{#if paymentNotice}}
+<section class="my-4" aria-labelledby="payment-notice-heading">
+  <h2 id="payment-notice-heading" class="h5">家長繳費通知</h2>
+  <p id="payment-notice-help" class="text-muted">核對後可複製下方文字，貼到 LINE 或信件。</p>
+  <textarea id="payment-notice-text" class="form-control mb-2" rows="9" readonly
+    aria-labelledby="payment-notice-heading" aria-describedby="payment-notice-help">{{paymentNotice}}</textarea>
+  <button type="button" id="copy-payment-notice" class="btn btn-sm btn-outline-primary">複製繳費通知</button>
+  <span id="copy-payment-notice-status" class="ml-2" role="status"></span>
+</section>
+<script>
+  (() => {
+    const notice = document.getElementById('payment-notice-text')
+    const status = document.getElementById('copy-payment-notice-status')
+    document.getElementById('copy-payment-notice').addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(notice.value)
+          status.textContent = '已複製，可以貼到 LINE 或信件。'
+          return
+        }
+      } catch {
+        // 剪貼簿不可用時，選取文字供手動複製。
+      }
+
+      notice.focus()
+      notice.select()
+      status.textContent = '已選取文字，請手動複製。'
+    })
+  })()
+</script>
+{{/if}}
+
 {{#if isDraft}}
 <h2 class="h5">加入額外費用</h2>
 
