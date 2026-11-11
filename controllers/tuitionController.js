@@ -15,6 +15,13 @@ const ATTEND_STATUS = require('../constants/attendStatus')
 const NO_LEGACY_PERIOD_MESSAGE =
   '這門課程沒有原有期數，無法使用按期建立學費表。'
 
+function getTuitionBillPaymentStatusText(paymentStatus) {
+  if (!paymentStatus?.ok) return '收款待核對'
+  if (paymentStatus.totalAmount === 0) return '無須收款'
+  if (paymentStatus.isFullyPaid) return '已結清'
+  return paymentStatus.paidAmount > 0 ? '部分收款' : '未收款'
+}
+
 function describeTuitionBillChange({ before, after }) {
   const hasTotal = Number.isSafeInteger(after?.totalAmount)
   const amountText = hasTotal ? `帳單金額 NT$ ${after.totalAmount}` : '—'
@@ -495,16 +502,8 @@ const tuitionController = {
       const paymentStatus = result.paymentStatus
 
       if (paymentStatus?.ok === true) {
-        const { totalAmount, paidAmount, remainingAmount, isFullyPaid } = paymentStatus
-        let statusText = '未收款'
-
-        if (totalAmount === 0) {
-          statusText = '無須收款'
-        } else if (isFullyPaid) {
-          statusText = '已結清'
-        } else if (paidAmount > 0) {
-          statusText = '部分收款'
-        }
+        const { totalAmount, paidAmount, remainingAmount } = paymentStatus
+        const statusText = getTuitionBillPaymentStatusText(paymentStatus)
 
         paymentSummary = { totalAmount, paidAmount, remainingAmount, statusText }
         if (remainingAmount > 0 && remainingAmount <= 2_147_483_647) {
@@ -684,6 +683,7 @@ const tuitionController = {
       billingMonth: typeof billingMonth === 'string' ? billingMonth : ''
     }
 
+    res.set('Cache-Control', 'no-store')
     const result = await tuitionService.getStudentTuitionList({
       billingMonth,
       page,
@@ -693,8 +693,7 @@ const tuitionController = {
     if (!result.ok) {
       const errors = {
         INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
-        INVALID_PAGE: '頁碼不正確。',
-        UTC_TIMEZONE_REQUIRED: '系統時間設定異常，暫時無法試算。'
+        INVALID_PAGE: '頁碼不正確。'
       }
 
       return res.render('studenttuitionlist', {
@@ -719,21 +718,34 @@ const tuitionController = {
     }
 
     const rows = result.rows.map(row => {
-      const hasSubtotal = Number.isSafeInteger(row.baseSubtotal)
-      let statusText = '已試算'
+      const { bill, paymentStatus } = row
+      const isIssued = bill?.status === 'issued'
+      const amount = bill ? bill.totalAmount : row.baseSubtotal
+      const hasAmount = Number.isSafeInteger(amount) && amount >= 0
+      const hasRemainingAmount = isIssued && paymentStatus?.ok === true
+      let statusText = '未開單'
 
-      if (row.code === 'NO_COURSES_IN_BILLING_MONTH') {
+      if (isIssued) {
+        statusText = getTuitionBillPaymentStatusText(paymentStatus)
+      } else if (bill) {
+        statusText = hasAmount ? '草稿' : '草稿待核對'
+      } else if (row.code === 'NO_COURSES_IN_BILLING_MONTH') {
         statusText = '本月無有效選課'
       } else if (row.reviewCount > 0) {
-        statusText = `待核對（${row.reviewCount} 項）`
-      } else if (row.code || !hasSubtotal) {
-        statusText = '待核對'
+        statusText = `試算待核對（${row.reviewCount} 項）`
+      } else if (row.code || !hasAmount) {
+        statusText = '試算待核對'
       }
 
       return {
-        ...row,
-        hasSubtotal,
+        student: row.student,
+        amount,
+        hasAmount,
+        amountSourceText: isIssued ? '正式帳單' : (bill ? '草稿金額' : '基本學費試算'),
         statusText,
+        hasRemainingAmount,
+        remainingAmount: hasRemainingAmount ? paymentStatus.remainingAmount : null,
+        billUrl: bill ? `/cramschool/tuition/bills/${bill.id}` : null,
         previewUrl: `${listUrl}/${row.student.id}/preview?${new URLSearchParams({
           billingMonth
         })}`

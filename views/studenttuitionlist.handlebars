@@ -1,5 +1,5 @@
 <h1 class="mt-3">學生學費列表</h1>
-<p class="text-muted">在學學生的基本學費試算，供出帳前核對。</p>
+<p class="text-muted">在學學生的本月帳單與收款狀況。尚未開單時顯示基本學費試算。</p>
 
 <a href="/cramschool/payment" class="btn btn-outline-secondary mb-3">
   改按課程查看
@@ -9,7 +9,7 @@
   <label for="billing-month">計費月份</label>
   <input id="billing-month" type="month" name="billingMonth"
     value="{{billingMonth}}" required>
-  <button type="submit" class="btn btn-sm btn-primary">查看試算</button>
+  <button type="submit" class="btn btn-sm btn-primary">查看月學費</button>
 </form>
 
 {{#if errorMessage}}
@@ -21,8 +21,9 @@
     <thead>
       <tr>
         <th scope="col">學生</th>
-        <th scope="col">本月基本學費小計</th>
-        <th scope="col">試算狀況</th>
+        <th scope="col">本月金額</th>
+        <th scope="col">帳單／收款狀態</th>
+        <th scope="col">未收金額</th>
         <th scope="col">明細</th>
       </tr>
     </thead>
@@ -30,12 +31,21 @@
       {{#each rows}}
         <tr>
           <th scope="row">{{this.student.name}}</th>
-          <td>{{#if this.hasSubtotal}}NT$ {{this.baseSubtotal}}{{else}}—{{/if}}</td>
+          <td>
+            {{#if this.hasAmount}}
+            NT$ {{this.amount}}
+            <small class="d-block text-muted">{{this.amountSourceText}}</small>
+            {{else}}—{{/if}}
+          </td>
           <td>{{this.statusText}}</td>
-          <td><a href="{{this.previewUrl}}">合併預覽</a></td>
+          <td>{{#if this.hasRemainingAmount}}NT$ {{this.remainingAmount}}{{else}}—{{/if}}</td>
+          <td>
+            {{#if this.billUrl}}<a class="mr-2" href="{{this.billUrl}}">查看帳單</a>{{/if}}
+            <a href="{{this.previewUrl}}">合併預覽</a>
+          </td>
         </tr>
       {{else}}
-        <tr><td colspan="4">目前沒有在學學生。</td></tr>
+        <tr><td colspan="5">目前沒有在學學生。</td></tr>
       {{/each}}
     </tbody>
   </table>

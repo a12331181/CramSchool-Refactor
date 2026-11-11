@@ -541,20 +541,31 @@ async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
     raw: true
   })
 
+  const studentIds = result.rows.map(student => student.id)
+  const bills = studentIds.length === 0 ? [] : await TuitionBill.findAll({
+    attributes: ['id', 'StudentId', 'status', 'totalAmount'],
+    where: {
+      StudentId: { [Op.in]: studentIds },
+      billingMonth,
+      status: { [Op.in]: ['draft', 'issued'] }
+    },
+    raw: true
+  })
+  const billsByStudentId = new Map(bills.map(bill => [bill.StudentId, bill]))
+  const paymentStatuses = await getIssuedTuitionBillPaymentStatuses(bills)
   const rows = []
 
   for (const student of result.rows) {
+    const bill = billsByStudentId.get(student.id)
+    if (bill) {
+      rows.push({ student, bill, paymentStatus: paymentStatuses.get(bill.id) ?? null })
+      continue
+    }
+
     const preview = await getStudentTuitionPreview({
       studentId: student.id,
       billingMonth
     })
-
-    if (
-      !preview.ok &&
-      ['INVALID_BILLING_MONTH', 'UTC_TIMEZONE_REQUIRED'].includes(preview.code)
-    ) {
-      return preview
-    }
 
     rows.push({
       student,
@@ -1487,17 +1498,38 @@ async function getTuitionBillPaymentStatus(billId, transaction) {
   if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
   if (bill.status !== 'issued') return { ok: false, code: 'BILL_NOT_ISSUED' }
 
+  const statuses = await getIssuedTuitionBillPaymentStatuses([bill], transaction)
+  return statuses.get(bill.id)
+}
+
+async function getIssuedTuitionBillPaymentStatuses(bills, transaction) {
+  const issuedBills = bills.filter(bill => bill.status === 'issued')
+  if (issuedBills.length === 0) return new Map()
+
+  const billIds = issuedBills.map(bill => bill.id)
+  const paymentsByBillId = new Map(billIds.map(id => [id, []]))
+  const payments = await Payment.findAll({
+    attributes: ['TuitionBillId', 'TuitionId', 'amount'],
+    where: { TuitionBillId: { [Op.in]: billIds }, isPaid: true },
+    raw: true,
+    transaction
+  })
+
+  for (const payment of payments) {
+    paymentsByBillId.get(payment.TuitionBillId).push(payment)
+  }
+
+  return new Map(issuedBills.map(bill => [
+    bill.id,
+    summarizeTuitionBillPayments(bill, paymentsByBillId.get(bill.id))
+  ]))
+}
+
+function summarizeTuitionBillPayments(bill, payments) {
   const { totalAmount } = bill
   if (!Number.isSafeInteger(totalAmount) || totalAmount < 0) {
     return { ok: false, code: 'INVALID_BILL_AMOUNT' }
   }
-
-  const payments = await Payment.findAll({
-    attributes: ['TuitionId', 'amount'],
-    where: { TuitionBillId: bill.id, isPaid: true },
-    raw: true,
-    transaction
-  })
 
   let paidAmount = 0
 
