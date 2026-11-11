@@ -751,7 +751,7 @@ const tuitionController = {
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
   },
 
-    removeTuitionBillDraftAdjustment: async (req, res) => {
+  removeTuitionBillDraftAdjustment: async (req, res) => {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
@@ -811,6 +811,66 @@ const tuitionController = {
       result.ok ? 'success_messages' : 'error_messages',
       result.ok ? '已移除這筆明細，請核對更新後的金額。' : errors[result.code] ?? '暫時無法移除明細。'
     )
+    return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
+  },
+
+  discardTuitionBillDraft: async (req, res) => {
+    const body = req.body ?? {}
+    const token = body.tuitionFormToken
+    const expected = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
+
+    if (
+      !isToken(token) || !isToken(expected) ||
+      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+    }
+
+    const readInt = value =>
+      typeof value === 'string' && value !== '' && !/\D/.test(value)
+        ? Number(value)
+        : NaN
+
+    const billId = readInt(req.params.billId)
+    const billVersion = readInt(body.billVersion)
+    const invalidInput = '帳單 ID 或草稿版本不正確，請重新開啟帳單再試。'
+
+    if (
+      !Number.isSafeInteger(billId) || billId < 1 ||
+      !Number.isSafeInteger(billVersion) || billVersion < 0
+    ) {
+      return res.status(400).send(invalidInput)
+    }
+
+    const result = await tuitionService.discardTuitionBillDraft({
+      billId,
+      billVersion,
+      actorId: req.user.id,
+      reason: body.reason
+    })
+
+    if (result.code === 'INVALID_INPUT') {
+      return res.status(400).send(invalidInput)
+    }
+    if (result.code === 'BILL_NOT_FOUND') {
+      return res.status(404).send('找不到這張帳單。')
+    }
+
+    const errors = {
+      INVALID_DISCARD_REASON: '請填寫捨棄草稿的原因，最多 255 字元。',
+      BILL_NOT_DRAFT: '只有尚未出帳的草稿可以捨棄。',
+      BILL_VERSION_CONFLICT: '草稿已變更，請核對重新載入的帳單後再試。',
+      DRAFT_HAS_PAYMENT: '這張草稿已有收款紀錄，請先核對。草稿未捨棄。',
+      LEAVE_CREDIT_REQUIRES_REVIEW: '有請假折抵來源需要核對，草稿未捨棄。'
+    }
+
+    const message = result.ok
+      ? (result.changed ? '已捨棄草稿，原帳單紀錄已保留。' : '這張草稿已經捨棄，沒有重複處理。')
+      : errors[result.code] ?? '暫時無法捨棄草稿。'
+
+    req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
   },
 
