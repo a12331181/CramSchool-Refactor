@@ -903,8 +903,27 @@ async function removeTuitionBillDraftAdjustment({ billId, billItemId, billVersio
   })
 }
 
-async function discardTuitionBillDraft({ billId, billVersion, actorId, reason } = {}) {
+async function discardTuitionBillDraft(input) {
+  return voidUnpaidTuitionBill(input, 'draft')
+}
+
+async function voidIssuedTuitionBill(input) {
+  return voidUnpaidTuitionBill(input, 'issued')
+}
+
+async function hasTuitionBillPayment(billId, transaction) {
+  const payment = await Payment.findOne({
+    attributes: ['id'],
+    where: { TuitionBillId: billId },
+    raw: true,
+    transaction
+  })
+  return payment != null
+}
+
+async function voidUnpaidTuitionBill({ billId, billVersion, actorId, reason } = {}, fromStatus) {
   const isId = n => Number.isSafeInteger(n) && n > 0
+  const fromDraft = fromStatus === 'draft'
   if (
     ![billId, actorId].every(isId) ||
     !Number.isSafeInteger(billVersion) || billVersion < 0 ||
@@ -915,7 +934,7 @@ async function discardTuitionBillDraft({ billId, billVersion, actorId, reason } 
 
   const note = typeof reason === 'string' ? reason.trim() : ''
   if (!note || note.length > 255) {
-    return { ok: false, code: 'INVALID_DISCARD_REASON' }
+    return { ok: false, code: fromDraft ? 'INVALID_DISCARD_REASON' : 'INVALID_VOID_REASON' }
   }
 
   return sequelize.transaction(async transaction => {
@@ -925,23 +944,20 @@ async function discardTuitionBillDraft({ billId, billVersion, actorId, reason } 
     })
 
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-    if (bill.status === 'void' && bill.issuedAt == null) {
+    const matchesIssueState = fromDraft ? bill.issuedAt == null : bill.issuedAt != null
+    if (bill.status === 'void' && matchesIssueState) {
       return { ok: true, changed: false, billId: bill.id }
     }
-    if (bill.status !== 'draft' || bill.issuedAt != null) {
-      return { ok: false, code: 'BILL_NOT_DRAFT' }
+    if (bill.status !== fromStatus || !matchesIssueState) {
+      return { ok: false, code: fromDraft ? 'BILL_NOT_DRAFT' : 'BILL_NOT_ISSUED' }
     }
     if (bill.version !== billVersion) {
       return { ok: false, code: 'BILL_VERSION_CONFLICT' }
     }
 
-    const payment = await Payment.findOne({
-      attributes: ['id'],
-      where: { TuitionBillId: bill.id },
-      raw: true,
-      transaction
-    })
-    if (payment) return { ok: false, code: 'DRAFT_HAS_PAYMENT' }
+    if (await hasTuitionBillPayment(bill.id, transaction)) {
+      return { ok: false, code: fromDraft ? 'DRAFT_HAS_PAYMENT' : 'BILL_HAS_PAYMENT' }
+    }
 
     const activeCreditWhere = {
       TuitionBillId: bill.id,
@@ -1011,7 +1027,7 @@ async function getTuitionBillDetails(billId) {
   const bill = await TuitionBill.findByPk(billId, {
     attributes: [
       'id', 'StudentId', 'billingMonth', 'studentNameSnapshot',
-      'status', 'totalAmount', 'version'
+      'status', 'totalAmount', 'version', 'issuedAt'
     ],
     include: [{
       model: TuitionBillItem,
@@ -1043,7 +1059,13 @@ async function getTuitionBillDetails(billId) {
     ? await getTuitionBillPaymentStatus(savedBill.id)
     : null
 
-  return { ok: true, bill: savedBill, extraFees, leaveCreditData, paymentStatus }
+  const canVoidIssuedBill =
+    savedBill.issuedAt != null &&
+    paymentStatus?.ok === true &&
+    paymentStatus.paidAmount === 0 &&
+    !(await hasTuitionBillPayment(savedBill.id))
+
+  return { ok: true, bill: savedBill, extraFees, leaveCreditData, paymentStatus, canVoidIssuedBill }
 }
 
 async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersion }) {
@@ -2004,6 +2026,7 @@ module.exports = {
   refreshTuitionBillDraft,
   removeTuitionBillDraftAdjustment,
   discardTuitionBillDraft,
+  voidIssuedTuitionBill,
   getTuitionBillDetails,
   addTuitionBillExtraFee,
   getPreviousMonthLeaveReviews,

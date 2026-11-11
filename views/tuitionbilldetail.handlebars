@@ -205,4 +205,21 @@
 </section>
 {{/if}}
 
+{{#with voidForm}}
+<section class="my-4 border-top pt-3" aria-labelledby="void-issued-bill-heading">
+  <h2 id="void-issued-bill-heading" class="h5">作廢帳單</h2>
+  <p class="text-muted">作廢會保留原帳單、明細及操作紀錄。你可以回到同月合併預覽重新開單。</p>
+
+  <form method="POST" action="{{action}}" onsubmit="return confirm('確定作廢這張已出帳的帳單嗎？')">
+    <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
+    <input type="hidden" name="billVersion" value="{{billVersion}}">
+
+    <label for="void-issued-bill-reason">作廢原因</label>
+    <textarea id="void-issued-bill-reason" name="reason" class="form-control mb-2" rows="2" maxlength="255"
+      required></textarea>
+    <button type="submit" class="btn btn-outline-danger">作廢帳單</button>
+  </form>
+</section>
+{{/with}}
+
 <a href="{{previewUrl}}">回到同月合併預覽</a>

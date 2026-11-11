@@ -333,12 +333,12 @@ const tuitionController = {
         .send(invalidId ? '帳單 ID 不正確。' : '找不到這張帳單。')
     }
 
-    const { bill, extraFees, leaveCreditData } = result
+    const { bill, extraFees, leaveCreditData, canVoidIssuedBill } = result
     const isDraft = bill.status === 'draft'
     const hasExtraFeeForm = isDraft && extraFees.length > 0
     const hasLeaveCreditForm = isDraft && leaveCreditData?.ok === true && leaveCreditData.options.length > 0
 
-    if (isDraft) {
+    if (isDraft || canVoidIssuedBill) {
       req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
     }
 
@@ -347,6 +347,14 @@ const tuitionController = {
     const issueForm = isDraft
       ? {
           action: `/cramschool/tuition/bills/${bill.id}/issue`,
+          billVersion: bill.version,
+          formToken: req.session.tuitionFormToken
+        }
+      : null
+
+    const voidForm = canVoidIssuedBill
+      ? {
+          action: `/cramschool/tuition/bills/${bill.id}/void`,
           billVersion: bill.version,
           formToken: req.session.tuitionFormToken
         }
@@ -460,6 +468,7 @@ const tuitionController = {
       isDraft, 
       leaveCreditPanel,
       issueForm,
+      voidForm,
       extraFees, 
       extraFeeFormToken
     })
@@ -967,6 +976,62 @@ const tuitionController = {
 
     req.flash('success_messages', '已成功建立收費表')
     return res.redirect(303, url)
+  },
+
+  voidIssuedTuitionBill: async (req, res) => {
+    const body = req.body ?? {}
+    const token = body.tuitionFormToken
+    const expected = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
+
+    if (
+      !isToken(token) || !isToken(expected) ||
+      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+    }
+
+    const readInt = value =>
+      typeof value === 'string' && value !== '' && !/\D/.test(value)
+        ? Number(value)
+        : NaN
+
+    const billId = readInt(req.params.billId)
+    const billVersion = readInt(body.billVersion)
+    const invalidInput = '帳單 ID 或版本不正確，請重新開啟帳單再試。'
+
+    if (
+      !Number.isSafeInteger(billId) || billId < 1 ||
+      !Number.isSafeInteger(billVersion) || billVersion < 0
+    ) {
+      return res.status(400).send(invalidInput)
+    }
+
+    const result = await tuitionService.voidIssuedTuitionBill({
+      billId,
+      billVersion,
+      actorId: req.user.id,
+      reason: body.reason
+    })
+
+    if (result.code === 'INVALID_INPUT') return res.status(400).send(invalidInput)
+    if (result.code === 'BILL_NOT_FOUND') return res.status(404).send('找不到這張帳單。')
+
+    const errors = {
+      INVALID_VOID_REASON: '請填寫作廢原因，最多 255 字元。',
+      BILL_NOT_ISSUED: '這張帳單目前無法作廢，請核對帳單狀態。',
+      BILL_VERSION_CONFLICT: '帳單已變更，請核對重新載入的明細後再試。',
+      BILL_HAS_PAYMENT: '這張帳單已有收款紀錄，帳單未作廢。',
+      LEAVE_CREDIT_REQUIRES_REVIEW: '有請假折抵來源需要核對，帳單未作廢。'
+    }
+
+    const message = result.ok
+      ? (result.changed ? '已作廢帳單，原明細已保留。' : '這張帳單已作廢，本次沒有重複處理。')
+      : errors[result.code] ?? '暫時無法作廢帳單。'
+
+    req.flash(result.ok ? 'success_messages' : 'error_messages', message)
+    return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
   },
 
   recordTuitionBillPayment: async (req, res) => {
