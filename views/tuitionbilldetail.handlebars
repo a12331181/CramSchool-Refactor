@@ -101,6 +101,7 @@
     <li class="list-group-item">
       <div><strong>{{courseName}}</strong>｜{{classAtText}}</div>
       <div>可折抵 NT$ {{amount}}（原帳單 #{{sourceBillId}}）</div>
+      {{#if leaveReason}}<div class="text-muted">請假原因：{{leaveReason}}</div>{{/if}}
 
       {{#if ../formToken}}
       <form method="POST" action="{{../action}}" class="mt-2">
@@ -178,10 +179,25 @@
     出帳後，這張帳單的明細與金額會固定。
   </p>
 
+  {{#if unappliedCreditCount}}
+  <p class="alert alert-warning">
+    有 {{unappliedCreditCount}} 筆已核准的請假可以折抵。請先到<a href="#leave-credit-heading">請假折抵</a>加入，或填寫本張不折抵的原因。
+  </p>
+  {{/if}}
+
   <form method="POST" action="{{action}}" onsubmit="return confirm('確認明細與金額，正式出帳？')">
     <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
     <input type="hidden" name="billVersion" value="{{billVersion}}">
+    {{#if unappliedCreditCount}}
+    <input type="hidden" name="leaveCreditSkipKey" value="{{leaveCreditSkipKey}}">
+    <label for="leave-credit-skip-reason">本張不折抵的原因</label>
+    <textarea id="leave-credit-skip-reason" name="leaveCreditSkipReason" class="form-control mb-2" rows="2"
+      maxlength="255" required></textarea>
+    <p class="text-muted">本張未折抵的項目不會自動轉到下一期。</p>
+    <button type="submit" class="btn btn-primary">本張不折抵，正式出帳</button>
+    {{else}}
     <button type="submit" class="btn btn-primary">正式出帳</button>
+    {{/if}}
   </form>
 </section>
 {{/with}}

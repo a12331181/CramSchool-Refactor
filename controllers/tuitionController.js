@@ -27,7 +27,11 @@ function describeTuitionBillChange({ before, after }) {
   const amountText = hasTotal ? `帳單金額 NT$ ${after.totalAmount}` : '—'
 
   if (before?.status === 'draft' && after?.status === 'issued') {
-    return { actionText: '正式出帳', detailText: amountText }
+    const skippedCount = Array.isArray(after.skippedLeaveCredits) ? after.skippedLeaveCredits.length : 0
+    return {
+      actionText: '正式出帳',
+      detailText: skippedCount > 0 ? `${amountText}｜本張未折抵 ${skippedCount} 筆請假` : amountText
+    }
   }
 
   if (after?.status === 'void' && ['draft', 'issued'].includes(before?.status)) {
@@ -429,7 +433,9 @@ const tuitionController = {
       ? {
           action: `/cramschool/tuition/bills/${bill.id}/issue`,
           billVersion: bill.version,
-          formToken: req.session.tuitionFormToken
+          formToken: req.session.tuitionFormToken,
+          unappliedCreditCount: hasLeaveCreditForm ? leaveCreditData.options.length : 0,
+          leaveCreditSkipKey: hasLeaveCreditForm ? leaveCreditData.optionKey : null
         }
       : null
 
@@ -861,7 +867,9 @@ const tuitionController = {
     const result = await tuitionService.issueTuitionBill({
       billId,
       billVersion: readInt(body.billVersion),
-      actorId: req.user.id
+      actorId: req.user.id,
+      leaveCreditSkipKey: body.leaveCreditSkipKey,
+      leaveCreditSkipReason: body.leaveCreditSkipReason
     })
 
     if (result.code === 'INVALID_INPUT') {
@@ -880,7 +888,9 @@ const tuitionController = {
       DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不一致，請先核對。',
       DRAFT_COURSE_FEES_REQUIRE_REVIEW: '草稿的課程明細已變動或無法核對，請回到同月合併預覽查看最新試算。',
       LEAVE_REVIEW_UNAVAILABLE: '目前無法核對上月請假，暫時不能出帳。',
-      LEAVE_CREDIT_REQUIRES_REVIEW: '草稿裡有折抵需要重新核對，暫時不能出帳。'
+      LEAVE_CREDIT_REQUIRES_REVIEW: '草稿裡有折抵需要重新核對，暫時不能出帳。',
+      LEAVE_CREDIT_OPTIONS_CHANGED: '可折抵項目已變更，請核對重新載入的明細後再出帳。',
+      INVALID_LEAVE_CREDIT_SKIP_REASON: '請填寫本張帳單不折抵的原因，最多 255 字元。'
     }
 
     let message = errors[result.code] ?? '暫時無法正式出帳。'
@@ -889,6 +899,8 @@ const tuitionController = {
       message = result.changed ? '已正式出帳。' : '這張帳單已經出帳。'
     } else if (result.code === 'PENDING_LEAVE_REVIEWS') {
       message = `上月還有 ${result.pendingCount} 筆請假待審核，請回到合併預覽處理後再出帳。`
+    } else if (result.code === 'UNAPPLIED_LEAVE_CREDITS') {
+      message = `還有 ${result.creditCount} 筆可加入的請假折抵，請加入折抵或確認本張不折抵後再出帳。`
     }
 
     req.flash(result.ok ? 'success_messages' : 'error_messages', message)

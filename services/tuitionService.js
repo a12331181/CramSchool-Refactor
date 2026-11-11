@@ -1,4 +1,5 @@
 const { Op, Transaction, UniqueConstraintError, ValidationError } = require('sequelize')
+const { createHash } = require('node:crypto')
 const { isDeepStrictEqual } = require('node:util')
 const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, Payment, AuditLog, User, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
@@ -1436,6 +1437,10 @@ async function recordPreviousMonthLeaveReview({
   return sequelize.transaction(async transaction => {
     const locked = { transaction, lock: transaction.LOCK.UPDATE }
 
+    // 與正式出帳共用學生鎖，讓同一位學生的審核和出帳依序處理。
+    const student = await Student.findByPk(studentId, { ...locked, attributes: ['id'] })
+    if (!student) return { ok: false, code: 'LEAVE_UNAVAILABLE' }
+
     const calendar = await Calendar.findOne({
       ...locked,
       where: {
@@ -1848,7 +1853,7 @@ async function addLeaveCreditToDraft({ billId, attendId, billVersion } = {}) {
   }
 }
 
-async function getDraftLeaveCreditOptions(bill) {
+async function getDraftLeaveCreditOptions(bill, { leaveData, transaction } = {}) {
   if (bill.status !== 'draft') return null
 
   if (!Number.isSafeInteger(bill.totalAmount) || bill.totalAmount < 0) {
@@ -1857,28 +1862,29 @@ async function getDraftLeaveCreditOptions(bill) {
 
   const studentId = bill.StudentId
   const billingMonth = bill.billingMonth
-  const leaveData = await getPreviousMonthLeaveReviews({ studentId, billingMonth })
+  const reviews = leaveData ?? await getPreviousMonthLeaveReviews({ studentId, billingMonth }, transaction)
 
-  if (!leaveData) return { ok: false, code: 'INVALID_INPUT' }
-  if (leaveData.timezoneError) return { ok: false, code: 'UTC_REQUIRED' }
+  if (!reviews) return { ok: false, code: 'INVALID_INPUT' }
+  if (reviews.timezoneError) return { ok: false, code: 'UTC_REQUIRED' }
 
   const options = []
   const blocked = []
 
-  for (const row of leaveData.rows) {
+  for (const row of reviews.rows) {
     if (row.reviewDecision !== 'approved') continue
 
     const display = {
       attendId: row.attendId,
       courseName: row.courseName,
-      classAtText: row.classAtText
+      classAtText: row.classAtText,
+      leaveReason: row.leaveReason
     }
 
     const result = await getPreviousMonthLeaveCreditCandidate({
       studentId,
       attendId: row.attendId,
       billingMonth
-    })
+    }, transaction)
 
     if (!result.ok) {
       blocked.push({
@@ -1898,12 +1904,22 @@ async function getDraftLeaveCreditOptions(bill) {
 
     options.push({
       ...display,
+      attendVersion: row.attendVersion,
+      reviewId: row.reviewId,
       amount: candidate.amount,
-      sourceBillId: candidate.source.billId
+      sourceBillId: candidate.source.billId,
+      sourceBillItemId: candidate.source.billItemId
     })
   }
 
-  return { ok: true, reviewMonth: leaveData.reviewMonth, options, blocked }
+  const optionSnapshot = options.map(({ attendId, attendVersion, reviewId, amount, sourceBillId, sourceBillItemId }) => ({
+    attendId, attendVersion, reviewId, amount, sourceBillId, sourceBillItemId
+  })).sort((a, b) => a.attendId - b.attendId)
+  const optionKey = optionSnapshot.length > 0
+    ? createHash('sha256').update(JSON.stringify(optionSnapshot)).digest('hex')
+    : null
+
+  return { ok: true, reviewMonth: reviews.reviewMonth, options, blocked, optionSnapshot, optionKey }
 }
 
 function hasMatchingDraftCourseFees(items, courses) {
@@ -1947,7 +1963,7 @@ function hasMatchingDraftCourseFees(items, courses) {
   })
 }
 
-async function issueTuitionBill({ billId, billVersion, actorId } = {}) {
+async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipKey, leaveCreditSkipReason } = {}) {
   const isId = n => Number.isSafeInteger(n) && n > 0
   if (
     ![billId, actorId].every(isId) ||
@@ -1961,7 +1977,7 @@ async function issueTuitionBill({ billId, billVersion, actorId } = {}) {
     isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED
   }, async transaction => {
     const owner = await TuitionBill.findByPk(billId, {
-      attributes: ['StudentId'],
+      attributes: ['StudentId', 'billingMonth'],
       raw: true,
       transaction
     })
@@ -1970,6 +1986,21 @@ async function issueTuitionBill({ billId, billVersion, actorId } = {}) {
     // 和建立草稿、異動選課維持相同順序：先鎖學生。
     const locked = { transaction, lock: transaction.LOCK.UPDATE }
     const student = await Student.findByPk(owner.StudentId, { ...locked, attributes: ['id'] })
+
+    // 和加入折抵相同，先鎖來源帳單，再鎖本張帳單。
+    const sourceMonth = previousMonthWindow(owner.billingMonth)?.reviewMonth
+    if (student && sourceMonth) {
+      await TuitionBill.findOne({
+        ...locked,
+        attributes: ['id'],
+        where: {
+          StudentId: owner.StudentId,
+          billingMonth: sourceMonth,
+          status: { [Op.in]: ['draft', 'issued'] }
+        }
+      })
+    }
+
     const bill = await TuitionBill.findByPk(billId, locked)
 
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
@@ -1999,7 +2030,7 @@ async function issueTuitionBill({ billId, billVersion, actorId } = {}) {
       return { ok: false, code: 'DRAFT_TOTAL_MISMATCH' }
     }
 
-    if (!student || bill.StudentId !== owner.StudentId) {
+    if (!student || bill.StudentId !== owner.StudentId || bill.billingMonth !== owner.billingMonth) {
       return { ok: false, code: 'DRAFT_COURSE_FEES_REQUIRE_REVIEW' }
     }
 
@@ -2066,6 +2097,30 @@ async function issueTuitionBill({ billId, billVersion, actorId } = {}) {
       if (!payment.ok || !payment.isFullyPaid) return invalid
     }
 
+    const remainingCredits = await getDraftLeaveCreditOptions(bill, { leaveData, transaction })
+    if (!remainingCredits?.ok) return { ok: false, code: 'LEAVE_REVIEW_UNAVAILABLE' }
+
+    const skipRequested = leaveCreditSkipKey !== undefined || leaveCreditSkipReason !== undefined
+    if (!skipRequested && remainingCredits.options.length > 0) {
+      return {
+        ok: false,
+        code: 'UNAPPLIED_LEAVE_CREDITS',
+        creditCount: remainingCredits.options.length
+      }
+    }
+
+    let skipNote = ''
+    if (skipRequested) {
+      if (!remainingCredits.optionKey || leaveCreditSkipKey !== remainingCredits.optionKey) {
+        return { ok: false, code: 'LEAVE_CREDIT_OPTIONS_CHANGED' }
+      }
+
+      skipNote = typeof leaveCreditSkipReason === 'string' ? leaveCreditSkipReason.trim() : ''
+      if (!skipNote || skipNote.length > 255) {
+        return { ok: false, code: 'INVALID_LEAVE_CREDIT_SKIP_REASON' }
+      }
+    }
+
     const issuedAt = new Date()
     const version = bill.version + 1
     const before = {
@@ -2082,8 +2137,14 @@ async function issueTuitionBill({ billId, billVersion, actorId } = {}) {
       entityId: bill.id,
       action: 'update',
       before,
-      after: { ...before, status: 'issued', issuedAt: issuedAt.toISOString(), version },
-      reason: '正式出帳'
+      after: {
+        ...before,
+        status: 'issued',
+        issuedAt: issuedAt.toISOString(),
+        version,
+        ...(skipRequested ? { skippedLeaveCredits: remainingCredits.optionSnapshot } : {})
+      },
+      reason: skipNote || '正式出帳'
     }, { transaction })
 
     return { ok: true, changed: true, billId: bill.id, issuedAt, version }
