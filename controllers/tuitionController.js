@@ -749,6 +749,69 @@ const tuitionController = {
     req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
   },
+
+    removeTuitionBillDraftAdjustment: async (req, res) => {
+    const body = req.body ?? {}
+    const token = body.tuitionFormToken
+    const expected = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
+
+    if (
+      !isToken(token) || !isToken(expected) ||
+      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+    }
+
+    const readInt = value =>
+      typeof value === 'string' && value !== '' && !/\D/.test(value)
+        ? Number(value)
+        : NaN
+
+    const billId = readInt(req.params.billId)
+    const billItemId = readInt(req.params.billItemId)
+    const billVersion = readInt(body.billVersion)
+    const invalidInput = '帳單、明細 ID 或草稿版本不正確，請重新開啟帳單再試。'
+
+    if (
+      ![billId, billItemId].every(id => Number.isSafeInteger(id) && id > 0) ||
+      !Number.isSafeInteger(billVersion) || billVersion < 0
+    ) {
+      return res.status(400).send(invalidInput)
+    }
+
+    const result = await tuitionService.removeTuitionBillDraftAdjustment({
+      billId,
+      billItemId,
+      billVersion,
+      actorId: req.user.id
+    })
+
+    if (result.code === 'INVALID_INPUT') {
+      return res.status(400).send(invalidInput)
+    }
+    if (result.code === 'BILL_NOT_FOUND') {
+      return res.status(404).send('找不到這張帳單。')
+    }
+
+    const errors = {
+      BILL_NOT_DRAFT: '只有草稿可以移除費用或折抵。',
+      BILL_VERSION_CONFLICT: '草稿已變更，請核對重新載入的帳單後再試。',
+      BILL_ITEM_NOT_FOUND: '找不到這張帳單的該筆明細，可能已經移除。',
+      BILL_ITEM_NOT_REMOVABLE: '只能移除額外費用或請假折抵。課程費用請使用「更新草稿」。',
+      INVALID_BILL_AMOUNT: '草稿明細的金額需要核對。',
+      DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不符，請先核對。',
+      INVALID_AMOUNT: '移除後的金額超出可儲存範圍，草稿未變更。',
+      DRAFT_CREDITS_EXCEED_UPDATED_TOTAL: '移除後的金額不足以扣抵原有折抵，請先核對。草稿未變更。'
+    }
+
+    req.flash(
+      result.ok ? 'success_messages' : 'error_messages',
+      result.ok ? '已移除這筆明細，請核對更新後的金額。' : errors[result.code] ?? '暫時無法移除明細。'
+    )
+    return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
+  },
   
   createTuition: async (req, res) => {
     const courseId = Number(req.params.courseId)
