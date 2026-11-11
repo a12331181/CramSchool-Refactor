@@ -18,14 +18,11 @@ const DRAFT_NON_BLOCKING_REVIEW_CODES = new Set([
   'ATTENDANCE_REQUIRES_REVIEW'
 ])
 
-async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth } = {}, transaction) {
-  if (![courseId, studentId].every(id => Number.isSafeInteger(id) && id > 0)) {
-    return { ok: false, code: 'INVALID_INPUT' }
+function getTuitionMonthRange(billingMonth) {
+  if (typeof billingMonth !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)) {
+    return null
   }
 
-  if (typeof billingMonth !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)) {
-    return { ok: false, code: 'INVALID_BILLING_MONTH' }
-  }
   const [year, month] = billingMonth.split('-').map(Number)
   const monthStart = `${billingMonth}-01`
   const nextMonthStart = month === 12
@@ -34,18 +31,52 @@ async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth
 
   const monthStartAt = parseTaipeiDateTime(`${monthStart}T00:00`)
   const nextMonthStartAt = parseTaipeiDateTime(`${nextMonthStart}T00:00`)
+  if (!monthStartAt || !nextMonthStartAt) return null
 
-  if (!monthStartAt || !nextMonthStartAt) {
-    return { ok: false, code: 'INVALID_BILLING_MONTH' }
-  }
+  return { monthStart, nextMonthStart, monthStartAt, nextMonthStartAt }
+}
 
+function getTuitionEnrollmentStateForMonth(row, { monthStart, nextMonthStart }) {
   const isKnownDate = value =>
     typeof value === 'string' &&
     parseTaipeiDateTime(`${value}T00:00`) !== null
 
-  if (!isKnownDate(monthStart) || !isKnownDate(nextMonthStart)) {
-    return { ok: false, code: 'INVALID_BILLING_MONTH' }
+  const { startsOn, endsOn, status } = row
+  const startKnown = isKnownDate(startsOn)
+  const endKnown = isKnownDate(endsOn)
+
+  if (startKnown && endKnown && startsOn > endsOn) return 'requires_review'
+  if (startKnown && endKnown && startsOn === endsOn) return 'outside_month'
+
+  if (
+    (startKnown && startsOn >= nextMonthStart) ||
+    (endKnown && endsOn <= monthStart)
+  ) {
+    return 'outside_month'
   }
+
+  const validStatus =
+    status === ENROLLMENT_STATUS.ACTIVE || status === ENROLLMENT_STATUS.ENDED
+
+  if (
+    !validStatus ||
+    !startKnown ||
+    (endsOn !== null && !endKnown) ||
+    (status === ENROLLMENT_STATUS.ENDED && !endKnown)
+  ) {
+    return 'requires_review'
+  }
+
+  return 'in_month'
+}
+
+async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth } = {}, transaction) {
+  if (![courseId, studentId].every(id => Number.isSafeInteger(id) && id > 0)) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  const range = getTuitionMonthRange(billingMonth)
+  if (!range) return { ok: false, code: 'INVALID_BILLING_MONTH' }
 
   const rows = await Enrollment.findAll({
     attributes: ['id', 'startsOn', 'endsOn', 'status'],
@@ -61,36 +92,12 @@ async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth
   const enrollments = []
 
   for (const row of rows) {
-    const { startsOn, endsOn, status } = row
-    const startKnown = isKnownDate(startsOn)
-    const endKnown = isKnownDate(endsOn)
-
-    if (startKnown && endKnown && startsOn > endsOn) {
+    const state = getTuitionEnrollmentStateForMonth(row, range)
+    if (state === 'requires_review') {
       return { ok: false, code: 'ENROLLMENT_UNCONFIRMED', enrollmentId: row.id }
     }
 
-    if (startKnown && endKnown && startsOn === endsOn) continue
-
-    if (
-      (startKnown && startsOn >= nextMonthStart) ||
-      (endKnown && endsOn <= monthStart)
-    ) {
-      continue
-    }
-
-    const validStatus =
-      status === ENROLLMENT_STATUS.ACTIVE || status === ENROLLMENT_STATUS.ENDED
-
-    if (
-      !validStatus ||
-      !startKnown ||
-      (endsOn !== null && !endKnown) ||
-      (status === ENROLLMENT_STATUS.ENDED && !endKnown)
-    ) {
-      return { ok: false, code: 'ENROLLMENT_UNCONFIRMED', enrollmentId: row.id }
-    }
-
-    enrollments.push(row)
+    if (state === 'in_month') enrollments.push(row)
   }
 
   if (enrollments.length === 0) {
@@ -100,8 +107,8 @@ async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth
   return {
     ok: true,
     billingMonth,
-    monthStartAt,
-    nextMonthStartAt,
+    monthStartAt: range.monthStartAt,
+    nextMonthStartAt: range.nextMonthStartAt,
     enrollments
   }
 }
@@ -515,6 +522,20 @@ async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) 
   return { ok: true, rows }
 }
 
+async function getActiveTuitionBillsForStudents(studentIds, billingMonth) {
+  if (studentIds.length === 0) return []
+
+  return TuitionBill.findAll({
+    attributes: ['id', 'StudentId', 'studentNameSnapshot', 'status', 'totalAmount'],
+    where: {
+      StudentId: { [Op.in]: studentIds },
+      billingMonth,
+      status: { [Op.in]: ['draft', 'issued'] }
+    },
+    raw: true
+  })
+}
+
 async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
   if (
     typeof billingMonth !== 'string' ||
@@ -542,15 +563,7 @@ async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
   })
 
   const studentIds = result.rows.map(student => student.id)
-  const bills = studentIds.length === 0 ? [] : await TuitionBill.findAll({
-    attributes: ['id', 'StudentId', 'status', 'totalAmount'],
-    where: {
-      StudentId: { [Op.in]: studentIds },
-      billingMonth,
-      status: { [Op.in]: ['draft', 'issued'] }
-    },
-    raw: true
-  })
+  const bills = await getActiveTuitionBillsForStudents(studentIds, billingMonth)
   const billsByStudentId = new Map(bills.map(bill => [bill.StudentId, bill]))
   const paymentStatuses = await getIssuedTuitionBillPaymentStatuses(bills)
   const rows = []
@@ -576,6 +589,108 @@ async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
   }
 
   return { ok: true, rows, totalCount: result.count }
+}
+
+async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageSize } = {}) {
+  if (!Number.isSafeInteger(courseId) || courseId < 1) {
+    return { ok: false, code: 'INVALID_COURSE_ID' }
+  }
+
+  const range = getTuitionMonthRange(billingMonth)
+  if (!range) return { ok: false, code: 'INVALID_BILLING_MONTH' }
+
+  if (
+    !Number.isSafeInteger(page) || page < 1 ||
+    !Number.isSafeInteger(pageSize) || pageSize < 1 ||
+    !Number.isSafeInteger((page - 1) * pageSize)
+  ) {
+    return { ok: false, code: 'INVALID_PAGE' }
+  }
+
+  const course = await Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true })
+  if (!course) return { ok: false, code: 'COURSE_NOT_FOUND' }
+
+  const [enrollments, courseFeeItems] = await Promise.all([
+    Enrollment.findAll({
+      attributes: ['StudentId', 'startsOn', 'endsOn', 'status'],
+      where: { CourseId: courseId },
+      raw: true
+    }),
+    TuitionBillItem.findAll({
+      attributes: ['TuitionBillId', 'amount'],
+      where: { CourseId: courseId, kind: 'course_fee' },
+      include: [{
+        model: TuitionBill,
+        attributes: ['StudentId'],
+        where: { billingMonth, status: { [Op.in]: ['draft', 'issued'] } },
+        required: true
+      }],
+      raw: true,
+      nest: true
+    })
+  ])
+
+  const studentIds = new Set()
+  const enrollmentReviewIds = new Set()
+  for (const enrollment of enrollments) {
+    const { StudentId: studentId } = enrollment
+    if (!Number.isSafeInteger(studentId) || studentId < 1) continue
+
+    const state = getTuitionEnrollmentStateForMonth(enrollment, range)
+    if (state === 'outside_month') continue
+
+    studentIds.add(studentId)
+    if (state === 'requires_review') enrollmentReviewIds.add(studentId)
+  }
+
+  const courseFeesByBillId = new Map()
+  for (const item of courseFeeItems) {
+    studentIds.add(item.TuitionBill.StudentId)
+    const amounts = courseFeesByBillId.get(item.TuitionBillId) ?? []
+    amounts.push(item.amount)
+    courseFeesByBillId.set(item.TuitionBillId, amounts)
+  }
+
+  const offset = (page - 1) * pageSize
+  const pageStudentIds = [...studentIds].sort((a, b) => a - b).slice(offset, offset + pageSize)
+  if (pageStudentIds.length === 0) {
+    return { ok: true, course, rows: [], totalCount: studentIds.size }
+  }
+
+  const [students, bills] = await Promise.all([
+    Student.findAll({
+      attributes: ['id', 'name'],
+      where: { id: { [Op.in]: pageStudentIds } },
+      raw: true
+    }),
+    getActiveTuitionBillsForStudents(pageStudentIds, billingMonth)
+  ])
+  const studentsById = new Map(students.map(student => [student.id, student]))
+  const billsByStudentId = new Map(bills.map(bill => [bill.StudentId, bill]))
+  const paymentStatuses = await getIssuedTuitionBillPaymentStatuses(
+    bills.filter(bill => courseFeesByBillId.has(bill.id))
+  )
+
+  const rows = pageStudentIds.map(studentId => {
+    const student = studentsById.get(studentId) ?? null
+    const bill = billsByStudentId.get(studentId) ?? null
+    const amounts = courseFeesByBillId.get(bill?.id) ?? []
+    const total = amounts.length > 0 && amounts.every(amount => Number.isSafeInteger(amount) && amount >= 0)
+      ? amounts.reduce((sum, amount) => sum + amount, 0)
+      : null
+
+    return {
+      studentId,
+      student,
+      bill,
+      enrollmentNeedsReview: enrollmentReviewIds.has(studentId),
+      hasCourseFee: amounts.length > 0,
+      courseAmount: Number.isSafeInteger(total) ? total : null,
+      paymentStatus: paymentStatuses.get(bill?.id) ?? null
+    }
+  })
+
+  return { ok: true, course, rows, totalCount: studentIds.size }
 }
 
 function buildDraftCourseFeeItems(preview) {
@@ -2110,6 +2225,7 @@ module.exports = {
   getStudentTuitionPreview,
   getStudentTuitionBillsForMonth,
   getStudentTuitionList,
+  getCourseMonthlyTuitionList,
   createTuitionBillDraft,
   refreshTuitionBillDraft,
   removeTuitionBillDraftAdjustment,

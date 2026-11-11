@@ -43,8 +43,11 @@
       <th scope="row">{{this.dataValues.id}}</th>
       <td>{{this.dataValues.name}}</td>
       <td>
-        <a href="/cramschool/payment/courses/{{this.dataValues.id}}" class="btn btn-sm btn-dark">
-          學生名單
+        <a href="/cramschool/tuition/courses/{{this.dataValues.id}}/monthly" class="btn btn-sm btn-primary">
+          查看月學費
+        </a>
+        <a href="/cramschool/payment/courses/{{this.dataValues.id}}" class="btn btn-sm btn-outline-secondary">
+          舊制期數紀錄
         </a>
       </td>
     </tr>

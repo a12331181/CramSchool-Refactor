@@ -762,6 +762,78 @@ const tuitionController = {
     })
   },
 
+  getCourseMonthlyTuitionList: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數。')
+    }
+
+    const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
+    const page = Number(req.query.page ?? 1)
+    const pageSize = 12
+    const listUrl = `/cramschool/tuition/courses/${courseId}/monthly`
+    const viewData = { listUrl, billingMonth: typeof billingMonth === 'string' ? billingMonth : '' }
+
+    res.set('Cache-Control', 'no-store')
+    const result = await tuitionService.getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageSize })
+    if (!result.ok) {
+      if (result.code === 'COURSE_NOT_FOUND') return res.status(404).send('找不到課程。')
+      const errors = {
+        INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
+        INVALID_PAGE: '頁碼不正確。'
+      }
+      return res.status(400).render('coursemonthlytuitionlist', {
+        ...viewData,
+        errorMessage: errors[result.code] ?? '目前無法取得課程月學費。'
+      })
+    }
+
+    const pagination = getPagination({ page, pageSize, totalCount: result.totalCount })
+    const pageUrl = targetPage => `${listUrl}?${new URLSearchParams({ billingMonth, page: String(targetPage) })}`
+    if (page > pagination.totalPages) return res.redirect(pageUrl(pagination.totalPages))
+
+    const monthQuery = new URLSearchParams({ billingMonth })
+    const rows = result.rows.map(({ studentId, student, bill, enrollmentNeedsReview, hasCourseFee, courseAmount, paymentStatus }) => {
+      const hasCourseAmount = Number.isSafeInteger(courseAmount)
+      const hasRemainingAmount = hasCourseAmount && bill?.status === 'issued' && paymentStatus?.ok === true
+      let statusText = '未開單'
+
+      if (hasCourseFee && !hasCourseAmount) {
+        statusText = '本課金額待核對'
+      } else if (hasCourseFee) {
+        statusText = bill.status === 'draft' ? '草稿' : getTuitionBillPaymentStatusText(paymentStatus)
+      } else if (bill) {
+        statusText = bill.status === 'draft' ? '草稿未含本課' : '帳單未含本課'
+      } else if (!student) {
+        statusText = '學生資料待核對'
+      } else if (enrollmentNeedsReview) {
+        statusText = '選課日期待核對'
+      }
+
+      return {
+        studentName: student?.name ?? bill?.studentNameSnapshot ?? `學生 #${studentId}`,
+        statusText,
+        hasCourseAmount,
+        courseAmount,
+        hasRemainingAmount,
+        remainingAmount: hasRemainingAmount ? paymentStatus.remainingAmount : null,
+        billUrl: bill ? `/cramschool/tuition/bills/${bill.id}` : null,
+        previewUrl: student ? `/cramschool/tuition/students/${studentId}/preview?${monthQuery}` : null
+      }
+    })
+
+    return res.render('coursemonthlytuitionlist', {
+      ...viewData,
+      course: result.course,
+      rows,
+      totalCount: result.totalCount,
+      pagination,
+      studentListUrl: `/cramschool/tuition/students?${monthQuery}`,
+      prevUrl: page > 1 ? pageUrl(pagination.prev) : null,
+      nextUrl: page < pagination.totalPages ? pageUrl(pagination.next) : null
+    })
+  },
+
   issueTuitionBill: async (req, res) => {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
