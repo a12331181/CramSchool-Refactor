@@ -492,6 +492,29 @@ async function getStudentTuitionPreview({ studentId, billingMonth } = {}, transa
   }
 }
 
+async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) {
+  if (!Number.isSafeInteger(studentId) || studentId < 1) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  if (
+    typeof billingMonth !== 'string' ||
+    !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth) ||
+    !parseTaipeiDateTime(`${billingMonth}-01T00:00`)
+  ) {
+    return { ok: false, code: 'INVALID_BILLING_MONTH' }
+  }
+
+  const rows = await TuitionBill.findAll({
+    attributes: ['id', 'studentNameSnapshot', 'status', 'totalAmount', 'issuedAt'],
+    where: { StudentId: studentId, billingMonth },
+    order: [['id', 'DESC']],
+    raw: true
+  })
+
+  return { ok: true, rows }
+}
+
 async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
   if (
     typeof billingMonth !== 'string' ||
@@ -2053,6 +2076,7 @@ module.exports = {
   getTuitionPreview,
   getTuitionAttendanceSummary,
   getStudentTuitionPreview,
+  getStudentTuitionBillsForMonth,
   getStudentTuitionList,
   createTuitionBillDraft,
   refreshTuitionBillDraft,

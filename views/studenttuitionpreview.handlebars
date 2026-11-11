@@ -4,6 +4,28 @@
   <label for="billing-month">計費月份</label>
   <input id="billing-month" type="month" name="billingMonth" value="{{billingMonth}}" required>
   <button type="submit" class="btn btn-sm btn-primary">查看試算</button>
+</form>
+
+{{#if activeBill}}
+<section class="my-3" aria-labelledby="saved-month-bill-heading">
+  <h2 id="saved-month-bill-heading" class="h5">本月帳單</h2>
+  <p>{{activeBill.studentNameSnapshot}}｜{{activeBill.statusText}}｜帳單金額 NT$ {{activeBill.totalAmount}}</p>
+  <a href="{{activeBill.detailUrl}}" class="btn btn-sm btn-outline-primary">查看帳單 #{{activeBill.id}}</a>
+</section>
+{{/if}}
+
+{{#if voidedBills.length}}
+<details class="my-3">
+  <summary class="font-weight-bold">本月作廢與捨棄紀錄（{{voidedBills.length}}）</summary>
+  <ul class="mt-2">
+    {{#each voidedBills}}
+    <li>
+      <a href="{{detailUrl}}">帳單 #{{id}}</a>｜{{studentNameSnapshot}}｜{{statusText}}｜原金額 NT$ {{totalAmount}}
+    </li>
+    {{/each}}
+  </ul>
+</details>
+{{/if}}
 
   {{#with leaveReviewPanel}}
   <section class="my-4" aria-labelledby="leave-review-title">
@@ -76,7 +98,6 @@
     {{/if}}
   </section>
   {{/with}}
-</form>
 
 {{#if errorMessage}}
 <p class="alert alert-warning">{{errorMessage}}</p>

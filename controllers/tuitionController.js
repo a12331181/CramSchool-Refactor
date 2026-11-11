@@ -175,10 +175,21 @@ const tuitionController = {
     }
 
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
-    const result = await tuitionService.getStudentTuitionPreview({
-      studentId,
-      billingMonth
-    })
+    const input = { studentId, billingMonth }
+    const [result, billsResult] = await Promise.all([
+      tuitionService.getStudentTuitionPreview(input),
+      tuitionService.getStudentTuitionBillsForMonth(input)
+    ])
+
+    const billRows = (billsResult.rows ?? []).map(bill => ({
+      ...bill,
+      statusText: bill.status === 'void'
+        ? (bill.issuedAt == null ? '已捨棄草稿' : '已作廢')
+        : (bill.status === 'draft' ? '草稿' : '已出帳'),
+      detailUrl: `/cramschool/tuition/bills/${bill.id}`
+    }))
+    const activeBill = billRows.find(bill => bill.status === 'draft' || bill.status === 'issued') ?? null
+    const voidedBills = billRows.filter(bill => bill.status === 'void')
 
     const messages = {
       INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
@@ -237,12 +248,13 @@ const tuitionController = {
     }))
 
     const hasLeaveReviewForm = leaveRows.some(row => row.canReview)
+    const canCreateDraft = hasSubtotal && !activeBill
 
-    if (hasSubtotal || hasLeaveReviewForm) {
+    if (canCreateDraft || hasLeaveReviewForm) {
       req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
     }
 
-    const draftFormToken = hasSubtotal ? req.session.tuitionFormToken : null
+    const draftFormToken = canCreateDraft ? req.session.tuitionFormToken : null
 
     const leaveReviewPanel = leaveData && {
       ...leaveData,
@@ -258,6 +270,8 @@ const tuitionController = {
       billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
       preview: result.ok ? result : null,
       hasSubtotal,
+      activeBill,
+      voidedBills,
       draftFormToken,
       draftAction: `/cramschool/tuition/students/${studentId}/bills/draft`,
       courseRows,
