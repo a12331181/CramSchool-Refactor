@@ -153,4 +153,23 @@
 </section>
 {{/with}}
 
+{{#if isDraft}}
+<section class="my-4 border-top pt-3" aria-labelledby="discard-draft-heading">
+  <h2 id="discard-draft-heading" class="h5">捨棄草稿</h2>
+  <p class="text-muted">
+    捨棄後會保留原帳單和操作紀錄。你可以回到同月合併預覽，重新建立草稿。
+  </p>
+
+  <form method="POST" action="/cramschool/tuition/bills/{{bill.id}}/discard" onsubmit="return confirm('確定捨棄這張草稿嗎？')">
+    <input type="hidden" name="tuitionFormToken" value="{{issueForm.formToken}}">
+    <input type="hidden" name="billVersion" value="{{bill.version}}">
+
+    <label for="discard-draft-reason">捨棄原因</label>
+    <textarea id="discard-draft-reason" name="reason" class="form-control mb-2" rows="2" maxlength="255"
+      required></textarea>
+    <button type="submit" class="btn btn-outline-danger">捨棄草稿</button>
+  </form>
+</section>
+{{/if}}
+
 <a href="{{previewUrl}}">回到同月合併預覽</a>
