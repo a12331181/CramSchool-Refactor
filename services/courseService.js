@@ -1,4 +1,4 @@
-const {Course, Teacher, Calendar, Enrollment, Tuition, Diary, Attend, sequelize} = require('../models')
+const {Course, Teacher, Calendar, Enrollment, Tuition, TuitionBillItem, Diary, Attend, sequelize} = require('../models')
 const {COURSE_TIMES, COURSE_TYPES} = require('../constants/courseOptions')
 const moment = require('moment')
 const { Op } = require('sequelize')
@@ -197,7 +197,17 @@ async function deleteCourse(courseId) {
     if (!course) {
       return { ok: false, code: 'COURSE_NOT_FOUND' }
     }
-    
+
+    const billItem = await TuitionBillItem.findOne({
+      attributes: ['id'],
+      where: { CourseId: courseId },
+      transaction
+    })
+
+    if (billItem) {
+      return { ok: false, code: 'COURSE_HAS_TUITION_BILL_ITEMS' }
+    }
+
     const calendarWithSessionData = await Calendar.findOne({
       attributes: ['id'],
       where: {

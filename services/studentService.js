@@ -1,4 +1,4 @@
-const {Student, Course, Enrollment, Attend, Tuition, sequelize} = require('../models')
+const {Student, Course, Enrollment, Attend, Tuition, TuitionBill, sequelize} = require('../models')
 const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
@@ -238,6 +238,16 @@ async function deleteStudent(studentId) {
         deleted: false,
         reason: 'STUDENT_NOT_FOUND'
       }
+    }
+
+    const bill = await TuitionBill.findOne({
+      attributes: ['id'],
+      where: { StudentId: studentId },
+      transaction
+    })
+
+    if (bill) {
+      return { deleted: false, reason: 'HAS_TUITION_BILLS' }
     }
 
     const attend = await Attend.findOne({

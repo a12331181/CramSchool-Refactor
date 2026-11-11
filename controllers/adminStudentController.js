@@ -271,6 +271,7 @@ const adminStudentController = {
     if (!result.deleted) {
       const errorMessages = {
         STUDENT_NOT_FOUND: '找不到學生資料',
+        HAS_TUITION_BILLS: '學生已有月帳單紀錄，無法刪除。請改用「離開」保留歷史資料。',
         HAS_ENROLLMENTS: '已有選課紀錄，無法刪除學生，請改用離開狀態',
         HAS_ATTENDANCE: '已有出席紀錄，無法刪除學生，請改用離開狀態',
         HAS_TUITION: '已有學費紀錄，無法刪除學生，請改用離開狀態'
