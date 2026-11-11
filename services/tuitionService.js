@@ -903,6 +903,106 @@ async function removeTuitionBillDraftAdjustment({ billId, billItemId, billVersio
   })
 }
 
+async function discardTuitionBillDraft({ billId, billVersion, actorId, reason } = {}) {
+  const isId = n => Number.isSafeInteger(n) && n > 0
+  if (
+    ![billId, actorId].every(isId) ||
+    !Number.isSafeInteger(billVersion) || billVersion < 0 ||
+    billVersion >= 2_147_483_647
+  ) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  const note = typeof reason === 'string' ? reason.trim() : ''
+  if (!note || note.length > 255) {
+    return { ok: false, code: 'INVALID_DISCARD_REASON' }
+  }
+
+  return sequelize.transaction(async transaction => {
+    const bill = await TuitionBill.findByPk(billId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+    if (bill.status === 'void' && bill.issuedAt == null) {
+      return { ok: true, changed: false, billId: bill.id }
+    }
+    if (bill.status !== 'draft' || bill.issuedAt != null) {
+      return { ok: false, code: 'BILL_NOT_DRAFT' }
+    }
+    if (bill.version !== billVersion) {
+      return { ok: false, code: 'BILL_VERSION_CONFLICT' }
+    }
+
+    const payment = await Payment.findOne({
+      attributes: ['id'],
+      where: { TuitionBillId: bill.id },
+      raw: true,
+      transaction
+    })
+    if (payment) return { ok: false, code: 'DRAFT_HAS_PAYMENT' }
+
+    const activeCreditWhere = {
+      TuitionBillId: bill.id,
+      ActiveLeaveAttendId: { [Op.ne]: null }
+    }
+    const activeCredits = await TuitionBillItem.findAll({
+      attributes: ['id', 'kind', 'ActiveLeaveAttendId', 'sourceSnapshot'],
+      where: activeCreditWhere,
+      order: [['id', 'ASC']],
+      raw: true,
+      transaction
+    })
+
+    if (activeCredits.some(item =>
+      item.kind !== 'leave_credit' ||
+      !isId(item.ActiveLeaveAttendId) ||
+      item.sourceSnapshot?.attendId !== item.ActiveLeaveAttendId
+    )) {
+      return { ok: false, code: 'LEAVE_CREDIT_REQUIRES_REVIEW' }
+    }
+
+    const releasedCredits = activeCredits.map(item => ({
+      billItemId: item.id,
+      attendId: item.ActiveLeaveAttendId
+    }))
+    const before = {
+      status: bill.status,
+      totalAmount: bill.totalAmount,
+      version: bill.version,
+      activeLeaveCredits: releasedCredits
+    }
+    const version = bill.version + 1
+
+    if (releasedCredits.length > 0) {
+      await TuitionBillItem.update({ ActiveLeaveAttendId: null }, {
+        where: activeCreditWhere,
+        transaction
+      })
+    }
+
+    await bill.update({ status: 'void', version }, { transaction })
+    await AuditLog.create({
+      actorId,
+      entityType: 'TuitionBill',
+      entityId: bill.id,
+      action: 'update',
+      before,
+      after: { ...before, status: 'void', version, activeLeaveCredits: [] },
+      reason: note
+    }, { transaction })
+
+    return {
+      ok: true,
+      changed: true,
+      billId: bill.id,
+      version,
+      releasedCreditCount: releasedCredits.length
+    }
+  })
+}
+
 async function getTuitionBillDetails(billId) {
   if (!Number.isSafeInteger(billId) || billId < 1) {
     return { ok: false, code: 'INVALID_BILL_ID' }
@@ -1899,6 +1999,7 @@ module.exports = {
   createTuitionBillDraft,
   refreshTuitionBillDraft,
   removeTuitionBillDraftAdjustment,
+  discardTuitionBillDraft,
   getTuitionBillDetails,
   addTuitionBillExtraFee,
   getPreviousMonthLeaveReviews,
