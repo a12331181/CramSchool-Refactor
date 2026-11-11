@@ -105,6 +105,21 @@
 <p><a href="/admin/extrafees">管理額外費用目錄</a></p>
 {{/if}}
 
+{{#if isDraft}}
+<section class="my-4" aria-labelledby="refresh-draft-heading">
+  <h2 id="refresh-draft-heading" class="h5">更新草稿</h2>
+  <p class="text-muted">
+    排課、選課或價格變動時，先回到同月合併預覽核對，再更新課程明細。已加入的額外費用與請假折抵會保留。
+  </p>
+
+  <form method="POST" action="/cramschool/tuition/bills/{{bill.id}}/refresh">
+    <input type="hidden" name="tuitionFormToken" value="{{issueForm.formToken}}">
+    <input type="hidden" name="billVersion" value="{{bill.version}}">
+    <button type="submit" class="btn btn-outline-primary">更新草稿</button>
+  </form>
+</section>
+{{/if}}
+
 {{#with issueForm}}
 <section class="my-4" aria-labelledby="issue-bill-heading">
   <h2 id="issue-bill-heading" class="h5">正式出帳</h2>
