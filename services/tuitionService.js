@@ -917,7 +917,7 @@ async function getTuitionBillDetails(billId) {
       model: TuitionBillItem,
       as: 'items',
       attributes: [
-        'id', 'descriptionSnapshot', 'quantity', 'unitPrice',
+        'id', 'kind', 'descriptionSnapshot', 'quantity', 'unitPrice',
         'amount', 'reason', 'sourceSnapshot', 'ExtraFeeId'
       ]
     }],

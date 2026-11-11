@@ -398,6 +398,7 @@ const tuitionController = {
 
     const items = bill.items.map(item => ({
       ...item,
+      canRemove: isDraft && ['extra_fee', 'leave_credit'].includes(item.kind),
       reviewCount: Array.isArray(item.sourceSnapshot?.reviewItems)
         ? item.sourceSnapshot.reviewItems.length
         : 0
@@ -812,7 +813,7 @@ const tuitionController = {
     )
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
   },
-  
+
   createTuition: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const studentId = Number(req.params.studentId)
