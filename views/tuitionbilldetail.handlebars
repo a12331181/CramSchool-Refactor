@@ -48,7 +48,33 @@
   </tbody>
 </table>
 
+{{#with paymentSummary}}
+<section class="my-4" aria-labelledby="payment-summary-heading">
+  <h2 id="payment-summary-heading" class="h5">收款摘要</h2>
+  <p>收款狀態：<strong>{{statusText}}</strong></p>
+
+  {{#if errorMessage}}
+  <p class="alert alert-warning" role="alert">{{errorMessage}}</p>
+  {{else}}
+  <dl class="row mb-0">
+    <div class="col-sm-4">
+      <dt>應收金額</dt>
+      <dd>NT$ {{totalAmount}}</dd>
+    </div>
+    <div class="col-sm-4">
+      <dt>已收金額</dt>
+      <dd>NT$ {{paidAmount}}</dd>
+    </div>
+    <div class="col-sm-4">
+      <dt>未收金額</dt>
+      <dd>NT$ {{remainingAmount}}</dd>
+    </div>
+  </dl>
+  {{/if}}
+</section>
+{{else}}
 <p><strong>帳單金額：NT$ {{bill.totalAmount}}</strong></p>
+{{/with}}
 
 {{#if isDraft}}
 <h2 class="h5">加入額外費用</h2>

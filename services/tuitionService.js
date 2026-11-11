@@ -1039,7 +1039,11 @@ async function getTuitionBillDetails(billId) {
 
   const leaveCreditData = await getDraftLeaveCreditOptions(savedBill)
 
-  return { ok: true, bill: savedBill, extraFees, leaveCreditData }
+  const paymentStatus = savedBill.status === 'issued'
+    ? await getTuitionBillPaymentStatus(savedBill.id)
+    : null
+
+  return { ok: true, bill: savedBill, extraFees, leaveCreditData, paymentStatus }
 }
 
 async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersion }) {

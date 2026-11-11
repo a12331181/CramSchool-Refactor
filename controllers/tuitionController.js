@@ -407,12 +407,46 @@ const tuitionController = {
     const previewUrl = `/cramschool/tuition/students/${bill.StudentId}/preview?` +
       new URLSearchParams({ billingMonth: bill.billingMonth })
 
+        let paymentSummary = null
+
+    if (bill.status === 'issued') {
+      const paymentStatus = result.paymentStatus
+
+      if (paymentStatus?.ok === true) {
+        const { totalAmount, paidAmount, remainingAmount, isFullyPaid } = paymentStatus
+        let statusText = '未收款'
+
+        if (totalAmount === 0) {
+          statusText = '無須收款'
+        } else if (isFullyPaid) {
+          statusText = '已結清'
+        } else if (paidAmount > 0) {
+          statusText = '部分收款'
+        }
+
+        paymentSummary = { totalAmount, paidAmount, remainingAmount, statusText }
+      } else {
+        const paymentMessages = {
+          INVALID_BILL_AMOUNT: '帳單金額需要核對。',
+          PAYMENT_LINK_CONFLICT: '收款同時連到新舊帳單，請核對。',
+          INVALID_PAYMENT_AMOUNT: '收款紀錄的金額需要核對。',
+          PAYMENT_TOTAL_EXCEEDS_BILL: '收款總額超過帳單金額，請核對。'
+        }
+
+        paymentSummary = {
+          statusText: '待核對',
+          errorMessage: paymentMessages[paymentStatus?.code] ?? '暫時無法確認收款資料，請重新開啟帳單。'
+        }
+      }
+    }
+
     res.set('Cache-Control', 'no-store')
 
     return res.render('tuitionbilldetail', {
       bill,
       items,
       statusText: labels[bill.status] ?? '待核對',
+      paymentSummary,
       previewUrl,
       isDraft, 
       leaveCreditPanel,
