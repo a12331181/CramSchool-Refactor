@@ -425,6 +425,15 @@ const tuitionController = {
         }
 
         paymentSummary = { totalAmount, paidAmount, remainingAmount, statusText }
+        if (remainingAmount > 0 && remainingAmount <= 2_147_483_647) {
+          req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
+
+          paymentSummary.paymentForm = {
+            action: `/cramschool/tuition/bills/${bill.id}/payments`,
+            amount: remainingAmount,
+            formToken: req.session.tuitionFormToken
+          }
+        }
       } else {
         const paymentMessages = {
           INVALID_BILL_AMOUNT: '帳單金額需要核對。',
