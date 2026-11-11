@@ -820,6 +820,89 @@ async function refreshTuitionBillDraft({ billId, billVersion, actorId } = {}) {
   })
 }
 
+async function removeTuitionBillDraftAdjustment({ billId, billItemId, billVersion, actorId } = {}) {
+  const isId = n => Number.isSafeInteger(n) && n > 0
+  if (
+    ![billId, billItemId, actorId].every(isId) ||
+    !Number.isSafeInteger(billVersion) || billVersion < 0 ||
+    billVersion >= 2_147_483_647
+  ) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+
+  return sequelize.transaction(async transaction => {
+    const bill = await TuitionBill.findByPk(billId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+
+    if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+    if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+    if (bill.version !== billVersion) {
+      return { ok: false, code: 'BILL_VERSION_CONFLICT' }
+    }
+
+    const items = await TuitionBillItem.findAll({
+      attributes: [
+        'id', 'CourseId', 'ExtraFeeId', 'kind', 'descriptionSnapshot',
+        'quantity', 'unitPrice', 'amount', 'reason', 'sourceSnapshot', 'ActiveLeaveAttendId'
+      ],
+      where: { TuitionBillId: bill.id },
+      raw: true,
+      transaction
+    })
+
+    const item = items.find(row => row.id === billItemId)
+    if (!item) return { ok: false, code: 'BILL_ITEM_NOT_FOUND' }
+    if (item.kind !== 'extra_fee' && item.kind !== 'leave_credit') {
+      return { ok: false, code: 'BILL_ITEM_NOT_REMOVABLE' }
+    }
+
+    if (
+      items.some(row => !Number.isSafeInteger(row.amount)) ||
+      (item.kind === 'extra_fee' && item.amount <= 0) ||
+      (item.kind === 'leave_credit' && item.amount >= 0)
+    ) {
+      return { ok: false, code: 'INVALID_BILL_AMOUNT' }
+    }
+
+    const savedTotal = items.reduce((sum, row) => sum + row.amount, 0)
+    if (!Number.isSafeInteger(savedTotal) || savedTotal < 0 || savedTotal !== bill.totalAmount) {
+      return { ok: false, code: 'DRAFT_TOTAL_MISMATCH' }
+    }
+
+    const totalAmount = savedTotal - item.amount
+    if (!Number.isSafeInteger(totalAmount) || totalAmount > MAX_UNSIGNED_INT) {
+      return { ok: false, code: 'INVALID_AMOUNT' }
+    }
+    if (totalAmount < 0) {
+      return { ok: false, code: 'DRAFT_CREDITS_EXCEED_UPDATED_TOTAL' }
+    }
+
+    const before = { totalAmount: bill.totalAmount, version: bill.version, item }
+    const version = bill.version + 1
+
+    const removed = await TuitionBillItem.destroy({
+      where: { id: item.id, TuitionBillId: bill.id, kind: item.kind },
+      transaction
+    })
+    if (removed !== 1) return { ok: false, code: 'BILL_ITEM_NOT_FOUND' }
+
+    await bill.update({ totalAmount, version }, { transaction })
+    await AuditLog.create({
+      actorId,
+      entityType: 'TuitionBill',
+      entityId: bill.id,
+      action: 'update',
+      before,
+      after: { totalAmount, version, removedBillItemId: item.id },
+      reason: item.kind === 'leave_credit' ? '移除草稿請假折抵' : '移除草稿額外費用'
+    }, { transaction })
+
+    return { ok: true, billId: bill.id, billItemId: item.id, totalAmount, version }
+  })
+}
+
 async function getTuitionBillDetails(billId) {
   if (!Number.isSafeInteger(billId) || billId < 1) {
     return { ok: false, code: 'INVALID_BILL_ID' }
@@ -1815,6 +1898,7 @@ module.exports = {
   getStudentTuitionList,
   createTuitionBillDraft,
   refreshTuitionBillDraft,
+  removeTuitionBillDraftAdjustment,
   getTuitionBillDetails,
   addTuitionBillExtraFee,
   getPreviousMonthLeaveReviews,
