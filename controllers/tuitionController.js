@@ -960,6 +960,58 @@ const tuitionController = {
     return res.redirect(303, url)
   },
 
+  recordTuitionBillPayment: async (req, res) => {
+    const body = req.body ?? {}
+    const token = body.tuitionFormToken
+    const expected = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
+
+    if (
+      !isToken(token) || !isToken(expected) ||
+      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+    }
+
+    const readInt = value =>
+      typeof value === 'string' && value !== '' && !/\D/.test(value)
+        ? Number(value)
+        : NaN
+
+    const billId = readInt(req.params.billId)
+    const amount = readInt(body.amount)
+    const invalidInput = '帳單 ID 或收款金額不正確，請核對後再試。'
+
+    if (![billId, amount].every(value => Number.isSafeInteger(value) && value > 0)) {
+      return res.status(400).send(invalidInput)
+    }
+
+    const result = await tuitionService.recordTuitionBillPayment({
+      billId,
+      amount,
+      actorId: req.user.id
+    })
+
+    if (result.code === 'INVALID_INPUT') return res.status(400).send(invalidInput)
+    if (result.code === 'BILL_NOT_FOUND') return res.status(404).send('找不到這張帳單。')
+
+    const errors = {
+      BILL_NOT_ISSUED: '只有已出帳的帳單可以登記收款。',
+      BILL_NO_PAYMENT_REQUIRED: '這張帳單無須收款。'
+    }
+    let message = errors[result.code] ?? '暫時無法登記收款，請核對帳單。'
+
+    if (result.ok) {
+      message = result.changed ? '已登記收款。' : '這張帳單已結清，本次未新增收款。'
+    } else if (result.code === 'PAYMENT_AMOUNT_MISMATCH') {
+      message = `目前未收金額為 NT$ ${result.remainingAmount}，請核對後再登記。`
+    }
+
+    req.flash(result.ok ? 'success_messages' : 'error_messages', message)
+    return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
+  },
+
   createTuitions: async (req, res) => {
     const courseId = Number(req.params.id)
 
