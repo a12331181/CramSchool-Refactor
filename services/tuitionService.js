@@ -10,7 +10,13 @@ const STUDENT_STATUS = require('../constants/studentStatus')
 const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
 const MAX_UNSIGNED_INT = 4_294_967_295
+const MAX_BILL_ITEM_AMOUNT = 2_147_483_647
 const TUITION_BILL_HISTORY_LIMIT = 20
+const DRAFT_ADJUSTMENT_REMOVAL_REASONS = Object.freeze({
+  extra_fee: '移除草稿額外費用',
+  leave_credit: '移除草稿請假折抵',
+  discount: '移除草稿帳單折扣'
+})
 const DRAFT_NON_BLOCKING_REVIEW_CODES = new Set([
   'NO_BILLABLE_CALENDARS',
   'CALENDAR_REVIEW_UNAVAILABLE',
@@ -1102,6 +1108,102 @@ async function refreshTuitionBillDraft({ billId, billVersion, actorId } = {}) {
   })
 }
 
+function readTuitionBillDiscount(items) {
+  const discounts = items.filter(item => item.kind === 'discount')
+  const invalid = discounts.some(item =>
+    item.quantity !== 1 ||
+    !Number.isSafeInteger(item.unitPrice) || item.unitPrice < 1 || item.unitPrice > MAX_BILL_ITEM_AMOUNT ||
+    item.amount !== -item.unitPrice ||
+    item.CourseId != null || item.ExtraFeeId != null || item.ActiveLeaveAttendId != null ||
+    typeof item.reason !== 'string' || !item.reason.trim() || item.reason.length > 255
+  )
+  if (discounts.length > 1 || invalid) {
+    return { ok: false, code: 'DISCOUNT_REQUIRES_REVIEW' }
+  }
+  return { ok: true, item: discounts[0] ?? null }
+}
+
+async function setTuitionBillDraftDiscount({ billId, billVersion, actorId, amount, reason } = {}) {
+  const isId = n => Number.isSafeInteger(n) && n > 0
+  if (
+    ![billId, actorId].every(isId) ||
+    !Number.isSafeInteger(billVersion) || billVersion < 0 || billVersion >= MAX_BILL_ITEM_AMOUNT
+  ) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+  if (!Number.isSafeInteger(amount) || amount < 1 || amount > MAX_BILL_ITEM_AMOUNT) {
+    return { ok: false, code: 'INVALID_DISCOUNT_AMOUNT' }
+  }
+  const note = typeof reason === 'string' ? reason.trim() : ''
+  if (!note || note.length > 255) {
+    return { ok: false, code: 'INVALID_DISCOUNT_REASON' }
+  }
+
+  return sequelize.transaction(async transaction => {
+    const bill = await TuitionBill.findByPk(billId, { transaction, lock: transaction.LOCK.UPDATE })
+    if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+    if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+    if (bill.version !== billVersion) return { ok: false, code: 'BILL_VERSION_CONFLICT' }
+
+    const items = await TuitionBillItem.findAll({
+      attributes: ['id', 'kind', 'quantity', 'unitPrice', 'amount', 'reason', 'CourseId', 'ExtraFeeId', 'ActiveLeaveAttendId'],
+      where: { TuitionBillId: bill.id },
+      transaction
+    })
+    if (items.length === 0) return { ok: false, code: 'BILL_HAS_NO_ITEMS' }
+    if (items.some(item => !Number.isSafeInteger(item.amount))) {
+      return { ok: false, code: 'INVALID_BILL_AMOUNT' }
+    }
+    const savedTotal = items.reduce((sum, item) => sum + item.amount, 0)
+    if (!Number.isSafeInteger(savedTotal) || savedTotal < 0 || savedTotal !== bill.totalAmount) {
+      return { ok: false, code: 'DRAFT_TOTAL_MISMATCH' }
+    }
+
+    const discount = readTuitionBillDiscount(items)
+    if (!discount.ok) return discount
+    const current = discount.item
+    const currentAmount = current?.unitPrice ?? 0
+    const totalAmount = savedTotal + currentAmount - amount
+    if (totalAmount < 0) return { ok: false, code: 'DISCOUNT_EXCEEDS_DRAFT_TOTAL' }
+    if (!Number.isSafeInteger(totalAmount) || totalAmount > MAX_UNSIGNED_INT) {
+      return { ok: false, code: 'INVALID_AMOUNT' }
+    }
+    if (currentAmount === amount && current?.reason === note) {
+      return { ok: true, changed: false, billId: bill.id, totalAmount, version: bill.version }
+    }
+
+    const before = {
+      totalAmount: bill.totalAmount,
+      version: bill.version,
+      discount: current ? { billItemId: current.id, amount: currentAmount, reason: current.reason } : null
+    }
+    const values = { unitPrice: amount, amount: -amount, reason: note }
+    const item = current
+      ? await current.update(values, { transaction })
+      : await TuitionBillItem.create({
+          TuitionBillId: bill.id,
+          kind: 'discount',
+          descriptionSnapshot: '帳單折扣',
+          quantity: 1,
+          ...values
+        }, { transaction })
+
+    const version = bill.version + 1
+    await bill.update({ totalAmount, version }, { transaction })
+    await AuditLog.create({
+      actorId,
+      entityType: 'TuitionBill',
+      entityId: bill.id,
+      action: 'update',
+      before,
+      after: { totalAmount, version, discount: { billItemId: item.id, amount, reason: note } },
+      reason: note
+    }, { transaction })
+
+    return { ok: true, changed: true, billId: bill.id, totalAmount, version }
+  })
+}
+
 async function removeTuitionBillDraftAdjustment({ billId, billItemId, billVersion, actorId } = {}) {
   const isId = n => Number.isSafeInteger(n) && n > 0
   if (
@@ -1136,14 +1238,13 @@ async function removeTuitionBillDraftAdjustment({ billId, billItemId, billVersio
 
     const item = items.find(row => row.id === billItemId)
     if (!item) return { ok: false, code: 'BILL_ITEM_NOT_FOUND' }
-    if (item.kind !== 'extra_fee' && item.kind !== 'leave_credit') {
+    if (!Object.hasOwn(DRAFT_ADJUSTMENT_REMOVAL_REASONS, item.kind)) {
       return { ok: false, code: 'BILL_ITEM_NOT_REMOVABLE' }
     }
 
     if (
       items.some(row => !Number.isSafeInteger(row.amount)) ||
-      (item.kind === 'extra_fee' && item.amount <= 0) ||
-      (item.kind === 'leave_credit' && item.amount >= 0)
+      (item.kind === 'extra_fee' ? item.amount <= 0 : item.amount >= 0)
     ) {
       return { ok: false, code: 'INVALID_BILL_AMOUNT' }
     }
@@ -1178,7 +1279,7 @@ async function removeTuitionBillDraftAdjustment({ billId, billItemId, billVersio
       action: 'update',
       before,
       after: { totalAmount, version, removedBillItemId: item.id },
-      reason: item.kind === 'leave_credit' ? '移除草稿請假折抵' : '移除草稿額外費用'
+      reason: DRAFT_ADJUSTMENT_REMOVAL_REASONS[item.kind]
     }, { transaction })
 
     return { ok: true, billId: bill.id, billItemId: item.id, totalAmount, version }
@@ -2154,7 +2255,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
     const items = await TuitionBillItem.findAll({
       attributes: [
         'id', 'kind', 'CourseId', 'quantity', 'unitPrice', 'amount',
-        'ActiveLeaveAttendId', 'sourceSnapshot'
+        'ActiveLeaveAttendId', 'sourceSnapshot', 'ExtraFeeId', 'reason'
       ],
       where: { TuitionBillId: bill.id },
       raw: true,
@@ -2162,6 +2263,8 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
     })
 
     if (items.length === 0) return { ok: false, code: 'BILL_HAS_NO_ITEMS' }
+    const discount = readTuitionBillDiscount(items)
+    if (!discount.ok) return discount
     if (items.some(item => !Number.isSafeInteger(item.amount))) {
       return { ok: false, code: 'INVALID_BILL_AMOUNT' }
     }
@@ -2432,6 +2535,7 @@ module.exports = {
   getCourseMonthlyTuitionList,
   createTuitionBillDraft,
   refreshTuitionBillDraft,
+  setTuitionBillDraftDiscount,
   removeTuitionBillDraftAdjustment,
   discardTuitionBillDraft,
   voidIssuedTuitionBill,

@@ -96,9 +96,21 @@ function describeTuitionBillChange({ before, after }) {
     ? `帳單金額 NT$ ${before.totalAmount} → NT$ ${after.totalAmount}`
     : amountText
 
+  if (Number.isSafeInteger(after?.discount?.amount)) {
+    const previous = before?.discount?.amount
+    const next = after.discount.amount
+    const discountText = Number.isSafeInteger(previous) && previous !== next
+      ? `折扣 NT$ ${previous} → NT$ ${next}`
+      : `折扣 NT$ ${next}`
+    return {
+      actionText: before?.discount ? '修改帳單折扣' : '加入帳單折扣',
+      detailText: `${discountText}｜${amountChange}`
+    }
+  }
+
   if (Number.isSafeInteger(after?.removedBillItemId)) {
     const { kind, descriptionSnapshot } = before?.item ?? {}
-    const labels = { leave_credit: '移除請假折抵', extra_fee: '移除額外費用' }
+    const labels = { leave_credit: '移除請假折抵', extra_fee: '移除額外費用', discount: '移除帳單折扣' }
     return {
       actionText: labels[kind] ?? '移除明細',
       detailText: descriptionSnapshot ? `${descriptionSnapshot}｜${amountChange}` : amountChange
@@ -499,6 +511,15 @@ const tuitionController = {
 
     const extraFeeFormToken = hasExtraFeeForm ? req.session.tuitionFormToken : null
 
+    const discount = bill.items.find(item => item.kind === 'discount')
+    const discountForm = isDraft && (bill.totalAmount > 0 || discount)
+      ? {
+          amount: discount?.unitPrice,
+          reason: discount?.reason,
+          formToken: req.session.tuitionFormToken
+        }
+      : null
+
     const issueForm = isDraft
       ? {
           action: `/cramschool/tuition/bills/${bill.id}/issue`,
@@ -563,7 +584,7 @@ const tuitionController = {
 
     const items = bill.items.map(item => ({
       ...item,
-      canRemove: isDraft && ['extra_fee', 'leave_credit'].includes(item.kind),
+      canRemove: isDraft && ['extra_fee', 'leave_credit', 'discount'].includes(item.kind),
       reviewCount: Array.isArray(item.sourceSnapshot?.reviewItems)
         ? item.sourceSnapshot.reviewItems.length
         : 0
@@ -617,6 +638,7 @@ const tuitionController = {
       billHistory: buildTuitionBillHistory(result.history),
       previewUrl,
       isDraft, 
+      discountForm,
       leaveCreditPanel,
       issueForm,
       voidForm,
@@ -674,6 +696,60 @@ const tuitionController = {
       result.ok ? '已加入額外費用。' : errors[result.code] ?? '無法加入額外費用。'
     )
 
+    return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
+  },
+
+  setTuitionBillDraftDiscount: async (req, res) => {
+    const body = req.body ?? {}
+    const token = body.tuitionFormToken
+    const expected = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
+
+    if (
+      !isToken(token) || !isToken(expected) ||
+      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+    }
+
+    const readInt = value =>
+      typeof value === 'string' && value !== '' && !/\D/.test(value)
+        ? Number(value)
+        : NaN
+    const billId = readInt(req.params.billId)
+    const result = await tuitionService.setTuitionBillDraftDiscount({
+      billId,
+      billVersion: readInt(body.billVersion),
+      actorId: req.user.id,
+      amount: readInt(body.amount),
+      reason: body.reason
+    })
+
+    if (result.code === 'INVALID_INPUT') {
+      return res.status(400).send('帳單 ID 或草稿版本不正確，請重新開啟帳單再試。')
+    }
+    if (result.code === 'BILL_NOT_FOUND') {
+      return res.status(404).send('找不到這張帳單。')
+    }
+
+    const errors = {
+      BILL_NOT_DRAFT: '只有草稿可以修改帳單折扣。',
+      BILL_VERSION_CONFLICT: '帳單已更新，請核對目前明細後再試。',
+      BILL_HAS_NO_ITEMS: '草稿沒有明細，請先核對。',
+      INVALID_BILL_AMOUNT: '草稿明細的金額需要核對。',
+      DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不符，請先核對。',
+      INVALID_DISCOUNT_AMOUNT: '折扣金額須為大於 0 且在可儲存範圍內的台幣整數。',
+      INVALID_DISCOUNT_REASON: '請填寫折扣原因，最多 255 字元。',
+      DISCOUNT_EXCEEDS_DRAFT_TOTAL: '折扣後的應收金額不能低於 NT$ 0。',
+      DISCOUNT_REQUIRES_REVIEW: '草稿裡已有需要核對的折扣明細。',
+      INVALID_AMOUNT: '折扣後的總額超出可儲存範圍。'
+    }
+    const message = result.ok
+      ? (result.changed ? '已儲存帳單折扣，請核對更新後的金額。' : '折扣沒有變動。')
+      : errors[result.code] ?? '暫時無法儲存帳單折扣。'
+
+    req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
   },
 
@@ -961,6 +1037,7 @@ const tuitionController = {
       INVALID_BILL_AMOUNT: '帳單明細的金額需要核對。',
       DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不一致，請先核對。',
       DRAFT_COURSE_FEES_REQUIRE_REVIEW: '草稿的課程明細已變動或無法核對，請回到同月合併預覽查看最新試算。',
+      DISCOUNT_REQUIRES_REVIEW: '草稿裡有帳單折扣需要核對，暫時不能出帳。',
       LEAVE_REVIEW_UNAVAILABLE: '目前無法核對上月請假，暫時不能出帳。',
       LEAVE_CREDIT_REQUIRES_REVIEW: '草稿裡有折抵需要重新核對，暫時不能出帳。',
       LEAVE_CREDIT_OPTIONS_CHANGED: '可折抵項目已變更，請核對重新載入的明細後再出帳。',
@@ -1037,7 +1114,7 @@ const tuitionController = {
       NO_COURSES_IN_BILLING_MONTH: '本月沒有可建立明細的課程，草稿未更新。',
       COURSE_NAME_UNCONFIRMED: '課程名稱需要核對，草稿未更新。',
       INVALID_AMOUNT: '更新後的金額超出可儲存範圍，草稿未更新。',
-      DRAFT_CREDITS_EXCEED_UPDATED_TOTAL: '更新後的金額不足以扣抵原有折抵，請先核對。草稿未更新。'
+      DRAFT_CREDITS_EXCEED_UPDATED_TOTAL: '更新後的金額不足以扣除原有折抵或折扣，草稿未更新。'
     }
 
     const message = result.ok
@@ -1094,14 +1171,14 @@ const tuitionController = {
     }
 
     const errors = {
-      BILL_NOT_DRAFT: '只有草稿可以移除費用或折抵。',
+      BILL_NOT_DRAFT: '只有草稿可以移除額外費用、折抵或折扣。',
       BILL_VERSION_CONFLICT: '草稿已變更，請核對重新載入的帳單後再試。',
       BILL_ITEM_NOT_FOUND: '找不到這張帳單的該筆明細，可能已經移除。',
-      BILL_ITEM_NOT_REMOVABLE: '只能移除額外費用或請假折抵。課程費用請使用「更新草稿」。',
+      BILL_ITEM_NOT_REMOVABLE: '只能移除額外費用、請假折抵或帳單折扣。課程費用請使用「更新草稿」。',
       INVALID_BILL_AMOUNT: '草稿明細的金額需要核對。',
       DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不符，請先核對。',
       INVALID_AMOUNT: '移除後的金額超出可儲存範圍，草稿未變更。',
-      DRAFT_CREDITS_EXCEED_UPDATED_TOTAL: '移除後的金額不足以扣抵原有折抵，請先核對。草稿未變更。'
+      DRAFT_CREDITS_EXCEED_UPDATED_TOTAL: '移除後的金額不足以扣除原有折抵或折扣，草稿未變更。'
     }
 
     req.flash(

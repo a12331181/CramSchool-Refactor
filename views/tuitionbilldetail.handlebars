@@ -188,11 +188,32 @@
 <p><a href="/admin/extrafees">管理額外費用目錄</a></p>
 {{/if}}
 
+{{#with discountForm}}
+<section class="my-4" aria-labelledby="discount-heading">
+  <h2 id="discount-heading" class="h5">帳單折扣</h2>
+  <p class="text-muted">折扣適用整張帳單。如果這張也要折抵上月請假，建議先加入請假折抵，再填折扣。</p>
+  <form method="POST" action="/cramschool/tuition/bills/{{../bill.id}}/discount">
+    <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
+    <input type="hidden" name="billVersion" value="{{../bill.version}}">
+
+    <label for="bill-discount-amount">折扣金額（NT$）</label>
+    <input id="bill-discount-amount" name="amount" type="number" class="form-control mb-2"
+      min="1" step="1" value="{{amount}}" required>
+
+    <label for="bill-discount-reason">折扣原因（管理員備註）</label>
+    <input id="bill-discount-reason" name="reason" type="text" class="form-control mb-2"
+      maxlength="255" value="{{reason}}" required>
+
+    <button type="submit" class="btn btn-outline-primary">{{#if amount}}更新折扣{{else}}加入折扣{{/if}}</button>
+  </form>
+</section>
+{{/with}}
+
 {{#if isDraft}}
 <section class="my-4" aria-labelledby="refresh-draft-heading">
   <h2 id="refresh-draft-heading" class="h5">更新草稿</h2>
   <p class="text-muted">
-    排課、選課或價格變動時，先回到同月合併預覽核對，再更新課程明細。已加入的額外費用與請假折抵會保留。
+    排課、選課或價格變動時，先回到同月合併預覽核對，再更新課程明細。已加入的額外費用、請假折抵與帳單折扣會保留。
   </p>
 
   <form method="POST" action="/cramschool/tuition/bills/{{bill.id}}/refresh">
