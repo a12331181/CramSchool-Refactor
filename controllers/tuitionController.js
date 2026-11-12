@@ -19,6 +19,18 @@ function getTuitionBillPaymentStatusText(paymentStatus) {
   return paymentStatus.paidAmount > 0 ? '部分收款' : '未收款'
 }
 
+const REFUND_MESSAGES = {
+  BILL_NOT_ISSUED: '只有已出帳的帳單可以登記退費。',
+  BILL_NOT_FULLY_PAID: '只有已收清的帳單可以登記退費。',
+  BILL_VERSION_CONFLICT: '帳單已更新，請核對目前的退費紀錄與可退金額。',
+  INVALID_REFUND_REASON: '請填寫退費原因，最多 255 字元。',
+  INVALID_REFUND_DATE: '退費日期必須介於最後收款日與今天之間。',
+  REFUND_TOTAL_REQUIRES_REVIEW: '累計退費金額需要核對。',
+  REFUND_PAYMENT_DATE_UNCONFIRMED: '原收款日期需要核對，暫時無法登記退費。',
+  REFUND_HAS_LEAVE_CREDIT: '這張帳單已作為請假折抵的來源，暫時無法登記退費。',
+  REFUND_EXCEEDS_PAID_AMOUNT: '退費金額超過目前可退的餘額，請核對後再試。'
+}
+
 function buildTuitionPaymentNotice(bill, paymentStatus) {
   if (
     bill.status !== 'issued' || !paymentStatus?.ok ||
@@ -82,6 +94,13 @@ function describeTuitionBillChange({ before, after }) {
     return {
       actionText: before.status === 'draft' ? '捨棄草稿' : '作廢帳單',
       detailText: releasedCount > 0 ? `保留原明細，釋放 ${releasedCount} 筆請假折抵` : '保留原明細'
+    }
+  }
+
+  if (Number.isSafeInteger(after?.refundId) && Number.isSafeInteger(after?.refundAmount)) {
+    return {
+      actionText: '登記退費',
+      detailText: `${after.refundedOn}｜NT$ ${after.refundAmount}（退費 #${after.refundId}）`
     }
   }
 
@@ -544,6 +563,7 @@ const tuitionController = {
       SOURCE_BILL_NOT_FOUND: '找不到上期帳單。',
       BILL_NOT_ISSUED: '原帳單目前不在已出帳狀態。',
       SOURCE_BILL_NOT_FULLY_PAID: '原帳單尚未收清。',
+      SOURCE_BILL_HAS_REFUND: '原帳單已有退費，不能再作為請假折抵來源。',
       SOURCE_ITEM_NOT_FOUND: '原帳單沒有這堂課的計費明細。',
       SOURCE_SNAPSHOT_UNCONFIRMED: '原帳單的計費堂次需要核對。',
       SOURCE_LESSON_HAS_NO_CHARGE: '這堂課原本沒有收費。',
@@ -593,7 +613,8 @@ const tuitionController = {
     const previewUrl = `/cramschool/tuition/students/${bill.StudentId}/preview?` +
       new URLSearchParams({ billingMonth: bill.billingMonth })
 
-        let paymentSummary = null
+    let paymentSummary = null
+    let refundSummary = null
 
     if (bill.status === 'issued') {
       const paymentStatus = result.paymentStatus
@@ -627,6 +648,32 @@ const tuitionController = {
       }
     }
 
+    const refund = result.refundSummary
+    if (refund) {
+      if (!refund.ok) {
+        refundSummary = { errorMessage: REFUND_MESSAGES[refund.code] ?? '暫時無法核對退費資料。' }
+      } else {
+        refundSummary = {
+          ...refund,
+          blockedMessage: REFUND_MESSAGES[refund.blockedCode],
+          statusText: refund.refundedAmount === 0
+            ? '尚未退費'
+            : refund.netPaidAmount === 0 ? '已全額退費' : '已部分退費'
+        }
+        if (refund.netPaidAmount > 0 && !refund.blockedCode) {
+          req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
+          refundSummary.form = {
+            action: `/cramschool/tuition/bills/${bill.id}/refunds`,
+            formToken: req.session.tuitionFormToken,
+            billVersion: bill.version,
+            maxAmount: Math.min(refund.netPaidAmount, 2_147_483_647),
+            earliestDate: result.paymentStatus.lastPaidOn,
+            today: getTaipeiDate()
+          }
+        }
+      }
+    }
+
     res.set('Cache-Control', 'no-store')
 
     return res.render('tuitionbilldetail', {
@@ -634,6 +681,7 @@ const tuitionController = {
       items,
       statusText: labels[bill.status] ?? '待核對',
       paymentSummary,
+      refundSummary,
       paymentNotice: buildTuitionPaymentNotice(bill, result.paymentStatus),
       billHistory: buildTuitionBillHistory(result.history),
       previewUrl,
@@ -804,6 +852,7 @@ const tuitionController = {
       SOURCE_SNAPSHOT_UNCONFIRMED: '上期帳單的計費堂次需要核對。',
       SOURCE_LESSON_HAS_NO_CHARGE: '這堂課原本沒有收費。',
       SOURCE_BILL_NOT_FULLY_PAID: '原帳單尚未收清，暫時不能折抵。',
+      SOURCE_BILL_HAS_REFUND: '原帳單已有退費，不能再作為請假折抵來源。',
       PAYMENT_LINK_CONFLICT: '原帳單的收款連結需要核對。',
       INVALID_PAYMENT_AMOUNT: '原帳單的收款金額需要核對。',
       PAYMENT_TOTAL_EXCEEDS_BILL: '原帳單的收款超過帳單金額，請先核對。',
@@ -1354,6 +1403,43 @@ const tuitionController = {
 
     req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
+  },
+
+  recordTuitionBillRefund: async (req, res) => {
+    const body = req.body ?? {}
+    const token = body.tuitionFormToken
+    const expected = req.session?.tuitionFormToken
+    const isToken = value =>
+      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
+    if (
+      !isToken(token) || !isToken(expected) ||
+      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
+    ) {
+      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+    }
+
+    const readInt = value =>
+      typeof value === 'string' && value !== '' && !/\D/.test(value) ? Number(value) : NaN
+    const billId = readInt(req.params.billId)
+    const result = await tuitionService.recordTuitionBillRefund({
+      billId,
+      billVersion: readInt(body.billVersion),
+      actorId: req.user.id,
+      amount: readInt(body.amount),
+      refundedOn: body.refundedOn,
+      reason: body.reason
+    })
+
+    if (result.code === 'INVALID_INPUT') {
+      return res.status(400).send('帳單 ID、版本或退費金額不正確；金額須為大於零的台幣整數。')
+    }
+    if (result.code === 'BILL_NOT_FOUND') return res.status(404).send('找不到這張帳單。')
+
+    req.flash(
+      result.ok ? 'success_messages' : 'error_messages',
+      result.ok ? '已登記退費。' : REFUND_MESSAGES[result.code] ?? '暫時無法登記退費，請核對帳單。'
+    )
+    return res.redirect(303, `/cramschool/tuition/bills/${billId}#refund-heading`)
   },
 
   editTuition: (req, res) => {

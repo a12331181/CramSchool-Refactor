@@ -71,6 +71,7 @@ module.exports = (app, passport) => {
   app.post('/cramschool/tuition/bills/:billId/discard', authenticatedAdmin, tuitionController.discardTuitionBillDraft)
   app.post('/cramschool/tuition/bills/:billId/issue', authenticatedAdmin, tuitionController.issueTuitionBill)
   app.post('/cramschool/tuition/bills/:billId/payments', authenticatedAdmin, tuitionController.recordTuitionBillPayment)
+  app.post('/cramschool/tuition/bills/:billId/refunds', authenticatedAdmin, tuitionController.recordTuitionBillRefund)
   app.get('/cramschool/tuition/:id/edit', authenticatedAdmin, tuitionController.editTuition)
   app.post('/cramschool/tuition/:tuitionId/extrafee/:extrafeeId', authenticatedAdmin, tuitionController.addFeeList)
   app.delete('/cramschool/tuition/:tuitionId/extrafee/:extrafeeId', authenticatedAdmin, tuitionController.removeFeeList)
