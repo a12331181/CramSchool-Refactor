@@ -27,26 +27,36 @@
 <br>
 
 <h1 class="h4">課程收費列表</h1>
+<p class="mb-1">計費月份：{{billingMonth}}</p>
+<p class="text-muted">
+  金額只加總已出帳的本課學費，不含額外費用與請假折抵。合併帳單以整張帳單是否結清判定收費狀況。
+</p>
 
 <table class="table table-bordered">
   <thead>
     <tr class="table-primary">
       <th scope="col">#</th>
       <th scope="col">課程名稱</th>
-      <th scope="col">#</th>
+      <th scope="col">本月應收學費總額</th>
+      <th scope="col">收費狀況</th>
+      <th scope="col">明細</th>
     </tr>
   </thead>
   <tbody>
     {{#each courses}}
     <tr class="table-light">
-      <th scope="row">{{this.dataValues.id}}</th>
-      <td>{{this.dataValues.name}}</td>
+      <th scope="row">{{this.id}}</th>
+      <td>{{this.name}}</td>
+      <td>{{this.receivableText}}</td>
+      <td><span class="font-weight-bold {{this.collectionClass}}">{{this.collectionText}}</span></td>
       <td>
-        <a href="/cramschool/tuition/courses/{{this.dataValues.id}}/monthly" class="btn btn-sm btn-primary">
+        <a href="{{this.detailUrl}}" class="btn btn-sm btn-primary">
           每月學費明細
         </a>
       </td>
     </tr>
+    {{else}}
+    <tr><td colspan="5" class="text-center text-muted">目前沒有開放的課程。</td></tr>
     {{/each}}
   </tbody>
 </table>

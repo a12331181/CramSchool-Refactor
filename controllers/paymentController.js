@@ -1,16 +1,42 @@
 const db = require('../models')
-const Course = db.Course
 const Payment = db.Payment
 const Tuition = db.Tuition
 const FeeList = db.FeeList
+const tuitionService = require('../services/tuitionService')
+const { getTaipeiDate } = require('../utils/date')
+
+const collectionLabels = {
+  paid: ['已收齊', 'text-success'],
+  unpaid: ['未收齊', 'text-danger'],
+  unissued: ['部分未出帳', 'alert-warning px-1 rounded'],
+  empty: ['本月無收費資料', 'text-muted'],
+  review: ['待核對', 'text-muted']
+}
+
+const amountFormat = new Intl.NumberFormat('zh-TW')
 
 const schoolController = {
-  getPaymentIndexPage: (req, res) => {
-    Course.findAll({ 
-      where: { isActive: true }
-    }).then(courses =>{
-      return res.render('payment', { courses: courses })
+  getPaymentIndexPage: async (req, res) => {
+    const billingMonth = getTaipeiDate().slice(0, 7)
+    res.set('Cache-Control', 'no-store')
+    const result = await tuitionService.getCoursePaymentOverview({ billingMonth })
+    if (!result.ok) return res.status(500).send('無法取得本月課程收費資料。')
+
+    const courses = result.courses.map(course => {
+      const [collectionText, collectionClass] = collectionLabels[course.collectionStatus]
+      return {
+        id: course.id,
+        name: course.name,
+        receivableText: course.receivableAmount === null
+          ? '待核對'
+          : `NT$ ${amountFormat.format(course.receivableAmount)}`,
+        collectionText,
+        collectionClass,
+        detailUrl: `/cramschool/tuition/courses/${course.id}/monthly?billingMonth=${billingMonth}`
+      }
     })
+
+    return res.render('payment', { billingMonth, courses })
   },
 
   deletePayment: (req, res) => {

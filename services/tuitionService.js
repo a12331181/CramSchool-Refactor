@@ -641,6 +641,106 @@ async function getStudentTuitionHistory({ courseId, studentId } = {}) {
   return { ok: true, course, student, rows }
 }
 
+function getMonthlyCourseTuitionSources({ courseIds, billingMonth }, transaction) {
+  const courseFilter = { [Op.in]: courseIds }
+
+  return Promise.all([
+    Enrollment.findAll({
+      attributes: ['CourseId', 'StudentId', 'startsOn', 'endsOn', 'status'],
+      where: { CourseId: courseFilter },
+      raw: true,
+      transaction
+    }),
+    TuitionBillItem.findAll({
+      attributes: ['CourseId', 'TuitionBillId', 'amount'],
+      where: { CourseId: courseFilter, kind: 'course_fee' },
+      include: [{
+        model: TuitionBill,
+        attributes: ['id', 'StudentId', 'status', 'totalAmount'],
+        where: { billingMonth, status: { [Op.in]: ['draft', 'issued'] } },
+        required: true
+      }],
+      raw: true,
+      nest: true,
+      transaction
+    })
+  ])
+}
+
+async function getCoursePaymentOverview({ billingMonth } = {}) {
+  const range = getTuitionMonthRange(billingMonth)
+  if (!range) return { ok: false, code: 'INVALID_BILLING_MONTH' }
+
+  return sequelize.transaction({
+    isolationLevel: Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
+    readOnly: true
+  }, async transaction => {
+    const courses = await Course.findAll({
+      attributes: ['id', 'name'],
+      where: { isActive: true },
+      order: [['id', 'ASC']],
+      raw: true,
+      transaction
+    })
+    if (courses.length === 0) return { ok: true, courses: [] }
+
+    const [enrollments, courseFeeItems] = await getMonthlyCourseTuitionSources({
+      courseIds: courses.map(course => course.id),
+      billingMonth
+    }, transaction)
+
+    const summaries = new Map(courses.map(({ id }) => [id, {
+      studentIds: new Set(),
+      issuedStudentIds: new Set(),
+      issuedAmounts: [],
+      payableBillIds: new Set()
+    }]))
+
+    for (const enrollment of enrollments) {
+      const { StudentId: studentId, CourseId: courseId } = enrollment
+      if (!Number.isSafeInteger(studentId) || studentId < 1) continue
+      if (getTuitionEnrollmentStateForMonth(enrollment, range) === 'outside_month') continue
+      summaries.get(courseId).studentIds.add(studentId)
+    }
+
+    const payableBills = new Map()
+    for (const { CourseId: courseId, amount, TuitionBill: bill } of courseFeeItems) {
+      const summary = summaries.get(courseId)
+      summary.studentIds.add(bill.StudentId)
+      if (bill.status !== 'issued') continue
+
+      summary.issuedStudentIds.add(bill.StudentId)
+      summary.issuedAmounts.push(amount)
+      if (amount > 0) {
+        summary.payableBillIds.add(bill.id)
+        payableBills.set(bill.id, bill)
+      }
+    }
+
+    const paymentStatuses = await getIssuedTuitionBillPaymentStatuses([...payableBills.values()], transaction)
+    const rows = courses.map(course => {
+      const { studentIds, issuedStudentIds, issuedAmounts, payableBillIds } = summaries.get(course.id)
+      const receivableAmount = issuedAmounts.length ? sumCourseFeeAmounts(issuedAmounts) : 0
+      const statuses = [...payableBillIds].map(id => paymentStatuses.get(id))
+
+      let collectionStatus = 'paid'
+      if (studentIds.size === 0) {
+        collectionStatus = 'empty'
+      } else if (issuedStudentIds.size < studentIds.size) {
+        collectionStatus = 'unissued'
+      } else if (receivableAmount === null || statuses.some(status => !status?.ok)) {
+        collectionStatus = 'review'
+      } else if (statuses.some(status => status.remainingAmount > 0)) {
+        collectionStatus = 'unpaid'
+      }
+
+      return { ...course, receivableAmount, collectionStatus }
+    })
+
+    return { ok: true, courses: rows }
+  })
+}
+
 async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageSize } = {}) {
   if (!Number.isSafeInteger(courseId) || courseId < 1) {
     return { ok: false, code: 'INVALID_COURSE_ID' }
@@ -660,25 +760,10 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
   const course = await Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true })
   if (!course) return { ok: false, code: 'COURSE_NOT_FOUND' }
 
-  const [enrollments, courseFeeItems] = await Promise.all([
-    Enrollment.findAll({
-      attributes: ['StudentId', 'startsOn', 'endsOn', 'status'],
-      where: { CourseId: courseId },
-      raw: true
-    }),
-    TuitionBillItem.findAll({
-      attributes: ['TuitionBillId', 'amount'],
-      where: { CourseId: courseId, kind: 'course_fee' },
-      include: [{
-        model: TuitionBill,
-        attributes: ['StudentId'],
-        where: { billingMonth, status: { [Op.in]: ['draft', 'issued'] } },
-        required: true
-      }],
-      raw: true,
-      nest: true
-    })
-  ])
+  const [enrollments, courseFeeItems] = await getMonthlyCourseTuitionSources({
+    courseIds: [courseId],
+    billingMonth
+  })
 
   const studentIds = new Set()
   const enrollmentReviewIds = new Set()
@@ -2343,6 +2428,7 @@ module.exports = {
   getStudentTuitionBillsForMonth,
   getStudentTuitionList,
   getStudentTuitionHistory,
+  getCoursePaymentOverview,
   getCourseMonthlyTuitionList,
   createTuitionBillDraft,
   refreshTuitionBillDraft,
