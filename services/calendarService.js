@@ -1,5 +1,5 @@
-const { Op } = require('sequelize')
-const { Course, Calendar, Teacher, Enrollment, Attend, sequelize } = require('../models')
+const { Op, col, fn, literal, where } = require('sequelize')
+const { Course, Calendar, Teacher, Enrollment, Attend, TuitionBill, TuitionBillItem, sequelize } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
@@ -210,6 +210,27 @@ async function cancelCalendar(courseId, calendarId) {
 
     if (calendar.status !== CALENDAR_STATUS.SCHEDULED) {
       return { ok: false, code: 'CALENDAR_NOT_CANCELLABLE' }
+    }
+
+    // 正式出帳也會鎖定課程。取得鎖之後，再查是否有帳單包含這個課堂 ID。
+    const billedItem = await TuitionBillItem.findOne({
+      attributes: ['TuitionBillId'],
+      where: {
+        CourseId: courseId,
+        kind: 'course_fee',
+        [Op.and]: where(fn(
+          'JSON_CONTAINS',
+          col('TuitionBillItem.sourceSnapshot'),
+          JSON.stringify({ calendarId }),
+          literal("'$.calendars'")
+        ), 1)
+      },
+      include: [{ model: TuitionBill, attributes: [], where: { status: 'issued' }, required: true }],
+      raw: true,
+      transaction
+    })
+    if (billedItem) {
+      return { ok: false, code: 'CALENDAR_ALREADY_BILLED', billId: billedItem.TuitionBillId }
     }
 
     await calendar.update(

@@ -308,6 +308,7 @@ const adminController = {
         COURSE_NOT_FOUND: '找不到課程資料',
         COURSE_CLOSED: '課程已關閉，無法取消課堂',
         CALENDAR_NOT_FOUND: '找不到這門課程的課堂',
+        CALENDAR_ALREADY_BILLED: `這堂課已列入正式帳單 #${result.billId}，未取消。請先核對相關帳單。`,
         CALENDAR_NOT_CANCELLABLE: '只有已排定的課堂可以取消'
       }
 
