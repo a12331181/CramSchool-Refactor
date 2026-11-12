@@ -30,7 +30,7 @@
 <p class="text-muted">在學學生的本月帳單與收款狀況。尚未開單時顯示基本學費試算。</p>
 
 <form action="{{listUrl}}" method="GET" class="mb-3">
-  <label for="billing-month">計費月份</label>
+  <label for="billing-month">計費月份:</label>
   <input id="billing-month" type="month" name="billingMonth"
     value="{{billingMonth}}" required>
   <button type="submit" class="btn btn-sm btn-primary">查看月學費</button>
@@ -41,10 +41,10 @@
 {{else}}
   <p>共 {{totalCount}} 位在學學生</p>
 
-  <table class="table table-bordered">
+  <table class="table table-bordered ">
     <thead>
-      <tr>
-        <th scope="col">學生</th>
+      <tr class="table-primary">
+        <th scope="col">學生姓名</th>
         <th scope="col">本月金額</th>
         <th scope="col">帳單／收款狀態</th>
         <th scope="col">未收金額</th>
@@ -65,9 +65,12 @@
           <td>{{this.statusText}}</td>
           <td>{{#if this.hasRemainingAmount}}NT$ {{this.remainingAmount}}{{else}}—{{/if}}</td>
           <td>
-            {{#if this.billUrl}}<a class="mr-2" href="{{this.billUrl}}">查看帳單</a>{{/if}}
-            <a href="{{this.previewUrl}}">合併預覽</a>
+            
+            <a href="{{this.previewUrl}}">帳單草稿</a>
+            <span>/</span>
+            {{#if this.billUrl}}<a href="{{this.billUrl}}">本月帳單</a>{{/if}}
           </td>
+          
           <td><a href="{{this.historyUrl}}">歷期學費列表</a></td>
         </tr>
       {{else}}
@@ -77,8 +80,36 @@
   </table>
 
   <nav aria-label="學生學費列表分頁">
-    {{#if prevUrl}}<a href="{{prevUrl}}">上一頁</a>{{/if}}
-    <span class="mx-2">第 {{pagination.page}} / {{pagination.totalPages}} 頁</span>
-    {{#if nextUrl}}<a href="{{nextUrl}}">下一頁</a>{{/if}}
+    <ul class="pagination justify-content-center">
+      <li class="page-item{{#unless prevUrl}} disabled{{/unless}}">
+        {{#if prevUrl}}
+        <a class="page-link" href="{{prevUrl}}" aria-label="上一頁">
+          <span aria-hidden="true">&laquo;</span>
+        </a>
+        {{else}}
+        <span class="page-link" aria-hidden="true">&laquo;</span>
+        {{/if}}
+      </li>
+      {{#each pagination.totalPage}}
+        {{#ifCond this @root.pagination.page}}
+        <li class="page-item active">
+          <span class="page-link" aria-current="page">{{this}}</span>
+        </li>
+        {{else}}
+        <li class="page-item">
+          <a class="page-link" href="{{@root.listUrl}}?billingMonth={{@root.billingMonth}}&amp;page={{this}}">{{this}}</a>
+        </li>
+        {{/ifCond}}
+      {{/each}}
+      <li class="page-item{{#unless nextUrl}} disabled{{/unless}}">
+        {{#if nextUrl}}
+        <a class="page-link" href="{{nextUrl}}" aria-label="下一頁">
+          <span aria-hidden="true">&raquo;</span>
+        </a>
+        {{else}}
+        <span class="page-link" aria-hidden="true">&raquo;</span>
+        {{/if}}
+      </li>
+    </ul>
   </nav>
 {{/if}}
