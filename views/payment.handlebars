@@ -17,17 +17,16 @@
     <a class="nav-link" href="/cramschool/attend">課程點名</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link active" aria-current="page" href="/cramschool/payment">繳費紀錄</a>
+    <a class="nav-link active" aria-current="page" href="/cramschool/payment">課程收費紀錄</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="/cramschool/tuition/students">學生繳費紀錄</a>
   </li>
 </ul>
 
 <br>
 
-<h1 class="h4">繳費紀錄｜按課程</h1>
-
-<a href="/cramschool/tuition/students" class="btn btn-outline-primary mb-3">
-  改按學生查看
-</a>
+<h1 class="h4">課程收費列表</h1>
 
 <table class="table table-bordered">
   <thead>
@@ -44,7 +43,7 @@
       <td>{{this.dataValues.name}}</td>
       <td>
         <a href="/cramschool/tuition/courses/{{this.dataValues.id}}/monthly" class="btn btn-sm btn-primary">
-          查看月學費
+          每月學費明細
         </a>
       </td>
     </tr>
