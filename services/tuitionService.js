@@ -7,6 +7,7 @@ const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
+const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
 const MAX_UNSIGNED_INT = 4_294_967_295
@@ -543,7 +544,7 @@ async function getActiveTuitionBillsForStudents(studentIds, billingMonth) {
   })
 }
 
-async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
+async function getStudentTuitionList({ billingMonth, statusFilter = 'all', page, pageSize } = {}) {
   if (
     typeof billingMonth !== 'string' ||
     !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth) ||
@@ -560,25 +561,47 @@ async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
     return { ok: false, code: 'INVALID_PAGE' }
   }
 
-  const result = await Student.findAndCountAll({
+  if (typeof statusFilter !== 'string' || !Object.hasOwn(STUDENT_TUITION_STATUS, statusFilter)) {
+    return { ok: false, code: 'INVALID_TUITION_STATUS' }
+  }
+
+  const allStatuses = statusFilter === 'all'
+  const offset = (page - 1) * pageSize
+  const studentQuery = {
     attributes: ['id', 'name'],
     where: { status: STUDENT_STATUS.ACTIVE },
     order: [['id', 'ASC']],
-    limit: pageSize,
-    offset: (page - 1) * pageSize,
     raw: true
-  })
+  }
+  const result = allStatuses
+    ? await Student.findAndCountAll({ ...studentQuery, limit: pageSize, offset })
+    : { rows: await Student.findAll(studentQuery) }
 
   const studentIds = result.rows.map(student => student.id)
   const bills = await getActiveTuitionBillsForStudents(studentIds, billingMonth)
   const billsByStudentId = new Map(bills.map(bill => [bill.StudentId, bill]))
-  const paymentStatuses = await getIssuedTuitionBillPaymentStatuses(bills)
+  const paymentStatuses = ['unbilled', 'draft'].includes(statusFilter)
+    ? new Map()
+    : await getIssuedTuitionBillPaymentStatuses(bills)
+
+  const studentsWithBills = result.rows.map(student => {
+    const bill = billsByStudentId.get(student.id)
+    return { student, bill, paymentStatus: paymentStatuses.get(bill?.id) ?? null }
+  })
+  const matching = allStatuses ? studentsWithBills : studentsWithBills.filter(({ bill, paymentStatus }) => {
+    if (!bill) return statusFilter === 'unbilled'
+    if (bill.status === 'draft') return statusFilter === 'draft'
+    return statusFilter === getTuitionBillPaymentState(paymentStatus)
+  })
+  const pageRows = allStatuses ? matching : matching.slice(offset, offset + pageSize)
+  const totalCount = allStatuses ? result.count : matching.length
   const rows = []
 
-  for (const student of result.rows) {
-    const bill = billsByStudentId.get(student.id)
+  // 沒有帳單的學生，只需要試算本頁顯示的金額。
+  for (const entry of pageRows) {
+    const { student, bill } = entry
     if (bill) {
-      rows.push({ student, bill, paymentStatus: paymentStatuses.get(bill.id) ?? null })
+      rows.push(entry)
       continue
     }
 
@@ -595,7 +618,7 @@ async function getStudentTuitionList({ billingMonth, page, pageSize } = {}) {
     })
   }
 
-  return { ok: true, rows, totalCount: result.count }
+  return { ok: true, rows, totalCount }
 }
 
 function sumCourseFeeAmounts(amounts) {
@@ -1840,6 +1863,13 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
   }
 }
 
+function getTuitionBillPaymentState(paymentStatus) {
+  if (!paymentStatus?.ok) return 'payment_review'
+  if (paymentStatus.totalAmount === 0) return 'no_payment'
+  if (paymentStatus.isFullyPaid) return 'paid'
+  return paymentStatus.paidAmount > 0 ? 'partial' : 'unpaid'
+}
+
 async function getTuitionBillPaymentStatus(billId, transaction) {
   if (!Number.isSafeInteger(billId) || billId < 1) {
     return { ok: false, code: 'INVALID_BILL_ID' }
@@ -2661,6 +2691,7 @@ module.exports = {
   getPreviousMonthLeaveReviews,
   recordPreviousMonthLeaveReview,
   findPreviousMonthLeaveBillSource,
+  getTuitionBillPaymentState,
   getTuitionBillPaymentStatus,
   getPreviousMonthLeaveCreditCandidate,
   issueTuitionBill,

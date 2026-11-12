@@ -33,13 +33,22 @@
   <label for="billing-month">計費月份:</label>
   <input id="billing-month" type="month" name="billingMonth"
     value="{{billingMonth}}" required>
+  <span class="d-inline-block ml-sm-2">
+    <label for="tuition-status">帳單／收款狀態:</label>
+    <select id="tuition-status" name="status" class="form-control-sm"
+      onchange="this.form.requestSubmit()">
+      {{#each statusOptions}}
+      <option value="{{value}}"{{#if selected}} selected{{/if}}>{{label}}</option>
+      {{/each}}
+    </select>
+  </span>
   <button type="submit" class="btn btn-sm btn-primary">查看月學費</button>
 </form>
 
 {{#if errorMessage}}
   <p class="alert alert-warning">{{errorMessage}}</p>
 {{else}}
-  <p>共 {{totalCount}} 位在學學生</p>
+  <p>共 {{totalCount}} 位符合條件的在學學生</p>
 
   <table class="table table-bordered ">
     <thead>
@@ -74,7 +83,7 @@
           <td><a href="{{this.historyUrl}}">歷期學費列表</a></td>
         </tr>
       {{else}}
-        <tr><td colspan="6">目前沒有在學學生。</td></tr>
+        <tr><td colspan="6">目前沒有符合條件的學生。</td></tr>
       {{/each}}
     </tbody>
   </table>
@@ -90,16 +99,16 @@
         <span class="page-link" aria-hidden="true">&laquo;</span>
         {{/if}}
       </li>
-      {{#each pagination.totalPage}}
-        {{#ifCond this @root.pagination.page}}
+      {{#each pageLinks}}
+        {{#if isCurrent}}
         <li class="page-item active">
-          <span class="page-link" aria-current="page">{{this}}</span>
+          <span class="page-link" aria-current="page">{{number}}</span>
         </li>
         {{else}}
         <li class="page-item">
-          <a class="page-link" href="{{@root.listUrl}}?billingMonth={{@root.billingMonth}}&amp;page={{this}}">{{this}}</a>
+          <a class="page-link" href="{{url}}">{{number}}</a>
         </li>
-        {{/ifCond}}
+        {{/if}}
       {{/each}}
       <li class="page-item{{#unless nextUrl}} disabled{{/unless}}">
         {{#if nextUrl}}

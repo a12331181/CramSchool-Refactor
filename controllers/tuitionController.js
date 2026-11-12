@@ -11,12 +11,10 @@ const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const { getPagination } = require('../utils/pagination')
 const { randomBytes, timingSafeEqual } = require('node:crypto')
 const ATTEND_STATUS = require('../constants/attendStatus')
+const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 
 function getTuitionBillPaymentStatusText(paymentStatus) {
-  if (!paymentStatus?.ok) return '收款待核對'
-  if (paymentStatus.totalAmount === 0) return '無須收款'
-  if (paymentStatus.isFullyPaid) return '已結清'
-  return paymentStatus.paidAmount > 0 ? '部分收款' : '未收款'
+  return STUDENT_TUITION_STATUS[tuitionService.getTuitionBillPaymentState(paymentStatus)]
 }
 
 const REFUND_MESSAGES = {
@@ -186,6 +184,10 @@ const tuitionController = {
     const page = Number(req.query.page)
     if (!course && Number.isSafeInteger(page) && page > 1) {
       navigation.set('page', String(page))
+    }
+    const { status } = req.query
+    if (!course && typeof status === 'string' && status !== 'all' && Object.hasOwn(STUDENT_TUITION_STATUS, status)) {
+      navigation.set('status', status)
     }
     const backQuery = navigation.size ? `?${navigation}` : ''
     const rows = result.rows.map(({ bill, amount, paymentStatus }) => {
@@ -877,17 +879,22 @@ const tuitionController = {
   getStudentTuitionList: async (req, res) => {
     const listUrl = '/cramschool/tuition/students'
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
+    const statusFilter = req.query.status ?? 'all'
     const page = Number(req.query.page ?? 1)
     const pageSize = 12
 
     const viewData = {
       listUrl,
-      billingMonth: typeof billingMonth === 'string' ? billingMonth : ''
+      billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
+      statusOptions: Object.entries(STUDENT_TUITION_STATUS).map(([value, label]) => ({
+        value, label, selected: value === statusFilter
+      }))
     }
 
     res.set('Cache-Control', 'no-store')
     const result = await tuitionService.getStudentTuitionList({
       billingMonth,
+      statusFilter,
       page,
       pageSize
     })
@@ -895,7 +902,8 @@ const tuitionController = {
     if (!result.ok) {
       const errors = {
         INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
-        INVALID_PAGE: '頁碼不正確。'
+        INVALID_PAGE: '頁碼不正確。',
+        INVALID_TUITION_STATUS: '請選擇有效的帳單／收款狀態。'
       }
 
       return res.render('studenttuitionlist', {
@@ -910,16 +918,18 @@ const tuitionController = {
       totalCount: result.totalCount
     })
 
-    const pageUrl = targetPage => `${listUrl}?${new URLSearchParams({
-      billingMonth,
-      page: String(targetPage)
-    })}`
+    const listQuery = targetPage => {
+      const params = new URLSearchParams({ billingMonth, page: String(targetPage) })
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      return params
+    }
+    const pageUrl = targetPage => `${listUrl}?${listQuery(targetPage)}`
 
     if (page > pagination.totalPages) {
       return res.redirect(pageUrl(pagination.totalPages))
     }
 
-    const historyQuery = new URLSearchParams({ billingMonth, page: String(page) })
+    const historyQuery = listQuery(page)
     const rows = result.rows.map(row => {
       const { bill, paymentStatus } = row
       const isIssued = bill?.status === 'issued'
@@ -960,7 +970,11 @@ const tuitionController = {
       ...viewData,
       rows,
       totalCount: result.totalCount,
-      pagination,
+      pageLinks: pagination.totalPage.map(number => ({
+        number,
+        url: pageUrl(number),
+        isCurrent: number === pagination.page
+      })),
       prevUrl: page > 1 ? pageUrl(pagination.prev) : null,
       nextUrl: page < pagination.totalPages ? pageUrl(pagination.next) : null
     })
