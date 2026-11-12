@@ -70,9 +70,85 @@
       <dd>NT$ {{remainingAmount}}</dd>
     </div>
   </dl>
+  {{#if allocationMessage}}<p class="text-muted mt-3">{{allocationMessage}}</p>{{/if}}
+  {{#with itemizedPayment}}
+  <div class="mt-3">
+    <h3 class="h6">分項收款</h3>
+    {{#if hasAdjustments}}
+    <p class="text-muted">整單折扣與請假折抵按各項原價比例分攤，這裡顯示分攤後應收。</p>
+    {{/if}}
+    {{#if canRecord}}
+    <p>勾選本次已收到款項的課程或費用。</p>
+    <form method="POST" action="{{action}}" id="tuition-item-payment">
+      <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
+      <input type="hidden" name="billVersion" value="{{billVersion}}">
+      <input type="hidden" name="paymentMode" value="items">
+    {{/if}}
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered">
+        <thead>
+          <tr>
+            <th scope="col">課程／費用</th>
+            <th scope="col">本項應收</th>
+            <th scope="col">收款狀態</th>
+            {{#if canRecord}}<th scope="col">本次收款</th>{{/if}}
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <th scope="row">{{description}}</th>
+            <td>NT$ {{amount}}</td>
+            <td>{{statusText}}</td>
+            {{#if ../canRecord}}
+            <td>
+              {{#if canSelect}}
+              <input type="checkbox" name="paymentItems" value="{{itemId}}" data-amount="{{amount}}"
+                aria-label="收款 {{description}}">
+              {{else}}—{{/if}}
+            </td>
+            {{/if}}
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+    {{#if canRecord}}
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="tuition-select-unpaid">勾選全部未付</button>
+      <p class="mt-2">本次收款：NT$ <output id="tuition-selected-total" aria-live="polite">0</output></p>
+      <button type="submit" class="btn btn-primary">登記勾選項目</button>
+    </form>
+    <script>
+      (() => {
+        const form = document.getElementById('tuition-item-payment')
+        const inputs = [...form.querySelectorAll('input[name="paymentItems"]')]
+        const output = document.getElementById('tuition-selected-total')
+        const submit = form.querySelector('button[type="submit"]')
+        const renderTotal = () => {
+          const amount = inputs.reduce((sum, input) => input.checked ? sum + Number(input.dataset.amount) : sum, 0)
+          output.textContent = amount.toLocaleString('zh-TW')
+          submit.disabled = amount === 0 || amount > 2147483647
+        }
+        form.addEventListener('change', renderTotal)
+        document.getElementById('tuition-select-unpaid').addEventListener('click', () => {
+          inputs.forEach(input => { input.checked = true })
+          renderTotal()
+        })
+        form.addEventListener('submit', event => {
+          if (submit.disabled || !window.confirm('確認已收到 NT$ ' + output.textContent + '，要登記勾選的項目嗎？')) {
+            event.preventDefault()
+          }
+        })
+        renderTotal()
+      })()
+    </script>
+    {{/if}}
+  </div>
+  {{/with}}
   {{#with paymentForm}}
   <form method="POST" action="{{action}}" class="mt-3" onsubmit="return confirm('確認已收到這筆款項，要登記收款嗎？')">
     <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
+    <input type="hidden" name="billVersion" value="{{billVersion}}">
     <input type="hidden" name="amount" value="{{amount}}">
     <button type="submit" class="btn btn-primary">登記收款 NT$ {{amount}}</button>
   </form>

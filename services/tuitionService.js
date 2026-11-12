@@ -9,6 +9,7 @@ const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
+const paymentAllocationService = require('./tuitionPaymentAllocationService')
 const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
 const MAX_UNSIGNED_INT = 4_294_967_295
 const MAX_BILL_ITEM_AMOUNT = 2_147_483_647
@@ -1461,8 +1462,11 @@ async function getTuitionBillDetails(billId) {
 
   const leaveCreditData = await getDraftLeaveCreditOptions(savedBill)
 
-  const paymentStatus = savedBill.status === 'issued'
-    ? await getTuitionBillPaymentStatus(savedBill.id)
+  const isIssued = savedBill.status === 'issued'
+  const payments = isIssued ? await getPaidTuitionBillPayments([savedBill.id]) : []
+  const paymentStatus = isIssued ? summarizeTuitionBillPayments(savedBill, payments) : null
+  const paymentAllocation = paymentStatus?.ok && paymentStatus.totalAmount > 0
+    ? await paymentAllocationService.getAllocationState({ items: savedBill.items, payments, paymentStatus })
     : null
   const refundSummary = paymentStatus?.isFullyPaid
     ? await getTuitionBillRefundSummary(savedBill.id, paymentStatus)
@@ -1482,6 +1486,7 @@ async function getTuitionBillDetails(billId) {
     extraFees,
     leaveCreditData,
     paymentStatus,
+    paymentAllocation,
     refundSummary,
     canVoidIssuedBill,
     history
@@ -1888,18 +1893,22 @@ async function getTuitionBillPaymentStatus(billId, transaction) {
   return statuses.get(bill.id)
 }
 
+function getPaidTuitionBillPayments(billIds, transaction) {
+  return Payment.findAll({
+    attributes: ['id', 'TuitionBillId', 'TuitionId', 'amount', 'time'],
+    where: { TuitionBillId: { [Op.in]: billIds }, isPaid: true },
+    raw: true,
+    transaction
+  })
+}
+
 async function getIssuedTuitionBillPaymentStatuses(bills, transaction) {
   const issuedBills = bills.filter(bill => bill.status === 'issued')
   if (issuedBills.length === 0) return new Map()
 
   const billIds = issuedBills.map(bill => bill.id)
   const paymentsByBillId = new Map(billIds.map(id => [id, []]))
-  const payments = await Payment.findAll({
-    attributes: ['TuitionBillId', 'TuitionId', 'amount', 'time'],
-    where: { TuitionBillId: { [Op.in]: billIds }, isPaid: true },
-    raw: true,
-    transaction
-  })
+  const payments = await getPaidTuitionBillPayments(billIds, transaction)
 
   for (const payment of payments) {
     paymentsByBillId.get(payment.TuitionBillId).push(payment)
@@ -2483,17 +2492,29 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
   })
 }
 
-async function recordTuitionBillPayment({ billId, amount, actorId } = {}) {
+async function recordTuitionBillPayment({ billId, billVersion, amount, selectedItemIds, actorId } = {}) {
+  const itemized = selectedItemIds !== undefined
+  const validVersion = Number.isSafeInteger(billVersion) && billVersion >= 0 && billVersion < 2_147_483_647
   if (
     ![billId, actorId].every(id => Number.isSafeInteger(id) && id > 0) ||
-    !Number.isSafeInteger(amount) || amount < 1 || amount > 2_147_483_647
+    ((itemized || billVersion !== undefined) && !validVersion) ||
+    (!itemized && (!Number.isSafeInteger(amount) || amount < 1 || amount > 2_147_483_647))
   ) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
 
+  if (itemized) {
+    if (
+      !Array.isArray(selectedItemIds) || selectedItemIds.length > paymentAllocationService.MAX_PAYMENT_ITEMS ||
+      !selectedItemIds.every(id => Number.isSafeInteger(id) && id > 0) ||
+      new Set(selectedItemIds).size !== selectedItemIds.length
+    ) return { ok: false, code: 'INVALID_INPUT' }
+    if (selectedItemIds.length === 0) return { ok: false, code: 'PAYMENT_ITEMS_REQUIRED' }
+  }
+
   return sequelize.transaction(async transaction => {
     const bill = await TuitionBill.findByPk(billId, {
-      attributes: ['id', 'status'],
+      attributes: ['id', 'status', 'totalAmount', 'version'],
       transaction,
       lock: transaction.LOCK.UPDATE
     })
@@ -2502,11 +2523,18 @@ async function recordTuitionBillPayment({ billId, amount, actorId } = {}) {
     if (bill.status !== 'issued') {
       return { ok: false, code: 'BILL_NOT_ISSUED' }
     }
+    if (
+      !Number.isSafeInteger(bill.version) || bill.version < 0 || bill.version >= 2_147_483_647 ||
+      (billVersion !== undefined && bill.version !== billVersion)
+    ) {
+      return { ok: false, code: 'BILL_VERSION_CONFLICT' }
+    }
 
-    const paymentStatus = await getTuitionBillPaymentStatus(bill.id, transaction)
+    const payments = await getPaidTuitionBillPayments([bill.id], transaction)
+    const paymentStatus = summarizeTuitionBillPayments(bill, payments)
     if (!paymentStatus.ok) return paymentStatus
 
-    const { totalAmount, paidAmount, remainingAmount, isFullyPaid } = paymentStatus
+    const { paidAmount, remainingAmount, isFullyPaid } = paymentStatus
 
     if (isFullyPaid) {
       return { ok: true, changed: false, billId: bill.id, paidAmount, remainingAmount }
@@ -2516,18 +2544,42 @@ async function recordTuitionBillPayment({ billId, amount, actorId } = {}) {
       return { ok: false, code: 'BILL_NO_PAYMENT_REQUIRED' }
     }
 
-    if (amount !== remainingAmount) {
+    if (!itemized && amount !== remainingAmount) {
       return { ok: false, code: 'PAYMENT_AMOUNT_MISMATCH', remainingAmount }
+    }
+
+    const items = await TuitionBillItem.findAll({
+      attributes: ['id', 'kind', 'descriptionSnapshot', 'amount'],
+      where: { TuitionBillId: bill.id },
+      raw: true,
+      transaction
+    })
+    const allocation = await paymentAllocationService.getAllocationState({ items, payments, paymentStatus }, transaction)
+    if (!allocation.ok) return allocation
+    if (itemized && !allocation.itemized) return { ok: false, code: 'PAYMENT_ITEMS_UNAVAILABLE' }
+
+    const outstanding = (allocation.items ?? []).filter(item => item.amount > 0 && item.paymentId === null)
+    const selected = itemized ? new Set(selectedItemIds) : null
+    const paidItems = selected ? outstanding.filter(item => selected.has(item.itemId)) : outstanding
+    if (selected && paidItems.length !== selected.size) return { ok: false, code: 'PAYMENT_ITEMS_CHANGED' }
+    const receivedAmount = itemized ? paidItems.reduce((sum, item) => sum + item.amount, 0) : amount
+    if (receivedAmount < 1 || receivedAmount > 2_147_483_647 || receivedAmount > remainingAmount) {
+      return { ok: false, code: 'PAYMENT_AMOUNT_OUT_OF_RANGE' }
     }
 
     const now = new Date()
     const payment = await Payment.create({
       TuitionBillId: bill.id,
       TuitionId: null,
-      amount,
+      amount: receivedAmount,
       isPaid: true,
       time: getTaipeiDate(now)
     }, { transaction })
+    await paymentAllocationService.createAllocations(payment.id, paidItems, transaction)
+    await bill.update({ version: bill.version + 1 }, { transaction })
+
+    const updatedPaidAmount = paidAmount + receivedAmount
+    const updatedRemainingAmount = remainingAmount - receivedAmount
 
     await AuditLog.create({
       actorId,
@@ -2537,9 +2589,10 @@ async function recordTuitionBillPayment({ billId, amount, actorId } = {}) {
       before: { paidAmount, remainingAmount },
       after: {
         paymentId: payment.id,
-        receivedAmount: amount,
-        paidAmount: totalAmount,
-        remainingAmount: 0,
+        receivedAmount,
+        paidAmount: updatedPaidAmount,
+        remainingAmount: updatedRemainingAmount,
+        ...(paidItems.length > 0 ? { allocatedItemCount: paidItems.length } : {}),
         recordedAt: now.toISOString()
       },
       reason: '登記帳單收款'
@@ -2550,8 +2603,9 @@ async function recordTuitionBillPayment({ billId, amount, actorId } = {}) {
       changed: true,
       billId: bill.id,
       paymentId: payment.id,
-      paidAmount: totalAmount,
-      remainingAmount: 0
+      receivedAmount,
+      paidAmount: updatedPaidAmount,
+      remainingAmount: updatedRemainingAmount
     }
   })
 }

@@ -103,9 +103,12 @@ function describeTuitionBillChange({ before, after }) {
   }
 
   if (Number.isSafeInteger(after?.paymentId) && Number.isSafeInteger(after?.receivedAmount)) {
+    const items = Number.isSafeInteger(after.allocatedItemCount)
+      ? `，${after.allocatedItemCount} 項明細`
+      : ''
     return {
       actionText: '登記收款',
-      detailText: `NT$ ${after.receivedAmount}（收款 #${after.paymentId}）`
+      detailText: `NT$ ${after.receivedAmount}（收款 #${after.paymentId}${items}）`
     }
   }
 
@@ -626,12 +629,34 @@ const tuitionController = {
         const statusText = getTuitionBillPaymentStatusText(paymentStatus)
 
         paymentSummary = { totalAmount, paidAmount, remainingAmount, statusText }
-        if (remainingAmount > 0 && remainingAmount <= 2_147_483_647) {
+        const allocation = result.paymentAllocation
+        if (allocation?.ok && allocation.itemized) {
+          const canRecord = remainingAmount > 0
+          if (canRecord) req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
+          paymentSummary.itemizedPayment = {
+            canRecord,
+            action: `/cramschool/tuition/bills/${bill.id}/payments`,
+            formToken: canRecord ? req.session.tuitionFormToken : null,
+            billVersion: bill.version,
+            hasAdjustments: allocation.hasAdjustments,
+            items: allocation.items.map(item => ({
+              ...item,
+              canSelect: canRecord && item.amount > 0 && item.paymentId === null,
+              statusText: item.paymentId !== null ? `已收款（#${item.paymentId}）`
+                : item.amount === 0 ? '已折抵' : '未收款'
+            }))
+          }
+        } else if (allocation?.ok === false) {
+          paymentSummary.allocationMessage = '分項收款紀錄需要核對，暫時不能再登記收款。'
+        } else if (remainingAmount > 0 && remainingAmount <= 2_147_483_647) {
           req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
-
+          paymentSummary.allocationMessage = allocation?.reason === 'LEGACY_UNALLOCATED_PAYMENT'
+            ? '先前收款沒有記錄對應項目，剩餘金額可整筆登記。'
+            : '這張帳單的明細無法拆分，剩餘金額可整筆登記。'
           paymentSummary.paymentForm = {
             action: `/cramschool/tuition/bills/${bill.id}/payments`,
             amount: remainingAmount,
+            billVersion: bill.version,
             formToken: req.session.tuitionFormToken
           }
         }
@@ -1387,16 +1412,20 @@ const tuitionController = {
         : NaN
 
     const billId = readInt(req.params.billId)
-    const amount = readInt(body.amount)
-    const invalidInput = '帳單 ID 或收款金額不正確，請核對後再試。'
-
-    if (![billId, amount].every(value => Number.isSafeInteger(value) && value > 0)) {
+    const invalidInput = '帳單或收款資料不正確，請重新開啟帳單再試。'
+    if (body.paymentMode !== undefined && body.paymentMode !== 'items') {
       return res.status(400).send(invalidInput)
     }
+    const rawItems = body.paymentItems ?? []
+    const selectedItemIds = body.paymentMode === 'items'
+      ? (Array.isArray(rawItems) ? rawItems : [rawItems]).map(readInt)
+      : undefined
 
     const result = await tuitionService.recordTuitionBillPayment({
       billId,
-      amount,
+      billVersion: body.billVersion === undefined ? undefined : readInt(body.billVersion),
+      amount: readInt(body.amount),
+      selectedItemIds,
       actorId: req.user.id
     })
 
@@ -1405,12 +1434,20 @@ const tuitionController = {
 
     const errors = {
       BILL_NOT_ISSUED: '只有已出帳的帳單可以登記收款。',
-      BILL_NO_PAYMENT_REQUIRED: '這張帳單無須收款。'
+      BILL_NO_PAYMENT_REQUIRED: '這張帳單無須收款。',
+      BILL_VERSION_CONFLICT: '帳單已更新，請核對最新的未付項目後再登記。',
+      PAYMENT_ITEMS_REQUIRED: '請至少勾選一項未付明細。',
+      PAYMENT_ITEMS_UNAVAILABLE: '這張帳單目前只能整筆登記剩餘金額。',
+      PAYMENT_ITEMS_CHANGED: '勾選的項目已付款或不在這張帳單，請重新確認。',
+      PAYMENT_ALLOCATIONS_REQUIRE_REVIEW: '分項收款紀錄需要核對，暫時不能再登記收款。',
+      PAYMENT_AMOUNT_OUT_OF_RANGE: '本次收款金額超出可登記範圍，請核對勾選項目。'
     }
     let message = errors[result.code] ?? '暫時無法登記收款，請核對帳單。'
 
     if (result.ok) {
-      message = result.changed ? '已登記收款。' : '這張帳單已結清，本次未新增收款。'
+      message = result.changed
+        ? `已登記收款 NT$ ${result.receivedAmount}，剩餘未收 NT$ ${result.remainingAmount}。`
+        : '這張帳單已結清，本次未新增收款。'
     } else if (result.code === 'PAYMENT_AMOUNT_MISMATCH') {
       message = `目前未收金額為 NT$ ${result.remainingAmount}，請核對後再登記。`
     }
