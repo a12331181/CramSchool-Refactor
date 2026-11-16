@@ -33,8 +33,9 @@
   <label for="billing-month">計費月份:</label>
   <input id="billing-month" type="month" name="billingMonth"
     value="{{billingMonth}}" required>
-  <span class="d-inline-block ml-sm-2">
-    <label for="tuition-status">帳單／收款狀態:</label>
+  <button type="submit" class="btn btn-sm btn-primary mb-1">查看月學費</button>
+  <span class="d-inline-block ml-sm-2 col-md-6">
+    <label for="tuition-status">帳單狀態:</label>
     <select id="tuition-status" name="status" class="form-control-sm"
       onchange="this.form.requestSubmit()">
       {{#each statusOptions}}
@@ -42,7 +43,6 @@
       {{/each}}
     </select>
   </span>
-  <button type="submit" class="btn btn-sm btn-primary">查看月學費</button>
 </form>
 
 {{#if errorMessage}}

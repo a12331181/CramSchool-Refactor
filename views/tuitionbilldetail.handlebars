@@ -1,10 +1,10 @@
-<h1 class="mt-3">月帳單明細 #{{bill.id}}</h1>
-<p>{{bill.studentNameSnapshot}}｜{{bill.billingMonth}}｜{{statusText}}</p>
+<h1 class="mt-3">本期帳單 編號#{{bill.id}}</h1>
+<p>姓名: {{bill.studentNameSnapshot}}｜期數: {{bill.billingMonth}}｜帳單狀態: {{statusText}}</p>
 
 <table class="table table-bordered">
-  <thead>
+  <thead class="table-secondary">
     <tr>
-      <th scope="col">項目</th>
+      <th scope="col">課程項目</th>
       <th scope="col">數量</th>
       <th scope="col">單價</th>
       <th scope="col">金額</th>
@@ -22,7 +22,7 @@
       <td>NT$ {{this.unitPrice}}</td>
       <td>NT$ {{this.amount}}</td>
       <td>
-        {{#if this.reviewCount}}待核對（{{this.reviewCount}} 項）{{else}}—{{/if}}
+        {{#if this.reviewCount}}待核對（{{this.reviewCount}} 項）{{/if}}
         {{#if this.reason}}<div>{{this.reason}}</div>{{/if}}
       </td>
       {{#if ../isDraft}}
@@ -86,7 +86,7 @@
     {{/if}}
     <div class="table-responsive">
       <table class="table table-sm table-bordered">
-        <thead>
+        <thead class="table-secondary">
           <tr>
             <th scope="col">課程／費用</th>
             <th scope="col">本項應收</th>
@@ -226,11 +226,8 @@
 </script>
 {{/if}}
 
-{{#if isDraft}}
-<h2 class="h5">加入額外費用</h2>
-
 {{#with leaveCreditPanel}}
-<section class="my-4" aria-labelledby="leave-credit-heading">
+<section class="my-4 border-top pt-3" aria-labelledby="discard-draft-heading">
   <h2 id="leave-credit-heading" class="h5">
     {{#if reviewMonth}}{{reviewMonth}} {{/if}}請假折抵
   </h2>
@@ -274,11 +271,14 @@
 {{/with}}
 
 {{#if extraFeeFormToken}}
+{{#if isDraft}}
+<section class="my-3 border-top pt-2" aria-labelledby="discard-draft-heading"></section>
+<h2 class="h5">加入額外費用</h2>
 <form method="POST" action="/cramschool/tuition/bills/{{bill.id}}/extra-fees" class="mb-3">
   <input type="hidden" name="tuitionFormToken" value="{{extraFeeFormToken}}">
   <input type="hidden" name="billVersion" value="{{bill.version}}">
 
-  <label for="bill-extra-fee">費用項目</label>
+  <label for="bill-extra-fee">費用項目:</label>
   <select id="bill-extra-fee" name="extraFeeId" class="form-control mb-2" required>
     <option value="" selected disabled>請選擇</option>
     {{#each extraFees}}
@@ -286,7 +286,7 @@
     {{/each}}
   </select>
 
-  <label for="bill-extra-quantity">數量</label>
+  <label for="bill-extra-quantity">數量:</label>
   <input id="bill-extra-quantity" name="quantity" type="number" class="form-control mb-2" value="1" min="1" max="999"
     step="1" required>
 
@@ -300,7 +300,7 @@
 {{/if}}
 
 {{#with discountForm}}
-<section class="my-4" aria-labelledby="discount-heading">
+<section class="my-4 border-top pt-3" aria-labelledby="discard-draft-heading">
   <h2 id="discount-heading" class="h5">帳單折扣</h2>
   <p class="text-muted">折扣適用整張帳單。如果這張也要折抵上月請假，建議先加入請假折抵，再填折扣。</p>
   <form method="POST" action="/cramschool/tuition/bills/{{../bill.id}}/discount">
@@ -321,7 +321,7 @@
 {{/with}}
 
 {{#if isDraft}}
-<section class="my-4" aria-labelledby="refresh-draft-heading">
+<section class="my-4 border-top pt-3" aria-labelledby="discard-draft-heading">
   <h2 id="refresh-draft-heading" class="h5">更新草稿</h2>
   <p class="text-muted">
     排課、選課或價格變動時，先回到同月合併預覽核對，再更新課程明細。已加入的額外費用、請假折抵與帳單折扣會保留。
@@ -336,7 +336,7 @@
 {{/if}}
 
 {{#with issueForm}}
-<section class="my-4" aria-labelledby="issue-bill-heading">
+<section class="my-4 border-top pt-3" aria-labelledby="discard-draft-heading">
   <h2 id="issue-bill-heading" class="h5">正式出帳</h2>
   <p class="text-muted">
     請核對上方的明細與應收金額 NT$ {{../bill.totalAmount}}。
@@ -408,7 +408,7 @@
   <p class="text-muted mt-2">最多顯示最近 {{billHistory.limit}} 筆操作。</p>
   <div class="table-responsive">
     <table class="table table-sm table-bordered">
-      <thead>
+      <thead class="table-secondary">
         <tr>
           <th scope="col">時間（台北）</th>
           <th scope="col">操作人</th>
@@ -435,4 +435,4 @@
   {{/if}}
 </details>
 
-<a href="{{previewUrl}}">回到同月合併預覽</a>
+<a href="{{previewUrl}}">回到基本月費試算(草稿)</a>
