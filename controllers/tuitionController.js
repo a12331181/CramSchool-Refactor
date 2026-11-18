@@ -272,7 +272,7 @@ const tuitionController = {
         }))
       : []
 
-    return res.render('tuitionpreview', {
+    return res.render('tuition/course-preview', {
       listUrl,
       previewUrl: `${listUrl}/preview`,
       billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
@@ -382,7 +382,7 @@ const tuitionController = {
     }
 
     res.set('Cache-Control', 'no-store')
-    return res.render('studenttuitionpreview', {
+    return res.render('tuition/student-preview', {
       previewUrl: `/cramschool/tuition/students/${studentId}/preview`,
       billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
       preview: result.ok ? result : null,
