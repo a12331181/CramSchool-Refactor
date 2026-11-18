@@ -43,11 +43,8 @@
   </table>
 </div>
 
-<nav class="mb-3" aria-label="課程月學費分頁">
-  {{#if prevUrl}}<a href="{{prevUrl}}">上一頁</a>{{/if}}
-  <span class="mx-2">第 {{pagination.page}} / {{pagination.totalPages}} 頁</span>
-  {{#if nextUrl}}<a href="{{nextUrl}}">下一頁</a>{{/if}}
-</nav>
+{{> pagination ariaLabel="課程月學費分頁"}}
+
 {{/if}}
 
 <a class="mr-2" href="/cramschool/payment">回到課程收費列表</a>

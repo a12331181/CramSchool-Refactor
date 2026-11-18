@@ -1065,10 +1065,7 @@ const tuitionController = {
       course: result.course,
       rows,
       totalCount: result.totalCount,
-      pagination,
-      studentListUrl: `/cramschool/tuition/students?${monthQuery}`,
-      prevUrl: page > 1 ? pageUrl(pagination.prev) : null,
-      nextUrl: page < pagination.totalPages ? pageUrl(pagination.next) : null
+      ...getPaginationLinks(pagination, pageUrl)
     })
   },
 
