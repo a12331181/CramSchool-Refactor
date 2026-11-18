@@ -1,52 +1,8 @@
 <h1 class="mt-3">本期帳單 編號#{{bill.id}}</h1>
 <p>姓名: {{bill.studentNameSnapshot}}｜期數: {{bill.billingMonth}}｜帳單狀態: {{statusText}}</p>
 
-<table class="table table-bordered">
-  <thead class="table-secondary">
-    <tr>
-      <th scope="col">課程項目</th>
-      <th scope="col">數量</th>
-      <th scope="col">單價</th>
-      <th scope="col">金額</th>
-      <th scope="col">核對提醒</th>
-      {{#if isDraft}}
-      <th scope="col">操作</th>
-      {{/if}}
-    </tr>
-  </thead>
-  <tbody>
-    {{#each items}}
-    <tr>
-      <th scope="row">{{this.descriptionSnapshot}}</th>
-      <td>{{this.quantity}}</td>
-      <td>NT$ {{this.unitPrice}}</td>
-      <td>NT$ {{this.amount}}</td>
-      <td>
-        {{#if this.reviewCount}}待核對（{{this.reviewCount}} 項）{{/if}}
-        {{#if this.reason}}<div>{{this.reason}}</div>{{/if}}
-      </td>
-      {{#if ../isDraft}}
-      <td>
-        {{#if this.canRemove}}
-        <form method="POST" action="/cramschool/tuition/bills/{{../bill.id}}/items/{{this.id}}/remove">
-          <input type="hidden" name="tuitionFormToken" value="{{../issueForm.formToken}}">
-          <input type="hidden" name="billVersion" value="{{../bill.version}}">
-          <button type="submit" class="btn btn-sm btn-outline-danger"
-            aria-label="移除 {{this.descriptionSnapshot}}">移除</button>
-        </form>
-        {{else}}
-        <span class="text-muted">—</span>
-        {{/if}}
-      </td>
-      {{/if}}
-    </tr>
-    {{else}}
-    <tr>
-      <td colspan="{{#if isDraft}}6{{else}}5{{/if}}">目前沒有帳單明細。</td>
-    </tr>
-    {{/each}}
-  </tbody>
-</table>
+{{> tuition/bill-items}}
+
 
 {{> tuition/payment-summary}}
 
