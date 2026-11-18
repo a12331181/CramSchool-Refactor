@@ -703,7 +703,7 @@ const tuitionController = {
 
     res.set('Cache-Control', 'no-store')
 
-    return res.render('tuitionbilldetail', {
+    return res.render('tuition/bill-detail', {
       bill,
       items,
       statusText: labels[bill.status] ?? '待核對',
