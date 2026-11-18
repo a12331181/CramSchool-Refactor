@@ -1,10 +1,7 @@
 {{#if course}}<h2 class="h2">{{course.name}} 學生收費清單</h2>{{/if}} 
 
-<form method="GET" action="{{listUrl}}" class="mb-3">
-  <label for="billing-month">計費月份:</label>
-  <input id="billing-month" type="month" name="billingMonth" value="{{billingMonth}}" required>
-  <button type="submit" class="btn btn-sm btn-primary">查看該月學費</button>
-</form>
+{{> tuition/billing-month-filter formAction=listUrl monthLabel="計費月份:" submitText="查看該月學費"}}
+
 
 
 {{#if errorMessage}}

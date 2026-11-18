@@ -1,0 +1,7 @@
+<form method="GET" action="{{formAction}}" class="mb-3">
+  <label for="billing-month">{{monthLabel}}</label>
+  <input id="billing-month" type="month" name="billingMonth" value="{{billingMonth}}" required>
+  <button type="submit" class="btn btn-sm btn-primary{{#if submitClass}} {{submitClass}}{{/if}}">{{submitText}}</button>
+  {{#> @partial-block}}
+  {{/@partial-block}}
+</form>
