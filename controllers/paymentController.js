@@ -36,7 +36,7 @@ const schoolController = {
       }
     })
 
-    return res.render('payment', { billingMonth, courses })
+    return res.render('tuition/course-overview', { billingMonth, courses })
   },
 
   deletePayment: (req, res) => {

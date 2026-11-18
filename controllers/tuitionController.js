@@ -931,7 +931,7 @@ const tuitionController = {
         INVALID_TUITION_STATUS: '請選擇有效的帳單／收款狀態。'
       }
 
-      return res.render('studenttuitionlist', {
+      return res.render('tuition/student-list', {
         ...viewData,
         errorMessage: errors[result.code] ?? '目前無法取得學生學費列表。'
       })
@@ -991,7 +991,7 @@ const tuitionController = {
       }
     })
 
-    return res.render('studenttuitionlist', {
+    return res.render('tuition/student-list', {
       ...viewData,
       rows,
       totalCount: result.totalCount,
