@@ -248,52 +248,49 @@ const schoolController = {
       })
   },
 
-  getDiaries: (req, res) => {
-    let offset = 0
-    if (req.query.page) {
-      offset = (req.query.page - 1) * pageLimit
+  getDiaries: async (req, res) => {
+    const courseId = Number(req.params.id)
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
     }
-    Promise.all([
+
+    const listPage = parseListPage(req.query.page)
+    if (!listPage) {
+      return res.status(400).send('頁碼不正確或超出可處理範圍')
+    }
+    const { page, offset } = listPage
+
+    const [diaries, course] = await Promise.all([
       Diary.findAndCountAll({
         raw: true,
         nest: true,
-        where: { 
-          CourseId: req.params.id
-        },
-        include: { model: Course, include: { model: Teacher }},
-        offset: offset,
+        where: { CourseId: courseId },
+        include: { model: Course, include: { model: Teacher } },
+        offset,
         limit: pageLimit,
-        order: [['createdAt', 'DESC']]      
+        order: [['createdAt', 'DESC'], ['id', 'DESC']]
       }),
       Course.findOne({
         raw: true,
         nest: true,
-        where: { id: req.params.id, isActive: true },
+        where: { id: courseId, isActive: true }
       })
-    ]).then(([diaries, course]) => {
-      const page = Number(req.query.page) || 1
-      const pages = Math.ceil(diaries.count / pageLimit)
-      const totalPage = Array.from({ length: pages }).map((item, index) => index + 1)
-      const prev = page - 1 < 1 ? 1 : page - 1
-      const next = page + 1 > pages ? pages : page + 1
-      if (course === null) {
-        console.log('Not found!')
-        return res.redirect('/cramschool/courses')
-      } else {
-        let isDiaryNotExist = true
-        if (diaries.count > 0){
-          isDiaryNotExist = false
-        }
-        res.render('diaries', { 
-          diaries: diaries.rows, 
-          course: course,
-          page: page,
-          totalPage: totalPage,
-          prev: prev,
-          next: next,
-          isDiaryNotExist: isDiaryNotExist
-        })
-      }
+    ])
+
+    if (!course) return res.redirect('/cramschool/courses')
+
+    const pagination = getPagination({ page, pageSize: pageLimit, totalCount: diaries.count })
+    const pageUrl = targetPage => `/cramschool/courses/${courseId}/diaries?page=${targetPage}`
+
+    if (page > pagination.totalPages) {
+      return res.redirect(pageUrl(pagination.totalPages))
+    }
+
+    return res.render('diaries', {
+      diaries: diaries.rows,
+      course,
+      isDiaryNotExist: diaries.count === 0,
+      ...getPaginationLinks(pagination, pageUrl)
     })
   },
 
