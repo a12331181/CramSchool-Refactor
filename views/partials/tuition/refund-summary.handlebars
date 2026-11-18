@@ -1,0 +1,34 @@
+{{#with refundSummary}}
+<section class="my-4" aria-labelledby="refund-heading">
+  <h2 id="refund-heading" class="h5">退費</h2>
+  {{#if errorMessage}}
+  <p class="alert alert-warning">{{errorMessage}}</p>
+  {{else}}
+  <p>{{statusText}}｜累計退費 NT$ {{refundedAmount}}｜實收扣除退費 NT$ {{netPaidAmount}}</p>
+  {{#if rows.length}}
+  <ul class="mb-3">
+    {{#each rows}}
+    <li>{{refundedOn}}｜NT$ {{amount}}｜{{reason}}</li>
+    {{/each}}
+  </ul>
+  {{/if}}
+  {{#if blockedMessage}}<p class="alert alert-warning">{{blockedMessage}}</p>{{/if}}
+  {{#with form}}
+  <form method="POST" action="{{action}}" onsubmit="return confirm('確認已實際退費，要登記這筆退費嗎？')">
+    <p class="text-muted">請在實際退費後登記。系統只保存紀錄，不會匯款。</p>
+    <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
+    <input type="hidden" name="billVersion" value="{{billVersion}}">
+    <label for="refund-amount">退費金額（NT$）</label>
+    <input id="refund-amount" name="amount" type="number" class="form-control mb-2"
+      min="1" max="{{maxAmount}}" step="1" required>
+    <label for="refund-date">退費日期</label>
+    <input id="refund-date" name="refundedOn" type="date" class="form-control mb-2"
+      value="{{today}}" min="{{earliestDate}}" max="{{today}}" required>
+    <label for="refund-reason">退費原因</label>
+    <input id="refund-reason" name="reason" type="text" class="form-control mb-2" maxlength="255" required>
+    <button type="submit" class="btn btn-outline-primary">登記退費</button>
+  </form>
+  {{/with}}
+  {{/if}}
+</section>
+{{/with}}
