@@ -212,7 +212,7 @@ const tuitionController = {
       }
     })
 
-    return res.render('tuition', {
+    return res.render('tuition/history', {
       course,
       student,
       rows,
@@ -1019,7 +1019,7 @@ const tuitionController = {
         INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
         INVALID_PAGE: '頁碼不正確。'
       }
-      return res.status(400).render('coursemonthlytuitionlist', {
+      return res.status(400).render('tuition/course-monthly-list', {
         ...viewData,
         errorMessage: errors[result.code] ?? '目前無法取得課程月學費。'
       })
@@ -1060,7 +1060,7 @@ const tuitionController = {
       }
     })
 
-    return res.render('coursemonthlytuitionlist', {
+    return res.render('tuition/course-monthly-list', {
       ...viewData,
       course: result.course,
       rows,
