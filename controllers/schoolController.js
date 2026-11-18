@@ -8,7 +8,16 @@ const User = db.User
 const calendarService = require('../services/calendarService')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const { formatTaipeiDateTime } = require('../utils/date')
+const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const pageLimit = 10
+
+function parseListPage(value) {
+  const page = Number(value || 1)
+  if (!Number.isSafeInteger(page) || page < 1) return null
+
+  const offset = (page - 1) * pageLimit
+  return Number.isSafeInteger(offset) ? { page, offset } : null
+}
 
 const schoolController = {
   getSchoolIndexPage: (req, res) => {
@@ -111,31 +120,32 @@ const schoolController = {
     })
   },
 
-  getMeetings: (req, res) => {
-    let offset = 0
-    if (req.query.page) {
-      offset = (req.query.page - 1) * pageLimit
+  getMeetings: async (req, res) => {
+    const listPage = parseListPage(req.query.page)
+    if (!listPage) {
+      return res.status(400).send('頁碼不正確或超出可處理範圍')
     }
-    Meeting.findAndCountAll({
+    const { page, offset } = listPage
+
+    const meetings = await Meeting.findAndCountAll({
       raw: true,
       nest: true,
-      offset: offset,
+      offset,
       limit: pageLimit,
-      order: [['createdAt', 'DESC']]
-    }).then(meetings => {
-      const page = Number(req.query.page) || 1
-      const pages = Math.ceil(meetings.count / pageLimit)
-      const totalPage = Array.from({ length: pages }).map((item, index) => index + 1)
-      const prev = page - 1 < 1 ? 1 : page - 1
-      const next = page + 1 > pages ? pages : page + 1
-      return res.render('meetings',{ 
-        meetings: meetings.rows, 
-        isAdmin: req.user.isAdmin,
-        page: page,
-        totalPage: totalPage,
-        prev: prev,
-        next: next
-       })
+      order: [['createdAt', 'DESC'], ['id', 'DESC']]
+    })
+
+    const pagination = getPagination({ page, pageSize: pageLimit, totalCount: meetings.count })
+    const pageUrl = targetPage => `/cramschool/meetings?page=${targetPage}`
+
+    if (page > pagination.totalPages) {
+      return res.redirect(pageUrl(pagination.totalPages))
+    }
+
+    return res.render('meetings', {
+      meetings: meetings.rows,
+      isAdmin: req.user.isAdmin,
+      ...getPaginationLinks(pagination, pageUrl)
     })
   },
   

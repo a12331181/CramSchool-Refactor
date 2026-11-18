@@ -39,25 +39,4 @@
 <br />
 <a class="ml-2" href="/cramschool">回到主頁面</a>
 
-<nav aria-label="Page navigation example">
-  <ul class="pagination justify-content-center">
-    <li class="page-item">
-      <a class="page-link" href="/cramschool/meetings?page={{prev}}" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-      </a>
-    </li>
-    {{#each totalPage}}
-    {{#ifCond this ../page}}
-    <li class="page-item active"><a class="page-link" href="#">{{this}}</a></li>
-    {{else}}
-    <li class="page-item"><a class="page-link"
-        href="/cramschool/meetings?page={{this}}">{{this}}</a></li>
-    {{/ifCond}}
-    {{/each}}
-    <li class="page-item"><a class="page-link" href="/cramschool/meetings?page={{next}}"
-        aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-      </a>
-    </li>
-  </ul>
-</nav>
+{{> pagination ariaLabel="會議紀錄分頁"}}
