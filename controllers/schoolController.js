@@ -207,32 +207,33 @@ const schoolController = {
       })
   },
   
-  getDiariesList: (req, res) => {
-    let offset = 0
-    if (req.query.page) {
-      offset = (req.query.page - 1) * pageLimit
+  getDiariesList: async (req, res) => {
+    const listPage = parseListPage(req.query.page)
+    if (!listPage) {
+      return res.status(400).send('頁碼不正確或超出可處理範圍')
     }
-    Diary.findAndCountAll({ 
+    const { page, offset } = listPage
+
+    const diaries = await Diary.findAndCountAll({
       raw: true,
       nest: true,
       include: [{ model: Course, where: { isActive: true }, include: [{ model: Teacher }] }],
-      offset: offset,
+      offset,
       limit: pageLimit,
-      order: [['createdAt', 'DESC']]
-    }).then(diaries => {
-      const page = Number(req.query.page) || 1
-      const pages = Math.ceil(diaries.count / pageLimit)
-      const totalPage = Array.from({ length: pages }).map((item, index) => index + 1)
-      const prev = page - 1 < 1 ? 1 : page - 1
-      const next = page + 1 > pages ? pages : page + 1
-      return res.render('diarieslist',{ 
-        diaries: diaries.rows, 
-        isAdmin: req.user.isAdmin,
-        page: page,
-        totalPage: totalPage,
-        prev: prev,
-        next: next
-      })
+      order: [['createdAt', 'DESC'], ['id', 'DESC']]
+    })
+
+    const pagination = getPagination({ page, pageSize: pageLimit, totalCount: diaries.count })
+    const pageUrl = targetPage => `/cramschool/diaries?page=${targetPage}`
+
+    if (page > pagination.totalPages) {
+      return res.redirect(pageUrl(pagination.totalPages))
+    }
+
+    return res.render('diarieslist', {
+      diaries: diaries.rows,
+      isAdmin: req.user.isAdmin,
+      ...getPaginationLinks(pagination, pageUrl)
     })
   },
 
