@@ -1,6 +1,6 @@
 const studentService = require('../services/studentService')
 const imageStorage = require('../utils/imageStorage')
-const { getPagination } = require('../utils/pagination')
+const { getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const pageLimit = 12
 
@@ -34,23 +34,23 @@ const adminStudentController = {
       totalCount: result.count
     })
 
-    if (page > pagination.totalPages) {
-      const queryParams = new URLSearchParams({
-        page: String(pagination.totalPages)
-      })
-
+    const pageUrl = targetPage => {
+      const queryParams = new URLSearchParams({ page: String(targetPage) })
       if (courseId !== undefined) {
         queryParams.set('courseId', String(courseId))
       }
+      return `/admin/students?${queryParams.toString()}`
+    }
 
-      return res.redirect(`/admin/students?${queryParams.toString()}`)
+    if (page > pagination.totalPages) {
+      return res.redirect(pageUrl(pagination.totalPages))
     }
 
     return res.render('admin/students', {
       students: result.rows,
       courses: result.courses,
       courseId: courseId ?? '',
-      ...pagination
+      ...getPaginationLinks(pagination, pageUrl)
     })
   },
 

@@ -18,6 +18,21 @@ function getPagination({ page, pageSize, totalCount }) {
   }
 }
 
+function getPaginationLinks(pagination, pageUrl) {
+  const { page, totalPages, totalPage, prev, next } = pagination
+
+  return {
+    pageLinks: totalPage.map(number => ({
+      number,
+      url: pageUrl(number),
+      isCurrent: number === page
+    })),
+    prevUrl: page > 1 ? pageUrl(prev) : null,
+    nextUrl: page < totalPages ? pageUrl(next) : null
+  }
+}
+
 module.exports = {
-  getPagination
+  getPagination,
+  getPaginationLinks
 }

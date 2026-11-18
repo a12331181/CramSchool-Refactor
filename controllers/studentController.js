@@ -1,5 +1,5 @@
 const studentService = require('../services/studentService')
-const { getPagination } = require('../utils/pagination')
+const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const db = require('../models')
 const Student = db.Student
 const Course = db.Course
@@ -40,28 +40,23 @@ const studentController = {
       totalCount: result.count
     })
     
-    if (queryOptions.page > pagination.totalPages) {
-      const queryParams = new URLSearchParams({
-        page: String(pagination.totalPages)
-      })
-
+    const pageUrl = targetPage => {
+      const queryParams = new URLSearchParams({ page: String(targetPage) })
       if (queryOptions.courseId !== undefined) {
-        queryParams.set(
-          'courseId',
-          String(queryOptions.courseId)
-        )
+        queryParams.set('courseId', String(queryOptions.courseId))
       }
+      return `/cramschool/students?${queryParams.toString()}`
+    }
 
-      return res.redirect(
-        `/cramschool/students?${queryParams.toString()}`
-      )
+    if (queryOptions.page > pagination.totalPages) {
+      return res.redirect(pageUrl(pagination.totalPages))
     }
 
     return res.render('students', {
       students: result.rows,
       courses: result.courses,
       courseId: queryOptions.courseId ?? '',
-      ...pagination,
+      ...getPaginationLinks(pagination, pageUrl),
       isAdmin: req.user.isAdmin
     })
   },

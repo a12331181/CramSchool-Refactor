@@ -8,7 +8,7 @@ const Payment = db.Payment
 const moment = require('moment')
 const tuitionService = require('../services/tuitionService')
 const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
-const { getPagination } = require('../utils/pagination')
+const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const { randomBytes, timingSafeEqual } = require('node:crypto')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
@@ -995,13 +995,7 @@ const tuitionController = {
       ...viewData,
       rows,
       totalCount: result.totalCount,
-      pageLinks: pagination.totalPage.map(number => ({
-        number,
-        url: pageUrl(number),
-        isCurrent: number === pagination.page
-      })),
-      prevUrl: page > 1 ? pageUrl(pagination.prev) : null,
-      nextUrl: page < pagination.totalPages ? pageUrl(pagination.next) : null
+      ...getPaginationLinks(pagination, pageUrl)
     })
   },
 
