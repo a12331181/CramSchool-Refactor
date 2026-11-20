@@ -8,11 +8,11 @@ const pageLimit = 12
 const calendarService = require('../services/calendarService')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const { formatTaipeiDateTime } = require('../utils/date')
-const CALENDAR_STATUS = require('../constants/calendarStatus')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const CALENDAR_STATUS_LABELS = Object.freeze({
-  [CALENDAR_STATUS.SCHEDULED]: '已排定',
-  [CALENDAR_STATUS.COMPLETED]: '已完成',
-  [CALENDAR_STATUS.CANCELLED]: '已取消'
+  [COURSE_SESSION_STATUS.SCHEDULED]: '已排定',
+  [COURSE_SESSION_STATUS.COMPLETED]: '已完成',
+  [COURSE_SESSION_STATUS.CANCELLED]: '已取消'
 })
 
 const adminController = {
@@ -22,7 +22,7 @@ const adminController = {
   },
 
   // 課程行事曆相關程式碼
-  getCalendar: async (req, res) => {
+  getCourseCalendar: async (req, res) => {
     const courseId = Number(req.params.id)
     const page = Number(req.query.page || 1)
 
@@ -38,7 +38,7 @@ const adminController = {
       return res.status(400).send('頁碼不正確或超出可處理範圍')
     }
 
-    const result = await calendarService.getCalendarPage({
+    const result = await calendarService.getAdminCourseCalendarPage({
       courseId,
       page,
       pageSize: pageLimit
@@ -76,10 +76,10 @@ const adminController = {
         ? 'table-secondary'
         : 'table-light',
 
-      canCancel: calendar.status === CALENDAR_STATUS.SCHEDULED,
+      canCancel: calendar.status === COURSE_SESSION_STATUS.SCHEDULED,
 
       canComplete:
-        calendar.status === CALENDAR_STATUS.SCHEDULED &&
+        calendar.status === COURSE_SESSION_STATUS.SCHEDULED &&
         calendar.endAt instanceof Date &&
         Number.isFinite(calendar.endAt.getTime()) &&
         calendar.endAt.getTime() <= Date.now(),
@@ -102,14 +102,14 @@ const adminController = {
     })
   },
 
-  getCreateCalendarPage: async (req, res) => {
+  getCreateCourseSessionPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
       return res.status(400).send('課程 ID 必須是正整數')
     }
 
-    const result = await calendarService.getCreateCalendarFormData(courseId)
+    const result = await calendarService.getCreateCourseSessionFormData(courseId)
 
     if (!result.ok) {
       const errorMessages = {
@@ -138,7 +138,7 @@ const adminController = {
     })
   },
 
-  postCalendar: async (req, res) => {
+  createCourseSession: async (req, res) => {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
@@ -152,7 +152,7 @@ const adminController = {
         ? Number(body.teacherId)
         : NaN
 
-    const result = await calendarService.createCalendar(courseId, {
+    const result = await calendarService.createCourseSession(courseId, {
       startAt: body.startAt,
       endAt: body.endAt,
       teacherId,
@@ -196,7 +196,7 @@ const adminController = {
       return res.redirect(303, '/admin/courses')
     }
 
-    const formData = await calendarService.getCreateCalendarFormData(courseId)
+    const formData = await calendarService.getCreateCourseSessionFormData(courseId)
 
     if (!formData.ok) {
       req.flash('error_messages', '課程狀態已變動，請重新確認')
@@ -221,7 +221,7 @@ const adminController = {
     })
   },
 
-  completeCalendar: async (req, res) => {
+  completeCourseSession: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const calendarId = Number(req.params.calendarId)
 
@@ -242,7 +242,7 @@ const adminController = {
     const page = validPage ? requestedPage : 1
     const listUrl = `/admin/courses/${courseId}/calendar?page=${page}`
 
-    const result = await calendarService.completeCalendar(
+    const result = await calendarService.completeCourseSession(
       courseId,
       calendarId
     )
@@ -286,10 +286,10 @@ const adminController = {
     return res.redirect(303, listUrl)
   },
 
-  cancelCalendar: async (req, res) => {
+  cancelCourseSession: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const calendarId = Number(req.params.calendarId)
-    const result = await calendarService.cancelCalendar(courseId, calendarId)
+    const result = await calendarService.cancelCourseSession(courseId, calendarId)
 
     if (['INVALID_COURSE_ID', 'INVALID_CALENDAR_ID'].includes(result.code)) {
       return res.status(400).send('課程與課堂 ID 必須是正整數')
@@ -330,7 +330,7 @@ const adminController = {
     return res.redirect(303, listUrl)
   },
 
-  editCalendar: async (req, res) => {
+  getLegacyCalendarEditPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const calendarId = Number(req.params.calendarId)
 
@@ -355,7 +355,7 @@ const adminController = {
     return res.render('admin/calendars/edit', { calendar })
   },
 
-  putCalendar: async (req, res) => {
+  updateLegacyCalendar: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const calendarId = Number(req.params.calendarId)
     const { date, content } = req.body ?? {}

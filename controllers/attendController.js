@@ -1,5 +1,5 @@
 const attendService = require('../services/attendService')
-const CALENDAR_STATUS = require('../constants/calendarStatus')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const { formatTaipeiDateTime } = require('../utils/date')
 
@@ -11,9 +11,9 @@ const attendController = {
       })
 
     const statusLabels = {
-      [CALENDAR_STATUS.SCHEDULED]: '已排定',
-      [CALENDAR_STATUS.COMPLETED]: '已完成',
-      [CALENDAR_STATUS.CANCELLED]: '已取消'
+      [COURSE_SESSION_STATUS.SCHEDULED]: '已排定',
+      [COURSE_SESSION_STATUS.COMPLETED]: '已完成',
+      [COURSE_SESSION_STATUS.CANCELLED]: '已取消'
     }
 
     return res.render('attendance/index', {
@@ -22,8 +22,8 @@ const attendController = {
         courseId: calendar.CourseId,
         courseName: calendar.Course.name,
         canViewStudents:
-          calendar.status === CALENDAR_STATUS.SCHEDULED ||
-          calendar.status === CALENDAR_STATUS.COMPLETED,
+          calendar.status === COURSE_SESSION_STATUS.SCHEDULED ||
+          calendar.status === COURSE_SESSION_STATUS.COMPLETED,
         startAtText: formatTaipeiDateTime(calendar.startAt) ?? '待核對',
         endAtText: formatTaipeiDateTime(calendar.endAt) ?? '待核對',
         statusText: statusLabels[calendar.status] ?? '待核對',
@@ -57,13 +57,13 @@ const attendController = {
 
     const canCreate =
       result.isAssignedTeacher &&
-      result.calendar.status === CALENDAR_STATUS.SCHEDULED &&
+      result.calendar.status === COURSE_SESSION_STATUS.SCHEDULED &&
       Number(result.course.isActive) === 1
 
     const canUpdate = result.isAdmin
       ? [
-          CALENDAR_STATUS.SCHEDULED,
-          CALENDAR_STATUS.COMPLETED
+          COURSE_SESSION_STATUS.SCHEDULED,
+          COURSE_SESSION_STATUS.COMPLETED
         ].includes(result.calendar.status)
       : canCreate
 

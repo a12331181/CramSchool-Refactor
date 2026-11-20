@@ -3,7 +3,7 @@ const { createHash } = require('node:crypto')
 const { isDeepStrictEqual } = require('node:util')
 const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionBillRefund, TuitionLeaveReview, Payment, AuditLog, User, sequelize } = require('../models')
 const { COURSE_TYPES } = require('../constants/courseOptions')
-const CALENDAR_STATUS = require('../constants/calendarStatus')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
@@ -147,7 +147,7 @@ async function getTuitionCalendars({ courseId, studentId, billingMonth } = {}, t
     where: {
       CourseId: courseId,
       status: {
-        [Op.in]: [CALENDAR_STATUS.SCHEDULED, CALENDAR_STATUS.COMPLETED]
+        [Op.in]: [COURSE_SESSION_STATUS.SCHEDULED, COURSE_SESSION_STATUS.COMPLETED]
       },
       startAt: {
         [Op.gte]: monthStartAt,
@@ -206,7 +206,7 @@ async function getTuitionCalendars({ courseId, studentId, billingMonth } = {}, t
         { startAt: null, status: null },
         {
           startAt: null,
-          status: { [Op.ne]: CALENDAR_STATUS.CANCELLED }
+          status: { [Op.ne]: COURSE_SESSION_STATUS.CANCELLED }
         },
         {
           startAt: {
@@ -218,9 +218,9 @@ async function getTuitionCalendars({ courseId, studentId, billingMonth } = {}, t
             {
               status: {
                 [Op.notIn]: [
-                  CALENDAR_STATUS.SCHEDULED,
-                  CALENDAR_STATUS.COMPLETED,
-                  CALENDAR_STATUS.CANCELLED
+                  COURSE_SESSION_STATUS.SCHEDULED,
+                  COURSE_SESSION_STATUS.COMPLETED,
+                  COURSE_SESSION_STATUS.CANCELLED
                 ]
               }
             }
@@ -348,7 +348,7 @@ async function getTuitionAttendanceSummary({ studentId, calendars }, transaction
       status = 'requires_review'
     } else if (!attend || attend.status === ATTEND_STATUS.UNMARKED) {
       status =
-        calendar.status === CALENDAR_STATUS.SCHEDULED &&
+        calendar.status === COURSE_SESSION_STATUS.SCHEDULED &&
         calendar.endAt.getTime() > now
           ? 'not_due'
           : ATTEND_STATUS.UNMARKED
@@ -1601,7 +1601,7 @@ async function getPreviousMonthLeaveReviews({ studentId, billingMonth }, transac
       required: true,
       attributes: ['startAt'],
       where: {
-        status: { [Op.in]: [CALENDAR_STATUS.SCHEDULED, CALENDAR_STATUS.COMPLETED] },
+        status: { [Op.in]: [COURSE_SESSION_STATUS.SCHEDULED, COURSE_SESSION_STATUS.COMPLETED] },
         startAt: { [Op.gte]: range.from, [Op.lt]: range.until },
         endAt: { [Op.lte]: new Date() }
       },
@@ -1709,7 +1709,7 @@ async function recordPreviousMonthLeaveReview({
       ...locked,
       where: {
         id: target.CalendarId,
-        status: { [Op.in]: [CALENDAR_STATUS.SCHEDULED, CALENDAR_STATUS.COMPLETED] },
+        status: { [Op.in]: [COURSE_SESSION_STATUS.SCHEDULED, COURSE_SESSION_STATUS.COMPLETED] },
         startAt: { [Op.gte]: range.from, [Op.lt]: range.until },
         endAt: { [Op.lte]: new Date() }
       }

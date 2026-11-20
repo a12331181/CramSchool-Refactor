@@ -1,6 +1,6 @@
 'use strict';
 
-const CALENDAR_STATUS = require('../constants/calendarStatus')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 
 const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
@@ -31,7 +31,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(16),
       allowNull: true,
       validate: {
-        isIn: [Object.values(CALENDAR_STATUS)]
+        isIn: [Object.values(COURSE_SESSION_STATUS)]
       }
     },
     TeacherId: {

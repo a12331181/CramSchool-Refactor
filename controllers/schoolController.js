@@ -6,7 +6,7 @@ const Student = db.Student
 const Diary = db.Diary
 const User = db.User
 const calendarService = require('../services/calendarService')
-const CALENDAR_STATUS = require('../constants/calendarStatus')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const { formatTaipeiDateTime } = require('../utils/date')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const pageLimit = 10
@@ -78,9 +78,9 @@ const schoolController = {
     }
 
     const statusLabels = {
-      [CALENDAR_STATUS.SCHEDULED]: '已排定',
-      [CALENDAR_STATUS.COMPLETED]: '已完成',
-      [CALENDAR_STATUS.CANCELLED]: '已取消'
+      [COURSE_SESSION_STATUS.SCHEDULED]: '已排定',
+      [COURSE_SESSION_STATUS.COMPLETED]: '已完成',
+      [COURSE_SESSION_STATUS.CANCELLED]: '已取消'
     }
 
     const { course, sessions, currentPeriod, legacyCalendars } = result

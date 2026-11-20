@@ -1,6 +1,6 @@
 const { User, Course, Teacher, Calendar, Enrollment, Student, Attend, AuditLog, sequelize } = require('../models')
 const { Op, UniqueConstraintError } = require('sequelize')
-const CALENDAR_STATUS = require('../constants/calendarStatus')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const { getTaipeiDate } = require('../utils/date')
@@ -22,9 +22,9 @@ async function getAttendIndexData({ userId }) {
     where: {
       status: {
         [Op.in]: [
-          CALENDAR_STATUS.SCHEDULED,
-          CALENDAR_STATUS.COMPLETED,
-          CALENDAR_STATUS.CANCELLED
+          COURSE_SESSION_STATUS.SCHEDULED,
+          COURSE_SESSION_STATUS.COMPLETED,
+          COURSE_SESSION_STATUS.CANCELLED
         ]
       },
       startAt: { [Op.ne]: null },
@@ -69,8 +69,8 @@ async function getAttendStudentsData({ courseId, calendarId, userId }) {
       CourseId: courseId,
       status: {
         [Op.in]: [
-          CALENDAR_STATUS.SCHEDULED,
-          CALENDAR_STATUS.COMPLETED
+          COURSE_SESSION_STATUS.SCHEDULED,
+          COURSE_SESSION_STATUS.COMPLETED
         ]
       }
     },
@@ -232,7 +232,7 @@ async function createAttend({
     where: {
       id: calendarId,
       CourseId: courseId,
-      status: CALENDAR_STATUS.SCHEDULED
+      status: COURSE_SESSION_STATUS.SCHEDULED
     },
     include: [{
       model: Teacher,
@@ -271,7 +271,7 @@ async function createAttend({
 
       if (
         !student || Number(course?.isActive) !== 1 || !teacher || !calendar ||
-        calendar.status !== CALENDAR_STATUS.SCHEDULED ||
+        calendar.status !== COURSE_SESSION_STATUS.SCHEDULED ||
         !(calendar.startAt instanceof Date) || !Number.isFinite(calendar.startAt.getTime()) ||
         !(calendar.endAt instanceof Date) || !Number.isFinite(calendar.endAt.getTime()) ||
         calendar.startAt >= calendar.endAt
@@ -408,8 +408,8 @@ async function updateAttend({
   const isAdmin = Number(user.isAdmin) === 1
 
   const allowedCalendarStatuses = isAdmin
-    ? [CALENDAR_STATUS.SCHEDULED, CALENDAR_STATUS.COMPLETED]
-    : [CALENDAR_STATUS.SCHEDULED]
+    ? [COURSE_SESSION_STATUS.SCHEDULED, COURSE_SESSION_STATUS.COMPLETED]
+    : [COURSE_SESSION_STATUS.SCHEDULED]
 
   const target = await Calendar.findOne({
     attributes: ['TeacherId'],
@@ -459,7 +459,7 @@ async function updateAttend({
 
     if (
       !student || Number(course?.isActive) !== 1 || !teacher || !calendar ||
-      calendar.status !== CALENDAR_STATUS.SCHEDULED ||
+      calendar.status !== COURSE_SESSION_STATUS.SCHEDULED ||
       !(calendar.startAt instanceof Date) ||
       !Number.isFinite(calendar.startAt.getTime()) ||
       !(calendar.endAt instanceof Date) ||
@@ -582,9 +582,9 @@ async function getAttendHistoryData({
       CourseId: courseId,
       status: {
         [Op.in]: [
-          CALENDAR_STATUS.SCHEDULED,
-          CALENDAR_STATUS.COMPLETED,
-          CALENDAR_STATUS.CANCELLED
+          COURSE_SESSION_STATUS.SCHEDULED,
+          COURSE_SESSION_STATUS.COMPLETED,
+          COURSE_SESSION_STATUS.CANCELLED
         ]
       }
     },

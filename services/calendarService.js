@@ -1,12 +1,12 @@
 const { Op, col, fn, literal, where } = require('sequelize')
 const { Course, Calendar, Teacher, Enrollment, Attend, TuitionBill, TuitionBillItem, sequelize } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
-const CALENDAR_STATUS = require('../constants/calendarStatus')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
 
-async function getCalendarPage({ courseId, page, pageSize }) {
+async function getAdminCourseCalendarPage({ courseId, page, pageSize }) {
   const course = await Course.findByPk(courseId, {
     attributes: ['id', 'name', 'isActive']
   })
@@ -42,7 +42,7 @@ async function getCalendarPage({ courseId, page, pageSize }) {
   }
 }
 
-async function getCreateCalendarFormData(courseId) {
+async function getCreateCourseSessionFormData(courseId) {
   const course = await Course.findByPk(courseId, {
     attributes: ['id', 'name', 'TeacherId', 'isActive']
   })
@@ -69,12 +69,12 @@ async function getCreateCalendarFormData(courseId) {
   }
 }
 
-async function createCalendar(courseId, calendarData) {
+async function createCourseSession(courseId, sessionData) {
   if (!Number.isSafeInteger(courseId) || courseId < 1) {
     return { ok: false, code: 'INVALID_COURSE_ID' }
   }
 
-  const prepared = prepareCalendarData(calendarData)
+  const prepared = prepareCourseSessionData(sessionData)
 
   if (!prepared.ok) {
     return prepared
@@ -120,7 +120,7 @@ async function createCalendar(courseId, calendarData) {
       attributes: ['id'],
       where: {
         status: {
-          [Op.in]: [CALENDAR_STATUS.SCHEDULED, CALENDAR_STATUS.COMPLETED]
+          [Op.in]: [COURSE_SESSION_STATUS.SCHEDULED, COURSE_SESSION_STATUS.COMPLETED]
         },
         startAt: { [Op.lt]: data.endAt },
         endAt: { [Op.gt]: data.startAt },
@@ -141,7 +141,7 @@ async function createCalendar(courseId, calendarData) {
       TeacherId: data.teacherId,
       startAt: data.startAt,
       endAt: data.endAt,
-      status: CALENDAR_STATUS.SCHEDULED,
+      status: COURSE_SESSION_STATUS.SCHEDULED,
       content: data.content,
       date: null,
       period: null,
@@ -163,7 +163,7 @@ async function createCalendar(courseId, calendarData) {
   })
 }
 
-async function cancelCalendar(courseId, calendarId) {
+async function cancelCourseSession(courseId, calendarId) {
   if (!Number.isSafeInteger(courseId) || courseId < 1) {
     return { ok: false, code: 'INVALID_COURSE_ID' }
   }
@@ -197,11 +197,11 @@ async function cancelCalendar(courseId, calendarId) {
       return { ok: false, code: 'CALENDAR_NOT_FOUND' }
     }
 
-    if (calendar.status === CALENDAR_STATUS.CANCELLED) {
+    if (calendar.status === COURSE_SESSION_STATUS.CANCELLED) {
       return { ok: true, changed: false }
     }
 
-    if (calendar.status !== CALENDAR_STATUS.SCHEDULED) {
+    if (calendar.status !== COURSE_SESSION_STATUS.SCHEDULED) {
       return { ok: false, code: 'CALENDAR_NOT_CANCELLABLE' }
     }
 
@@ -227,7 +227,7 @@ async function cancelCalendar(courseId, calendarId) {
     }
 
     await calendar.update(
-      { status: CALENDAR_STATUS.CANCELLED },
+      { status: COURSE_SESSION_STATUS.CANCELLED },
       { transaction }
     )
 
@@ -235,7 +235,7 @@ async function cancelCalendar(courseId, calendarId) {
   })
 }
 
-async function completeCalendar(courseId, calendarId) {
+async function completeCourseSession(courseId, calendarId) {
   if (!Number.isSafeInteger(courseId) || courseId < 1) {
     return { ok: false, code: 'INVALID_COURSE_ID' }
   }
@@ -275,11 +275,11 @@ async function completeCalendar(courseId, calendarId) {
       return { ok: false, code: 'CALENDAR_NOT_FOUND' }
     }
 
-    if (calendar.status === CALENDAR_STATUS.COMPLETED) {
+    if (calendar.status === COURSE_SESSION_STATUS.COMPLETED) {
       return { ok: true, changed: false }
     }
 
-    if (calendar.status !== CALENDAR_STATUS.SCHEDULED) {
+    if (calendar.status !== COURSE_SESSION_STATUS.SCHEDULED) {
       return { ok: false, code: 'CALENDAR_NOT_COMPLETABLE' }
     }
 
@@ -299,7 +299,7 @@ async function completeCalendar(courseId, calendarId) {
       return { ok: false, code: 'CALENDAR_NOT_ENDED' }
     }
 
-    const attendanceCheck = await checkCalendarAttendance({
+    const attendanceCheck = await checkCourseSessionAttendance({
       calendar,
       transaction
     })
@@ -309,7 +309,7 @@ async function completeCalendar(courseId, calendarId) {
     }
 
     await calendar.update(
-      { status: CALENDAR_STATUS.COMPLETED },
+      { status: COURSE_SESSION_STATUS.COMPLETED },
       { transaction }
     )
 
@@ -317,7 +317,7 @@ async function completeCalendar(courseId, calendarId) {
   })
 }
 
-async function checkCalendarAttendance({ calendar, transaction }) {
+async function checkCourseSessionAttendance({ calendar, transaction }) {
   const calendarDate = getTaipeiDate(calendar.startAt)
 
   const locked = {
@@ -459,9 +459,9 @@ async function getCourseCalendarData(courseId) {
         CourseId: courseId,
         status: {
           [Op.in]: [
-            CALENDAR_STATUS.SCHEDULED,
-            CALENDAR_STATUS.COMPLETED,
-            CALENDAR_STATUS.CANCELLED
+            COURSE_SESSION_STATUS.SCHEDULED,
+            COURSE_SESSION_STATUS.COMPLETED,
+            COURSE_SESSION_STATUS.CANCELLED
           ]
         },
         startAt: { [Op.ne]: null },
@@ -573,7 +573,7 @@ async function updateLegacyCalendar(courseId, calendarId, { date, content }) {
   })
 }
 
-function prepareCalendarData({ startAt, endAt, teacherId, content = '' }) {
+function prepareCourseSessionData({ startAt, endAt, teacherId, content = '' }) {
   const parsedStartAt = parseTaipeiDateTime(startAt)
   const parsedEndAt = parseTaipeiDateTime(endAt)
 
@@ -609,13 +609,11 @@ function prepareCalendarData({ startAt, endAt, teacherId, content = '' }) {
 }
 
 module.exports = {
-  prepareCalendarData,
-  createCalendar,
-  cancelCalendar,
-  completeCalendar,
-  checkCalendarAttendance,
-  getCalendarPage,
-  getCreateCalendarFormData,
+  createCourseSession,
+  cancelCourseSession,
+  completeCourseSession,
+  getAdminCourseCalendarPage,
+  getCreateCourseSessionFormData,
   getCourseCalendarData,
   getLegacyCalendarEditData,
   updateLegacyCalendar
