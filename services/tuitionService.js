@@ -14,7 +14,10 @@ const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
 const { parseTaipeiDateTime, isTaipeiDateKey, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
 const paymentAllocationService = require('./tuitionPaymentAllocationService')
 const { getIssuedCoursePaymentStatuses } = require('./tuitionCoursePaymentService')
-const { getIssuedTuitionBillFinancialData, getBillRefundAmounts } = require('./tuitionBillFinancialService')
+const {
+  getIssuedTuitionBillFinancialData, getBillRefundAmounts, summarizeStudentBillGroup,
+  combinePaymentStatuses, sumKnownAmounts
+} = require('./tuitionBillFinancialService')
 const {
   getTuitionBillRefundSummary, hasTuitionBillRefund, recordTuitionBillRefund
 } = require('./tuitionRefundService')
@@ -515,14 +518,37 @@ async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) 
     return { ok: false, code: 'INVALID_BILLING_MONTH' }
   }
 
-  const rows = await TuitionBill.findAll({
-    attributes: ['id', 'studentNameSnapshot', 'status', 'totalAmount', 'issuedAt'],
-    where: { StudentId: studentId, billingMonth },
-    order: [['id', 'DESC']],
-    raw: true
-  })
+  return readTuitionSnapshot(async transaction => {
+    const bills = await TuitionBill.findAll({
+      attributes: ['id', 'studentNameSnapshot', 'status', 'totalAmount', 'issuedAt'],
+      where: { StudentId: studentId, billingMonth },
+      order: [['id', 'DESC']],
+      raw: true,
+      transaction
+    })
 
-  return { ok: true, rows }
+    const financialData = await getIssuedTuitionBillFinancialData(bills, transaction)
+    const rows = bills.map(bill => {
+      const financial = financialData.get(bill.id)
+      return {
+        ...bill,
+        paymentStatus: financial?.paymentStatus ?? null,
+        refunds: financial ? getBillRefundAmounts(financial.refundLedger) : null
+      }
+    })
+
+    return { ok: true, rows, summary: summarizeStudentBillGroup(bills, financialData) }
+  })
+}
+
+function groupBillsByStudent(bills) {
+  const grouped = new Map()
+  for (const bill of bills) {
+    const group = grouped.get(bill.StudentId) ?? []
+    group.push(bill)
+    grouped.set(bill.StudentId, group)
+  }
+  return grouped
 }
 
 async function getActiveTuitionBillsForStudents(studentIds, billingMonth, transaction) {
@@ -535,6 +561,7 @@ async function getActiveTuitionBillsForStudents(studentIds, billingMonth, transa
       billingMonth,
       status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] }
     },
+    order: [['id', 'DESC']],
     raw: true,
     transaction
   })
@@ -576,21 +603,28 @@ async function getStudentTuitionList({ billingMonth, statusFilter = 'all', page,
 
     const studentIds = result.rows.map(student => student.id)
     const bills = await getActiveTuitionBillsForStudents(studentIds, billingMonth, transaction)
-    const billsByStudentId = new Map(bills.map(bill => [bill.StudentId, bill]))
+    const billsByStudentId = groupBillsByStudent(bills)
     const paymentStatuses = allStatuses || ['unbilled', 'draft'].includes(statusFilter)
       ? new Map()
       : await getIssuedTuitionBillPaymentStatuses(bills, transaction)
 
-    const studentsWithBills = result.rows.map(student => ({ student, bill: billsByStudentId.get(student.id) }))
-    const matching = allStatuses ? studentsWithBills : studentsWithBills.filter(({ bill }) => {
-      if (!bill) return statusFilter === 'unbilled'
-      if (bill.status === TUITION_BILL_STATUS.DRAFT) return statusFilter === 'draft'
-      return statusFilter === getTuitionBillPaymentState(paymentStatuses.get(bill.id))
+    const studentsWithBills = result.rows.map(student => ({
+      student,
+      bills: billsByStudentId.get(student.id) ?? []
+    }))
+    const matching = allStatuses ? studentsWithBills : studentsWithBills.filter(({ bills }) => {
+      if (statusFilter === 'unbilled') return bills.length === 0
+      if (statusFilter === 'draft') return bills.some(bill => bill.status === TUITION_BILL_STATUS.DRAFT)
+
+      const issued = bills.filter(bill => bill.status === TUITION_BILL_STATUS.ISSUED)
+      return issued.length > 0 && statusFilter === getTuitionBillPaymentState(
+        combinePaymentStatuses(issued.map(bill => paymentStatuses.get(bill.id)))
+      )
     })
     const pageRows = allStatuses ? matching : matching.slice(offset, offset + pageSize)
     const totalCount = allStatuses ? result.count : matching.length
     const financialData = await getIssuedTuitionBillFinancialData(
-      pageRows.map(row => row.bill).filter(Boolean),
+      pageRows.flatMap(row => row.bills),
       transaction
     )
     return { pageRows, totalCount, financialData }
@@ -598,14 +632,12 @@ async function getStudentTuitionList({ billingMonth, statusFilter = 'all', page,
   const rows = []
 
   // 沒有帳單的學生，只需要試算本頁顯示的金額。
-  for (const entry of pageRows) {
-    const { student, bill } = entry
-    if (bill) {
-      const financial = financialData.get(bill.id)
+  for (const { student, bills } of pageRows) {
+    if (bills.length > 0) {
       rows.push({
-        ...entry,
-        paymentStatus: financial?.paymentStatus ?? null,
-        refunds: financial ? getBillRefundAmounts(financial.refundLedger) : null
+        student,
+        bill: bills.length === 1 ? bills[0] : null,
+        summary: summarizeStudentBillGroup(bills, financialData)
       })
       continue
     }
@@ -878,7 +910,7 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
       getActiveTuitionBillsForStudents(pageStudentIds, billingMonth, transaction)
     ])
     const studentsById = new Map(students.map(student => [student.id, student]))
-    const billsByStudentId = new Map(bills.map(bill => [bill.StudentId, bill]))
+    const billsByStudentId = groupBillsByStudent(bills)
     const coursePayments = await getIssuedCoursePaymentStatuses(
       bills.filter(bill => courseFeesByBillId.has(bill.id)),
       transaction
@@ -886,19 +918,34 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
 
     const rows = pageStudentIds.map(studentId => {
       const student = studentsById.get(studentId) ?? null
-      const bill = billsByStudentId.get(studentId) ?? null
-      const amounts = courseFeesByBillId.get(bill?.id) ?? []
-      const coursePayment = coursePayments.get(bill?.id)?.get(courseId) ?? null
+      const studentBills = billsByStudentId.get(studentId) ?? []
+      const courseBills = studentBills.filter(bill => courseFeesByBillId.has(bill.id))
+      const issued = courseBills.filter(bill => bill.status === TUITION_BILL_STATUS.ISSUED)
+      const drafts = courseBills.filter(bill => bill.status === TUITION_BILL_STATUS.DRAFT)
+      const statuses = issued.map(bill => coursePayments.get(bill.id)?.get(courseId))
+      const combined = combinePaymentStatuses(statuses)
+      const coursePayment = combined?.ok && statuses.length > 1
+        ? {
+            ...combined,
+            refundedAmount: sumKnownAmounts(statuses.map(status => status.refundedAmount)),
+            netReceivedAmount: sumKnownAmounts(statuses.map(status => status.netReceivedAmount))
+          }
+        : combined
+      if (coursePayment?.ok && (coursePayment.refundedAmount === null || coursePayment.netReceivedAmount === null)) {
+        coursePayment.ok = false
+      }
 
       return {
         studentId,
         student,
-        bill,
+        bill: issued[0] ?? drafts[0] ?? studentBills[0] ?? null,
+        courseBills,
+        draftCount: drafts.length,
         enrollmentNeedsReview: enrollmentReviewIds.has(studentId),
-        hasCourseFee: amounts.length > 0,
-        courseAmount: bill?.status === TUITION_BILL_STATUS.ISSUED
+        hasCourseFee: courseBills.length > 0,
+        courseAmount: issued.length > 0
           ? coursePayment?.totalAmount ?? null
-          : sumCourseFeeAmounts(amounts),
+          : sumCourseFeeAmounts(drafts.flatMap(bill => courseFeesByBillId.get(bill.id))),
         coursePayment
       }
     })

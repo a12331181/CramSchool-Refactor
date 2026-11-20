@@ -1,8 +1,31 @@
-{{#if activeBill}}
+{{#if activeBills.length}}
 <section class="my-3" aria-labelledby="saved-month-bill-heading">
-  <h2 id="saved-month-bill-heading" class="h5">本月帳單</h2>
-  <p>{{activeBill.studentNameSnapshot}}｜{{activeBill.statusText}}｜帳單金額 NT$ {{activeBill.totalAmount}}</p>
-  <a href="{{activeBill.detailUrl}}" class="btn btn-sm btn-outline-primary">查看帳單 #{{activeBill.id}}</a>
+  <h2 id="saved-month-bill-heading" class="h5">本月繳費總覽</h2>
+  {{#if monthSummary.issuedCount}}
+  <dl class="row mb-2">
+    <dt class="col-sm-3">正式帳單應收</dt><dd class="col-sm-9">{{monthSummary.issuedText}}</dd>
+    <dt class="col-sm-3">已收</dt><dd class="col-sm-9">{{monthSummary.paidText}}</dd>
+    <dt class="col-sm-3">待繳</dt><dd class="col-sm-9"><strong>{{monthSummary.remainingText}}</strong></dd>
+    <dt class="col-sm-3">已退</dt><dd class="col-sm-9">{{monthSummary.refundedText}}</dd>
+    <dt class="col-sm-3">實收</dt><dd class="col-sm-9">{{monthSummary.netReceivedText}}</dd>
+  </dl>
+  {{/if}}
+  {{#if monthSummary.draftCount}}
+  <p class="text-muted">{{monthSummary.draftCount}} 張草稿尚未計入應收。</p>
+  {{/if}}
+  <div class="table-responsive">
+    <table class="table table-sm">
+      <thead><tr><th scope="col">帳單</th><th scope="col">狀態</th><th scope="col">金額</th><th scope="col">待繳</th></tr></thead>
+      <tbody>
+        {{#each activeBills}}
+        <tr>
+          <th scope="row"><a href="{{detailUrl}}">帳單 #{{id}}</a></th>
+          <td>{{statusText}}</td><td>{{totalText}}</td><td>{{remainingText}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
 </section>
 {{/if}}
 

@@ -401,15 +401,32 @@ const tuitionController = {
       tuitionService.getStudentTuitionBillsForMonth(input)
     ])
 
+    const money = value => Number.isSafeInteger(value) && value >= 0
+      ? 'NT$ ' + amountFormat.format(value)
+      : '待核對'
     const billRows = (billsResult.rows ?? []).map(bill => ({
       ...bill,
       statusText: bill.status === TUITION_BILL_STATUS.VOID
         ? (bill.issuedAt == null ? '已捨棄草稿' : '已作廢')
-        : (bill.status === TUITION_BILL_STATUS.DRAFT ? '草稿' : '已出帳'),
+        : (bill.status === TUITION_BILL_STATUS.DRAFT ? '草稿' : getTuitionBillPaymentStatusText(bill.paymentStatus)),
+      totalText: money(bill.totalAmount),
+      remainingText: bill.status === TUITION_BILL_STATUS.ISSUED
+        ? money(bill.paymentStatus?.ok ? bill.paymentStatus.remainingAmount : null)
+        : '—',
       detailUrl: `/cramschool/tuition/bills/${bill.id}`
     }))
-    const activeBill = billRows.find(bill => bill.status === TUITION_BILL_STATUS.DRAFT || bill.status === TUITION_BILL_STATUS.ISSUED) ?? null
+    const activeBills = billRows.filter(bill => bill.status !== TUITION_BILL_STATUS.VOID)
     const voidedBills = billRows.filter(bill => bill.status === TUITION_BILL_STATUS.VOID)
+    const summary = billsResult.summary
+    const monthSummary = summary && {
+      issuedCount: summary.issuedCount,
+      issuedText: money(summary.issuedAmount),
+      paidText: money(summary.paymentStatus?.ok ? summary.paymentStatus.paidAmount : null),
+      remainingText: money(summary.paymentStatus?.ok ? summary.paymentStatus.remainingAmount : null),
+      refundedText: getRefundAmountText(summary.refunds, 'refundedAmount'),
+      netReceivedText: getRefundAmountText(summary.refunds, 'netReceivedAmount'),
+      draftCount: summary.draftCount
+    }
 
     const messages = {
       INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
@@ -468,7 +485,7 @@ const tuitionController = {
     }))
 
     const hasLeaveReviewForm = leaveRows.some(row => row.canReview)
-    const canCreateDraft = hasSubtotal && !activeBill
+    const canCreateDraft = hasSubtotal && activeBills.length === 0
 
     if (canCreateDraft || hasLeaveReviewForm) {
       req.session.tuitionFormToken ??= createSessionFormToken()
@@ -492,7 +509,8 @@ const tuitionController = {
       billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
       preview: result.ok ? result : null,
       hasSubtotal,
-      activeBill,
+      activeBills,
+      monthSummary,
       voidedBills,
       draftFormToken,
       draftAction: `/cramschool/tuition/students/${studentId}/bills/draft`,
@@ -1040,16 +1058,18 @@ const tuitionController = {
 
     const detailQuery = listQuery(page)
     const rows = result.rows.map(row => {
-      const { bill, paymentStatus, refunds } = row
-      const isIssued = bill?.status === TUITION_BILL_STATUS.ISSUED
-      const amount = bill ? bill.totalAmount : row.baseSubtotal
+      const { bill, summary } = row
+      const paymentStatus = summary?.paymentStatus
+      const refunds = summary?.refunds
+      const isIssued = summary?.issuedCount > 0
+      const amount = summary ? (isIssued ? summary.issuedAmount : summary.draftAmount) : row.baseSubtotal
       const hasAmount = Number.isSafeInteger(amount) && amount >= 0
       const hasRemainingAmount = isIssued && paymentStatus?.ok === true
       let statusText = '未開單'
 
       if (isIssued) {
         statusText = getTuitionBillPaymentStatusText(paymentStatus)
-      } else if (bill) {
+      } else if (summary?.draftCount > 0) {
         statusText = hasAmount ? '草稿' : '草稿待核對'
       } else if (row.code === 'NO_COURSES_IN_BILLING_MONTH') {
         statusText = '本月無有效選課'
@@ -1063,7 +1083,9 @@ const tuitionController = {
         student: row.student,
         amount,
         hasAmount,
-        amountSourceText: isIssued ? '正式帳單' : (bill ? '草稿金額' : '基本學費試算'),
+        amountSourceText: isIssued ? '正式帳單合計' : (summary ? '草稿金額' : '基本學費試算'),
+        pendingDraftCount: isIssued ? summary.draftCount : 0,
+        hasMonthSummary: Boolean(summary),
         statusText,
         refundStatusText: refunds?.ok === false && paymentStatus?.ok
           ? '退費紀錄待核對'
@@ -1122,7 +1144,9 @@ const tuitionController = {
 
     const monthQuery = new URLSearchParams({ billingMonth })
     const historyQuery = getTuitionNavigationParams({ billingMonth, page })
-    const rows = result.rows.map(({ studentId, student, bill, enrollmentNeedsReview, hasCourseFee, courseAmount, coursePayment }) => {
+    const rows = result.rows.map(({
+      studentId, student, bill, courseBills, draftCount, enrollmentNeedsReview, hasCourseFee, courseAmount, coursePayment
+    }) => {
       const isIssuedForCourse = hasCourseFee && bill?.status === TUITION_BILL_STATUS.ISSUED
       const hasAmount = Number.isSafeInteger(courseAmount) && courseAmount >= 0
       const amountText = amount => `NT$ ${amountFormat.format(amount)}`
@@ -1150,7 +1174,8 @@ const tuitionController = {
         refundedText: issuedAmountText('refundedAmount'),
         netReceivedText: issuedAmountText('netReceivedAmount'),
         remainingText: issuedAmountText('remainingAmount'),
-        billUrl: bill ? `/cramschool/tuition/bills/${bill.id}` : null,
+        bills: courseBills.map(({ id }) => ({ id, url: `/cramschool/tuition/bills/${id}` })),
+        pendingDraftCount: isIssuedForCourse ? draftCount : 0,
         historyUrl: student
           ? withQuery(`/cramschool/tuition/courses/${courseId}/students/${studentId}`, historyQuery)
           : null,

@@ -51,6 +51,7 @@
             </td>
             <td>
               {{this.statusText}}
+              {{#if this.pendingDraftCount}}<small class="d-block text-muted">另有 {{this.pendingDraftCount}} 張草稿</small>{{/if}}
               {{#if this.refundStatusText}}<small class="d-block text-muted">{{this.refundStatusText}}</small>{{/if}}
             </td>
             <td>{{#if this.hasRemainingAmount}}NT$ {{this.remainingAmount}}{{else}}—{{/if}}</td>
@@ -58,9 +59,12 @@
             <td>{{this.netReceivedText}}</td>
             <td>
 
-              <a href="{{this.previewUrl}}">帳單草稿</a>
-              <span>/</span>
-              {{#if this.billUrl}}<a href="{{this.billUrl}}">本月帳單</a>{{/if}}
+              {{#if this.hasMonthSummary}}
+              <a href="{{this.previewUrl}}#saved-month-bill-heading">本月繳費總覽</a>
+              {{else}}
+              <a href="{{this.previewUrl}}">試算與開單</a>
+              {{/if}}
+              {{#if this.billUrl}}<span>/</span> <a href="{{this.billUrl}}">查看帳單</a>{{/if}}
             </td>
 
             <td><a href="{{this.historyUrl}}">歷期學費列表</a></td>

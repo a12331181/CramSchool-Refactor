@@ -35,9 +35,9 @@
         <td>{{refundedText}}</td>
         <td>{{netReceivedText}}</td>
         <td>{{remainingText}}</td>
-        <td>{{statusText}}</td>
+        <td>{{statusText}}{{#if pendingDraftCount}}<small class="d-block text-muted">另有 {{pendingDraftCount}} 張草稿</small>{{/if}}</td>
         <td>
-          {{#if billUrl}}<a class="mr-2" href="{{billUrl}}">查看帳單</a>{{/if}}
+          {{#each bills}}<a class="mr-2" href="{{url}}">帳單 #{{id}}</a>{{/each}}
           {{#if previewUrl}}<a class="mr-2" href="{{previewUrl}}">帳單草稿</a>{{/if}}
           {{#if historyUrl}}<a href="{{historyUrl}}">歷月學費</a>{{/if}}
         </td>
