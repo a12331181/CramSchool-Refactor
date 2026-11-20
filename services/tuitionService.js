@@ -1498,7 +1498,7 @@ async function getTuitionBillDetails(billId) {
     ? await paymentAllocationService.getAllocationState({ items: savedBill.items, payments, paymentStatus })
     : null
   const refundSummary = paymentStatus?.isFullyPaid
-    ? await getTuitionBillRefundSummary(savedBill.id, paymentStatus)
+    ? await getTuitionBillRefundSummary(savedBill.id, { paymentStatus, paymentAllocation })
     : null
 
   const canVoidIssuedBill =

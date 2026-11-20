@@ -8,7 +8,18 @@
   {{#if rows.length}}
   <ul class="mb-3">
     {{#each rows}}
-    <li>{{refundedOn}}｜NT$ {{amount}}｜{{reason}}</li>
+    <li>
+      {{refundedOn}}｜NT$ {{amount}}｜{{reason}}
+      {{#if unassigned}}
+      <span class="text-muted">（整單退費，未指定品項）</span>
+      {{else}}
+      <ul>
+        {{#each items}}
+        <li>{{description}}｜NT$ {{amount}}</li>
+        {{/each}}
+      </ul>
+      {{/if}}
+    </li>
     {{/each}}
   </ul>
   {{/if}}
@@ -18,15 +29,42 @@
     <p class="text-muted">請在實際退費後登記。系統只保存紀錄，不會匯款。</p>
     <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
     <input type="hidden" name="billVersion" value="{{billVersion}}">
+    {{#if itemized}}
+    <input type="hidden" name="refundMode" value="items">
+    <p id="refund-items-hint">要退的品項填入金額；不退的欄位留空。金額以原收款分配為準。</p>
+    <div class="table-responsive">
+      <table class="table table-sm" aria-describedby="refund-items-hint">
+        <thead><tr>
+          <th scope="col">品項</th>
+          <th scope="col">可退金額</th>
+          <th scope="col">本次退費（NT$）</th>
+        </tr></thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <th scope="row"><label for="refund-item-{{allocationId}}" class="mb-0">{{description}}</label></th>
+            <td>NT$ {{remainingAmount}}</td>
+            <td>
+              <input id="refund-item-{{allocationId}}" name="refundItems[a{{allocationId}}]" type="number"
+                class="form-control form-control-sm" min="1" max="{{maxAmount}}" step="1">
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <p class="text-muted">這張帳單包含未分配的收款或退費，請登記整單退費。</p>
     <label for="refund-amount">退費金額（NT$）</label>
     <input id="refund-amount" name="amount" type="number" class="form-control mb-2"
       min="1" max="{{maxAmount}}" step="1" required>
+    {{/if}}
     <label for="refund-date">退費日期</label>
     <input id="refund-date" name="refundedOn" type="date" class="form-control mb-2"
       value="{{today}}" min="{{earliestDate}}" max="{{today}}" required>
     <label for="refund-reason">退費原因</label>
     <input id="refund-reason" name="reason" type="text" class="form-control mb-2" maxlength="255" required>
-    <button type="submit" class="btn btn-outline-primary">登記退費</button>
+    <button type="submit" class="btn btn-outline-primary">{{#if itemized}}登記分項退費{{else}}登記退費{{/if}}</button>
   </form>
   {{/with}}
   {{/if}}

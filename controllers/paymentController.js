@@ -72,17 +72,35 @@ const paymentController = {
     const readInt = value =>
       typeof value === 'string' && value !== '' && !/\D/.test(value) ? Number(value) : NaN
     const billId = readInt(req.params.billId)
+    const invalidInput = '帳單 ID、版本或退費金額不正確；金額須為大於零的台幣整數。'
+    const itemized = body.refundMode === 'items'
+    let refundItems
+    if (itemized) {
+      const fields = body.refundItems ?? {}
+      if (body.amount !== undefined || typeof fields !== 'object' || Array.isArray(fields)) {
+        return res.status(400).send(invalidInput)
+      }
+      refundItems = []
+      for (const [key, value] of Object.entries(fields)) {
+        if (!/^a[1-9]\d*$/.test(key) || typeof value !== 'string') return res.status(400).send(invalidInput)
+        if (value !== '') refundItems.push({ allocationId: readInt(key.slice(1)), amount: readInt(value) })
+      }
+    } else if (body.refundMode !== undefined || body.refundItems !== undefined) {
+      return res.status(400).send(invalidInput)
+    }
+
     const result = await tuitionService.recordTuitionBillRefund({
       billId,
       billVersion: readInt(body.billVersion),
       actorId: req.user.id,
-      amount: readInt(body.amount),
+      amount: itemized ? undefined : readInt(body.amount),
+      refundItems,
       refundedOn: body.refundedOn,
       reason: body.reason
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return res.status(400).send('帳單 ID、版本或退費金額不正確；金額須為大於零的台幣整數。')
+      return res.status(400).send(invalidInput)
     }
     if (result.code === 'BILL_NOT_FOUND') return res.status(404).send('找不到這張帳單。')
 

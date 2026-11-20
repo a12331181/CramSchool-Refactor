@@ -1,9 +1,11 @@
 const { Op, Transaction, json } = require('sequelize')
-const { TuitionBill, TuitionBillItem, TuitionBillRefund, AuditLog, sequelize } = require('../models')
+const { TuitionBill, TuitionBillItem, TuitionBillRefund, TuitionBillRefundAllocation, AuditLog, sequelize } = require('../models')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
-const { getTuitionBillPaymentStatus } = require('./tuitionPaymentStateService')
+const { getPaidTuitionBillPayments, summarizeTuitionBillPayments } = require('./tuitionPaymentStateService')
+const { MAX_PAYMENT_ITEMS, getAllocationState } = require('./tuitionPaymentAllocationService')
+const { getRefundLedger } = require('./tuitionRefundLedgerService')
 
 async function hasTuitionBillRefund(billId, transaction) {
   const refund = await TuitionBillRefund.findOne({
@@ -15,26 +17,15 @@ async function hasTuitionBillRefund(billId, transaction) {
   return refund !== null
 }
 
-async function getTuitionBillRefundSummary(billId, payment, transaction) {
-  const rows = await TuitionBillRefund.findAll({
-    attributes: ['id', 'amount', 'refundedOn', 'reason'],
-    where: { TuitionBillId: billId },
-    order: [['refundedOn', 'DESC'], ['id', 'DESC']],
-    raw: true,
-    transaction
-  })
-  const refundedAmount = rows.reduce((sum, row) => sum + row.amount, 0)
-  if (
-    rows.some(row => !Number.isSafeInteger(row.amount) || row.amount <= 0) ||
-    !Number.isSafeInteger(refundedAmount) || refundedAmount > payment.paidAmount
-  ) {
-    return { ok: false, code: 'REFUND_TOTAL_REQUIRES_REVIEW' }
-  }
+async function getTuitionBillRefundSummary(billId, { paymentStatus, paymentAllocation }, transaction) {
+  const ledger = await getRefundLedger(billId, { paymentStatus, paymentAllocation }, transaction)
+  if (!ledger.ok) return ledger
 
-  const netPaidAmount = payment.paidAmount - refundedAmount
   let blockedCode = null
-  if (netPaidAmount > 0) {
-    if (!payment.lastPaidOn || payment.lastPaidOn > getTaipeiDate()) {
+  if (ledger.netPaidAmount > 0) {
+    if (paymentAllocation?.ok === false) {
+      blockedCode = 'REFUND_ALLOCATIONS_REQUIRE_REVIEW'
+    } else if (!paymentStatus.lastPaidOn || paymentStatus.lastPaidOn > getTaipeiDate()) {
       blockedCode = 'REFUND_PAYMENT_DATE_UNCONFIRMED'
     } else {
       const credit = await TuitionBillItem.findOne({
@@ -50,15 +41,73 @@ async function getTuitionBillRefundSummary(billId, payment, transaction) {
       if (credit) blockedCode = 'REFUND_HAS_LEAVE_CREDIT'
     }
   }
-  return { ok: true, rows, refundedAmount, netPaidAmount, blockedCode }
+
+  const mode = paymentAllocation?.itemized && !ledger.hasUnassignedRefunds ? 'items' : 'bill'
+  return { ...ledger, mode, blockedCode }
 }
 
-async function recordTuitionBillRefund({ billId, billVersion, actorId, amount, refundedOn, reason } = {}) {
+const MAX_REFUND_AMOUNT = 2_147_483_647
+const isPositiveInteger = value => Number.isSafeInteger(value) && value > 0
+
+function readRefundAmount(amount, refundItems) {
+  const invalid = { ok: false, code: 'INVALID_INPUT' }
+  if (refundItems === undefined) {
+    return isPositiveInteger(amount) && amount <= MAX_REFUND_AMOUNT ? { ok: true, amount } : invalid
+  }
+  if (amount !== undefined || !Array.isArray(refundItems) || refundItems.length > MAX_PAYMENT_ITEMS) return invalid
+  if (refundItems.length === 0) return { ok: false, code: 'REFUND_ITEMS_REQUIRED' }
+
+  const ids = new Set()
+  let total = 0
+  for (const item of refundItems) {
+    if (!isPositiveInteger(item?.allocationId) || !isPositiveInteger(item?.amount) || ids.has(item.allocationId)) {
+      return invalid
+    }
+    ids.add(item.allocationId)
+    total += item.amount
+  }
+
+  return isPositiveInteger(total) && total <= MAX_REFUND_AMOUNT ? { ok: true, amount: total } : invalid
+}
+
+function selectRefundAllocations(summary, { amount, refundItems }) {
+  if (summary.mode !== 'items') {
+    return refundItems === undefined
+      ? { ok: true, items: [] }
+      : { ok: false, code: 'REFUND_ITEMS_UNAVAILABLE' }
+  }
+
+  const available = summary.items.filter(item => item.remainingAmount > 0)
+  const byId = new Map(available.map(item => [item.allocationId, item]))
+  let selection = refundItems
+  if (selection === undefined) {
+    if (amount === summary.netPaidAmount) {
+      selection = available.map(item => ({ allocationId: item.allocationId, amount: item.remainingAmount }))
+    } else if (available.length === 1) {
+      selection = [{ allocationId: available[0].allocationId, amount }]
+    } else {
+      return { ok: false, code: 'REFUND_ITEMS_REQUIRED' }
+    }
+  }
+
+  const items = []
+  for (const { allocationId, amount } of selection) {
+    const item = byId.get(allocationId)
+    if (!item) return { ok: false, code: 'REFUND_ITEMS_CHANGED' }
+    if (amount > item.remainingAmount) return { ok: false, code: 'REFUND_ITEM_EXCEEDS_PAID_AMOUNT' }
+    items.push({ allocationId, itemId: item.itemId, amount })
+  }
+  return { ok: true, items }
+}
+
+async function recordTuitionBillRefund({ billId, billVersion, actorId, amount, refundItems, refundedOn, reason } = {}) {
   if (
-    ![billId, actorId, amount].every(value => Number.isSafeInteger(value) && value > 0) ||
-    amount > 2_147_483_647 ||
-    !Number.isSafeInteger(billVersion) || billVersion < 0 || billVersion >= 2_147_483_647
+    ![billId, actorId].every(isPositiveInteger) ||
+    !Number.isSafeInteger(billVersion) || billVersion < 0 || billVersion >= MAX_REFUND_AMOUNT
   ) return { ok: false, code: 'INVALID_INPUT' }
+
+  const request = readRefundAmount(amount, refundItems)
+  if (!request.ok) return request
 
   const note = typeof reason === 'string' ? reason.trim() : ''
   if (!note || note.length > 255) return { ok: false, code: 'INVALID_REFUND_REASON' }
@@ -71,32 +120,51 @@ async function recordTuitionBillRefund({ billId, billVersion, actorId, amount, r
   return sequelize.transaction({
     isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED
   }, async transaction => {
-    // 和收款、請假折抵共用來源帳單的鎖，核對後才能登記。
+    // 收款、退費和請假折抵共用這張來源帳單的鎖。
     const bill = await TuitionBill.findByPk(billId, { transaction, lock: transaction.LOCK.UPDATE })
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
     if (bill.status !== TUITION_BILL_STATUS.ISSUED) return { ok: false, code: 'BILL_NOT_ISSUED' }
     if (bill.version !== billVersion) return { ok: false, code: 'BILL_VERSION_CONFLICT' }
 
-    const payment = await getTuitionBillPaymentStatus(bill.id, transaction)
-    if (!payment.ok) return payment
-    if (!payment.isFullyPaid) return { ok: false, code: 'BILL_NOT_FULLY_PAID' }
+    const payments = await getPaidTuitionBillPayments([bill.id], transaction)
+    const paymentStatus = summarizeTuitionBillPayments(bill, payments)
+    if (!paymentStatus.ok) return paymentStatus
+    if (!paymentStatus.isFullyPaid) return { ok: false, code: 'BILL_NOT_FULLY_PAID' }
 
-    const summary = await getTuitionBillRefundSummary(bill.id, payment, transaction)
+    const items = await TuitionBillItem.findAll({
+      attributes: ['id', 'kind', 'descriptionSnapshot', 'amount'],
+      where: { TuitionBillId: bill.id },
+      raw: true,
+      transaction
+    })
+    const paymentAllocation = await getAllocationState({ items, payments, paymentStatus }, transaction)
+    const summary = await getTuitionBillRefundSummary(bill.id, { paymentStatus, paymentAllocation }, transaction)
     if (!summary.ok) return summary
     if (summary.blockedCode) return { ok: false, code: summary.blockedCode }
-    if (amount > summary.netPaidAmount) return { ok: false, code: 'REFUND_EXCEEDS_PAID_AMOUNT' }
-    if (refundedOn < payment.lastPaidOn) return { ok: false, code: 'INVALID_REFUND_DATE' }
+    if (request.amount > summary.netPaidAmount) return { ok: false, code: 'REFUND_EXCEEDS_PAID_AMOUNT' }
+    if (refundedOn < paymentStatus.lastPaidOn) return { ok: false, code: 'INVALID_REFUND_DATE' }
+
+    const allocation = selectRefundAllocations(summary, { amount: request.amount, refundItems })
+    if (!allocation.ok) return allocation
 
     const refund = await TuitionBillRefund.create({
       TuitionBillId: bill.id,
-      amount,
+      amount: request.amount,
       refundedOn,
       reason: note,
       actorId
     }, { transaction })
 
+    if (allocation.items.length > 0) {
+      await TuitionBillRefundAllocation.bulkCreate(allocation.items.map(item => ({
+        TuitionBillRefundId: refund.id,
+        TuitionPaymentAllocationId: item.allocationId,
+        amount: item.amount
+      })), { transaction, validate: true })
+    }
+
     const version = bill.version + 1
-    const refundedAmount = summary.refundedAmount + amount
+    const refundedAmount = summary.refundedAmount + request.amount
     await bill.update({ version }, { transaction })
     await AuditLog.create({
       actorId,
@@ -104,7 +172,14 @@ async function recordTuitionBillRefund({ billId, billVersion, actorId, amount, r
       entityId: bill.id,
       action: 'update',
       before: { refundedAmount: summary.refundedAmount, version: billVersion },
-      after: { refundId: refund.id, refundAmount: amount, refundedOn, refundedAmount, version },
+      after: {
+        refundId: refund.id,
+        refundAmount: request.amount,
+        refundedOn,
+        refundedAmount,
+        ...(allocation.items.length > 0 ? { refundItems: allocation.items } : {}),
+        version
+      },
       reason: note
     }, { transaction })
 

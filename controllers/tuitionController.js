@@ -731,7 +731,9 @@ const tuitionController = {
         refundSummary = { errorMessage: REFUND_MESSAGES[refund.code] ?? '暫時無法核對退費資料。' }
       } else {
         refundSummary = {
-          ...refund,
+          rows: refund.rows,
+          refundedAmount: refund.refundedAmount,
+          netPaidAmount: refund.netPaidAmount,
           blockedMessage: REFUND_MESSAGES[refund.blockedCode],
           statusText: refund.refundedAmount === 0
             ? '尚未退費'
@@ -743,6 +745,11 @@ const tuitionController = {
             action: `/cramschool/tuition/bills/${bill.id}/refunds`,
             formToken: req.session.tuitionFormToken,
             billVersion: bill.version,
+            itemized: refund.mode === 'items',
+            items: refund.items.filter(item => item.remainingAmount > 0).map(item => ({
+              ...item,
+              maxAmount: Math.min(item.remainingAmount, 2_147_483_647)
+            })),
             maxAmount: Math.min(refund.netPaidAmount, 2_147_483_647),
             earliestDate: result.paymentStatus.lastPaidOn,
             today: getTaipeiDate()
