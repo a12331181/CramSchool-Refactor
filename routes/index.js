@@ -103,9 +103,9 @@ module.exports = (app, passport) => {
   //admin extrafee 相關路由 
   app.get('/admin/extrafees', authenticatedAdmin, adminController.getExtraFees)
   app.get('/admin/extrafees/create', authenticatedAdmin, adminController.getCreateExtraFeePage)
-  app.post('/admin/extrafees', authenticatedAdmin, adminController.postExtraFee)
+  app.post('/admin/extrafees', authenticatedAdmin, adminController.createExtraFee)
   app.get('/admin/extrafees/:id/edit', authenticatedAdmin, adminController.getEditExtraFeePage)
-  app.put('/admin/extrafees/:id', authenticatedAdmin, adminController.putExtraFee)
+  app.put('/admin/extrafees/:id', authenticatedAdmin, adminController.updateExtraFee)
   //admin teacher 相關路由
   app.use('/admin/teachers', adminTeacherRoutes)
   //admin student 相關路由
