@@ -13,6 +13,7 @@ const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
 const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
 const paymentAllocationService = require('./tuitionPaymentAllocationService')
+const { getIssuedCoursePaymentStatuses } = require('./tuitionCoursePaymentService')
 const {
   getTuitionBillPaymentState, getTuitionBillPaymentStatus,
   getPaidTuitionBillPayments, getIssuedTuitionBillPaymentStatuses, summarizeTuitionBillPayments
@@ -711,8 +712,7 @@ async function getCoursePaymentOverview({ billingMonth } = {}) {
     const summaries = new Map(courses.map(({ id }) => [id, {
       studentIds: new Set(),
       issuedStudentIds: new Set(),
-      issuedAmounts: [],
-      payableBillIds: new Set()
+      issuedBillIds: new Set()
     }]))
 
     for (const enrollment of enrollments) {
@@ -722,38 +722,43 @@ async function getCoursePaymentOverview({ billingMonth } = {}) {
       summaries.get(courseId).studentIds.add(studentId)
     }
 
-    const payableBills = new Map()
-    for (const { CourseId: courseId, amount, TuitionBill: bill } of courseFeeItems) {
+    const issuedBills = new Map()
+    for (const { CourseId: courseId, TuitionBill: bill } of courseFeeItems) {
       const summary = summaries.get(courseId)
       summary.studentIds.add(bill.StudentId)
       if (bill.status !== TUITION_BILL_STATUS.ISSUED) continue
 
       summary.issuedStudentIds.add(bill.StudentId)
-      summary.issuedAmounts.push(amount)
-      if (amount > 0) {
-        summary.payableBillIds.add(bill.id)
-        payableBills.set(bill.id, bill)
-      }
+      summary.issuedBillIds.add(bill.id)
+      issuedBills.set(bill.id, bill)
     }
 
-    const paymentStatuses = await getIssuedTuitionBillPaymentStatuses([...payableBills.values()], transaction)
+    const paymentStatuses = await getIssuedCoursePaymentStatuses([...issuedBills.values()], transaction)
     const rows = courses.map(course => {
-      const { studentIds, issuedStudentIds, issuedAmounts, payableBillIds } = summaries.get(course.id)
-      const receivableAmount = issuedAmounts.length ? sumCourseFeeAmounts(issuedAmounts) : 0
-      const statuses = [...payableBillIds].map(id => paymentStatuses.get(id))
+      const { studentIds, issuedStudentIds, issuedBillIds } = summaries.get(course.id)
+      const statuses = [...issuedBillIds].map(id => paymentStatuses.get(id)?.get(course.id))
+      const totalOf = field => statuses.length === 0 ? 0 : sumCourseFeeAmounts(statuses.map(status => status?.[field]))
+      const receivableAmount = totalOf('totalAmount')
+      const receivedAmount = totalOf('paidAmount')
+      const remainingAmount = totalOf('remainingAmount')
 
       let collectionStatus = COURSE_COLLECTION_STATUS.PAID
       if (studentIds.size === 0) {
         collectionStatus = COURSE_COLLECTION_STATUS.EMPTY
       } else if (issuedStudentIds.size < studentIds.size) {
         collectionStatus = COURSE_COLLECTION_STATUS.UNISSUED
-      } else if (receivableAmount === null || statuses.some(status => !status?.ok)) {
+      } else if (
+        statuses.some(status => !status?.ok) ||
+        [receivableAmount, receivedAmount, remainingAmount].some(amount => amount === null)
+      ) {
         collectionStatus = COURSE_COLLECTION_STATUS.REVIEW
-      } else if (statuses.some(status => status.remainingAmount > 0)) {
+      } else if (receivableAmount === 0) {
+        collectionStatus = COURSE_COLLECTION_STATUS.NO_PAYMENT
+      } else if (remainingAmount > 0) {
         collectionStatus = COURSE_COLLECTION_STATUS.UNPAID
       }
 
-      return { ...course, receivableAmount, collectionStatus }
+      return { ...course, receivableAmount, receivedAmount, remainingAmount, collectionStatus }
     })
 
     return { ok: true, courses: rows }

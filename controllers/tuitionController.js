@@ -14,6 +14,7 @@ const COURSE_COLLECTION_LABELS = {
   [COURSE_COLLECTION_STATUS.UNPAID]: ['未收齊', 'text-danger'],
   [COURSE_COLLECTION_STATUS.UNISSUED]: ['部分未出帳', 'alert-warning px-1 rounded'],
   [COURSE_COLLECTION_STATUS.EMPTY]: ['本月無收費資料', 'text-muted'],
+  [COURSE_COLLECTION_STATUS.NO_PAYMENT]: ['無須收款', 'text-muted'],
   [COURSE_COLLECTION_STATUS.REVIEW]: ['待核對', 'text-muted']
 }
 
@@ -185,14 +186,15 @@ const tuitionController = {
     const result = await tuitionService.getCoursePaymentOverview({ billingMonth })
     if (!result.ok) return res.status(500).send('無法取得本月課程收費資料。')
 
+    const formatAmount = amount => amount === null ? '待核對' : `NT$ ${amountFormat.format(amount)}`
     const courses = result.courses.map(course => {
       const [collectionText, collectionClass] = COURSE_COLLECTION_LABELS[course.collectionStatus]
       return {
         id: course.id,
         name: course.name,
-        receivableText: course.receivableAmount === null
-          ? '待核對'
-          : `NT$ ${amountFormat.format(course.receivableAmount)}`,
+        receivableText: formatAmount(course.receivableAmount),
+        receivedText: formatAmount(course.receivedAmount),
+        remainingText: formatAmount(course.remainingAmount),
         collectionText,
         collectionClass,
         detailUrl: `/cramschool/tuition/courses/${course.id}/monthly?billingMonth=${billingMonth}`
