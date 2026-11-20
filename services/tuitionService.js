@@ -14,7 +14,7 @@ const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
 const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
 const paymentAllocationService = require('./tuitionPaymentAllocationService')
 const { getIssuedCoursePaymentStatuses } = require('./tuitionCoursePaymentService')
-const { getIssuedTuitionBillFinancialData } = require('./tuitionBillFinancialService')
+const { getIssuedTuitionBillFinancialData, getBillRefundAmounts } = require('./tuitionBillFinancialService')
 const {
   getTuitionBillRefundSummary, hasTuitionBillRefund, recordTuitionBillRefund
 } = require('./tuitionRefundService')
@@ -569,35 +569,44 @@ async function getStudentTuitionList({ billingMonth, statusFilter = 'all', page,
     order: [['id', 'ASC']],
     raw: true
   }
-  const result = allStatuses
-    ? await Student.findAndCountAll({ ...studentQuery, limit: pageSize, offset })
-    : { rows: await Student.findAll(studentQuery) }
+  const { pageRows, totalCount, financialData } = await readTuitionSnapshot(async transaction => {
+    const result = allStatuses
+      ? await Student.findAndCountAll({ ...studentQuery, limit: pageSize, offset, transaction })
+      : { rows: await Student.findAll({ ...studentQuery, transaction }) }
 
-  const studentIds = result.rows.map(student => student.id)
-  const bills = await getActiveTuitionBillsForStudents(studentIds, billingMonth)
-  const billsByStudentId = new Map(bills.map(bill => [bill.StudentId, bill]))
-  const paymentStatuses = ['unbilled', 'draft'].includes(statusFilter)
-    ? new Map()
-    : await getIssuedTuitionBillPaymentStatuses(bills)
+    const studentIds = result.rows.map(student => student.id)
+    const bills = await getActiveTuitionBillsForStudents(studentIds, billingMonth, transaction)
+    const billsByStudentId = new Map(bills.map(bill => [bill.StudentId, bill]))
+    const paymentStatuses = allStatuses || ['unbilled', 'draft'].includes(statusFilter)
+      ? new Map()
+      : await getIssuedTuitionBillPaymentStatuses(bills, transaction)
 
-  const studentsWithBills = result.rows.map(student => {
-    const bill = billsByStudentId.get(student.id)
-    return { student, bill, paymentStatus: paymentStatuses.get(bill?.id) ?? null }
+    const studentsWithBills = result.rows.map(student => ({ student, bill: billsByStudentId.get(student.id) }))
+    const matching = allStatuses ? studentsWithBills : studentsWithBills.filter(({ bill }) => {
+      if (!bill) return statusFilter === 'unbilled'
+      if (bill.status === TUITION_BILL_STATUS.DRAFT) return statusFilter === 'draft'
+      return statusFilter === getTuitionBillPaymentState(paymentStatuses.get(bill.id))
+    })
+    const pageRows = allStatuses ? matching : matching.slice(offset, offset + pageSize)
+    const totalCount = allStatuses ? result.count : matching.length
+    const financialData = await getIssuedTuitionBillFinancialData(
+      pageRows.map(row => row.bill).filter(Boolean),
+      transaction
+    )
+    return { pageRows, totalCount, financialData }
   })
-  const matching = allStatuses ? studentsWithBills : studentsWithBills.filter(({ bill, paymentStatus }) => {
-    if (!bill) return statusFilter === 'unbilled'
-    if (bill.status === TUITION_BILL_STATUS.DRAFT) return statusFilter === 'draft'
-    return statusFilter === getTuitionBillPaymentState(paymentStatus)
-  })
-  const pageRows = allStatuses ? matching : matching.slice(offset, offset + pageSize)
-  const totalCount = allStatuses ? result.count : matching.length
   const rows = []
 
   // 沒有帳單的學生，只需要試算本頁顯示的金額。
   for (const entry of pageRows) {
     const { student, bill } = entry
     if (bill) {
-      rows.push(entry)
+      const financial = financialData.get(bill.id)
+      rows.push({
+        ...entry,
+        paymentStatus: financial?.paymentStatus ?? null,
+        refunds: financial ? getBillRefundAmounts(financial.refundLedger) : null
+      })
       continue
     }
 
@@ -674,18 +683,13 @@ async function getStudentTuitionHistory({ courseId, studentId } = {}) {
         : !byCourse ? bill.totalAmount
           : isIssued ? paymentStatus?.totalAmount ?? null : sumCourseFeeAmounts(items.map(item => item.amount))
 
-      const ledger = billData?.refundLedger
       const refunds = !isIssued ? null : byCourse
         ? {
             ok: paymentStatus?.ok === true,
             refundedAmount: paymentStatus?.refundedAmount,
             netReceivedAmount: paymentStatus?.netReceivedAmount
           }
-        : {
-            ok: ledger?.ok === true,
-            refundedAmount: ledger?.refundedAmount,
-            netReceivedAmount: ledger?.netPaidAmount
-          }
+        : getBillRefundAmounts(billData?.refundLedger)
       return { bill, amount, paymentStatus: paymentStatus ?? null, refunds }
     })
 

@@ -50,6 +50,12 @@ function getTuitionBillPaymentStatusText(paymentStatus) {
   return STUDENT_TUITION_STATUS[tuitionService.getTuitionBillPaymentState(paymentStatus)]
 }
 
+function getRefundAmountText(summary, field) {
+  if (!summary) return '—'
+  if (!summary.ok) return '待核對'
+  return `NT$ ${amountFormat.format(summary[field])}`
+}
+
 function getRefundStatusText(summary) {
   if (summary?.ok && summary.refundedAmount > 0) {
     return summary.netReceivedAmount === 0 ? '已全額退費' : '已部分退費'
@@ -295,9 +301,6 @@ const tuitionController = {
       else if (isIssued && paymentStatus?.ok && !refunds?.ok) statusText = '退費紀錄待核對'
       else if (isIssued) statusText = getRefundStatusText(refunds) ?? getTuitionBillPaymentStatusText(paymentStatus)
 
-      const refundAmountText = field =>
-        !isIssued ? '—' : refunds?.ok ? `NT$ ${amountFormat.format(refunds[field])}` : '待核對'
-
       return {
         billId: bill.id,
         billingMonth: bill.billingMonth,
@@ -306,8 +309,8 @@ const tuitionController = {
         hasAmount: Number.isSafeInteger(amount) && amount >= 0,
         amountUnavailableText: isVoid ? '—' : '待核對',
         statusText,
-        refundedText: refundAmountText('refundedAmount'),
-        netReceivedText: refundAmountText('netReceivedAmount'),
+        refundedText: getRefundAmountText(refunds, 'refundedAmount'),
+        netReceivedText: getRefundAmountText(refunds, 'netReceivedAmount'),
         paidOnText,
         detailUrl: `/cramschool/tuition/bills/${bill.id}${isIssued ? '#payment-summary-heading' : ''}`,
         detailText: isVoid ? '查看作廢紀錄' : isIssued ? '查看收款資訊' : '查看草稿'
@@ -1031,7 +1034,7 @@ const tuitionController = {
 
     const detailQuery = listQuery(page)
     const rows = result.rows.map(row => {
-      const { bill, paymentStatus } = row
+      const { bill, paymentStatus, refunds } = row
       const isIssued = bill?.status === TUITION_BILL_STATUS.ISSUED
       const amount = bill ? bill.totalAmount : row.baseSubtotal
       const hasAmount = Number.isSafeInteger(amount) && amount >= 0
@@ -1056,6 +1059,11 @@ const tuitionController = {
         hasAmount,
         amountSourceText: isIssued ? '正式帳單' : (bill ? '草稿金額' : '基本學費試算'),
         statusText,
+        refundStatusText: refunds?.ok === false && paymentStatus?.ok
+          ? '退費紀錄待核對'
+          : getRefundStatusText(refunds),
+        refundedText: getRefundAmountText(refunds, 'refundedAmount'),
+        netReceivedText: getRefundAmountText(refunds, 'netReceivedAmount'),
         hasRemainingAmount,
         remainingAmount: hasRemainingAmount ? paymentStatus.remainingAmount : null,
         billUrl: bill ? `/cramschool/tuition/bills/${bill.id}` : null,

@@ -5,7 +5,7 @@
 <br>
 
 <h1 class="h4">學生學費列表</h1>
-<p class="text-muted">在學學生的本月帳單與收款狀況。尚未開單時顯示基本學費試算。</p>
+<p class="text-muted">在學學生的本月帳單與收款狀況。尚未開單時顯示基本學費試算。實收已扣除退費；已結清仍可有退費紀錄。</p>
 
 {{#> tuition/billing-month-filter formAction=listUrl monthLabel="計費月份:" submitText="查看月學費" submitClass="mb-1"}}
   <span class="d-inline-block ml-sm-2 col-md-6">
@@ -25,43 +25,52 @@
 {{else}}
   <p>共 {{totalCount}} 位符合條件的在學學生</p>
 
-  <table class="table table-bordered ">
-    <thead>
-      <tr class="table-primary">
-        <th scope="col">學生姓名</th>
-        <th scope="col">本月金額</th>
-        <th scope="col">帳單／收款狀態</th>
-        <th scope="col">未收金額</th>
-        <th scope="col">明細</th>
-        <th scope="col">紀錄</th>
-      </tr>
-    </thead>
-    <tbody>
-      {{#each rows}}
-        <tr>
-          <th scope="row">{{this.student.name}}</th>
-          <td>
-            {{#if this.hasAmount}}
-            NT$ {{this.amount}}
-            <small class="d-block text-muted">{{this.amountSourceText}}</small>
-            {{else}}—{{/if}}
-          </td>
-          <td>{{this.statusText}}</td>
-          <td>{{#if this.hasRemainingAmount}}NT$ {{this.remainingAmount}}{{else}}—{{/if}}</td>
-          <td>
-            
-            <a href="{{this.previewUrl}}">帳單草稿</a>
-            <span>/</span>
-            {{#if this.billUrl}}<a href="{{this.billUrl}}">本月帳單</a>{{/if}}
-          </td>
-          
-          <td><a href="{{this.historyUrl}}">歷期學費列表</a></td>
+  <div class="table-responsive">
+    <table class="table table-bordered ">
+      <thead>
+        <tr class="table-primary">
+          <th scope="col">學生姓名</th>
+          <th scope="col">本月金額</th>
+          <th scope="col">帳單／收款狀態</th>
+          <th scope="col">未收金額</th>
+          <th scope="col">已退費</th>
+          <th scope="col">實收</th>
+          <th scope="col">明細</th>
+          <th scope="col">紀錄</th>
         </tr>
-      {{else}}
-        <tr><td colspan="6">目前沒有符合條件的學生。</td></tr>
-      {{/each}}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {{#each rows}}
+          <tr>
+            <th scope="row">{{this.student.name}}</th>
+            <td>
+              {{#if this.hasAmount}}
+              NT$ {{this.amount}}
+              <small class="d-block text-muted">{{this.amountSourceText}}</small>
+              {{else}}—{{/if}}
+            </td>
+            <td>
+              {{this.statusText}}
+              {{#if this.refundStatusText}}<small class="d-block text-muted">{{this.refundStatusText}}</small>{{/if}}
+            </td>
+            <td>{{#if this.hasRemainingAmount}}NT$ {{this.remainingAmount}}{{else}}—{{/if}}</td>
+            <td>{{this.refundedText}}</td>
+            <td>{{this.netReceivedText}}</td>
+            <td>
+
+              <a href="{{this.previewUrl}}">帳單草稿</a>
+              <span>/</span>
+              {{#if this.billUrl}}<a href="{{this.billUrl}}">本月帳單</a>{{/if}}
+            </td>
+
+            <td><a href="{{this.historyUrl}}">歷期學費列表</a></td>
+          </tr>
+        {{else}}
+          <tr><td colspan="8">目前沒有符合條件的學生。</td></tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
 
   {{> pagination ariaLabel="學生學費列表分頁"}}
 {{/if}}

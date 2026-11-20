@@ -40,4 +40,12 @@ async function getIssuedTuitionBillFinancialData(bills, transaction) {
   ]))
 }
 
-module.exports = { getIssuedTuitionBillFinancialData }
+function getBillRefundAmounts(ledger) {
+  return {
+    ok: ledger?.ok === true,
+    refundedAmount: ledger?.refundedAmount,
+    netReceivedAmount: ledger?.netPaidAmount
+  }
+}
+
+module.exports = { getIssuedTuitionBillFinancialData, getBillRefundAmounts }
