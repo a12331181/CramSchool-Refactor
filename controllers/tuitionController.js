@@ -211,6 +211,7 @@ const tuitionController = {
       return {
         id: course.id,
         name: course.name,
+        isClosed: Number(course.isActive) === 0,
         receivableText: formatAmount(course.receivableAmount),
         receivedText: formatAmount(course.receivedAmount),
         remainingText: formatAmount(course.remainingAmount),

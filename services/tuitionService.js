@@ -671,30 +671,32 @@ async function getStudentTuitionHistory({ courseId, studentId } = {}) {
   })
 }
 
-function getMonthlyCourseTuitionSources({ courseIds, billingMonth }, transaction) {
-  const courseFilter = { [Op.in]: courseIds }
+function getCourseEnrollments(courseIds, transaction) {
+  return Enrollment.findAll({
+    attributes: ['CourseId', 'StudentId', 'startsOn', 'endsOn', 'status'],
+    where: { CourseId: { [Op.in]: courseIds } },
+    raw: true,
+    transaction
+  })
+}
 
-  return Promise.all([
-    Enrollment.findAll({
-      attributes: ['CourseId', 'StudentId', 'startsOn', 'endsOn', 'status'],
-      where: { CourseId: courseFilter },
-      raw: true,
-      transaction
-    }),
-    TuitionBillItem.findAll({
-      attributes: ['CourseId', 'TuitionBillId', 'amount'],
-      where: { CourseId: courseFilter, kind: TUITION_BILL_ITEM_KIND.COURSE_FEE },
-      include: [{
-        model: TuitionBill,
-        attributes: ['id', 'StudentId', 'status', 'totalAmount'],
-        where: { billingMonth, status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] } },
-        required: true
-      }],
-      raw: true,
-      nest: true,
-      transaction
-    })
-  ])
+function getCourseFeeItemsForMonth({ courseIds, billingMonth }, transaction) {
+  return TuitionBillItem.findAll({
+    attributes: ['CourseId', 'TuitionBillId', 'amount'],
+    where: {
+      kind: TUITION_BILL_ITEM_KIND.COURSE_FEE,
+      ...(courseIds === undefined ? {} : { CourseId: { [Op.in]: courseIds } })
+    },
+    include: [{
+      model: TuitionBill,
+      attributes: ['id', 'StudentId', 'status', 'totalAmount'],
+      where: { billingMonth, status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] } },
+      required: true
+    }],
+    raw: true,
+    nest: true,
+    transaction
+  })
 }
 
 function readTuitionReport(read) {
@@ -709,20 +711,22 @@ async function getCoursePaymentOverview({ billingMonth } = {}) {
   if (!range) return { ok: false, code: 'INVALID_BILLING_MONTH' }
 
   return readTuitionReport(async transaction => {
+    const courseFeeItems = await getCourseFeeItemsForMonth({ billingMonth }, transaction)
+    const billedCourseIds = [...new Set(courseFeeItems
+      .map(item => item.CourseId)
+      .filter(id => Number.isSafeInteger(id) && id > 0))]
     const courses = await Course.findAll({
-      attributes: ['id', 'name'],
-      where: { isActive: true },
+      attributes: ['id', 'name', 'isActive'],
+      where: billedCourseIds.length > 0
+        ? { [Op.or]: [{ isActive: true }, { id: { [Op.in]: billedCourseIds } }] }
+        : { isActive: true },
       order: [['id', 'ASC']],
       raw: true,
       transaction
     })
     if (courses.length === 0) return { ok: true, courses: [] }
 
-    const [enrollments, courseFeeItems] = await getMonthlyCourseTuitionSources({
-      courseIds: courses.map(course => course.id),
-      billingMonth
-    }, transaction)
-
+    const enrollments = await getCourseEnrollments(courses.map(course => course.id), transaction)
     const summaries = new Map(courses.map(({ id }) => [id, {
       studentIds: new Set(),
       issuedStudentIds: new Set(),
@@ -739,6 +743,7 @@ async function getCoursePaymentOverview({ billingMonth } = {}) {
     const issuedBills = new Map()
     for (const { CourseId: courseId, TuitionBill: bill } of courseFeeItems) {
       const summary = summaries.get(courseId)
+      if (!summary) continue
       summary.studentIds.add(bill.StudentId)
       if (bill.status !== TUITION_BILL_STATUS.ISSUED) continue
 
@@ -799,10 +804,10 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
     const course = await Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true, transaction })
     if (!course) return { ok: false, code: 'COURSE_NOT_FOUND' }
 
-    const [enrollments, courseFeeItems] = await getMonthlyCourseTuitionSources({
-      courseIds: [courseId],
-      billingMonth
-    }, transaction)
+    const [enrollments, courseFeeItems] = await Promise.all([
+      getCourseEnrollments([courseId], transaction),
+      getCourseFeeItemsForMonth({ courseIds: [courseId], billingMonth }, transaction)
+    ])
 
     const studentIds = new Set()
     const enrollmentReviewIds = new Set()
