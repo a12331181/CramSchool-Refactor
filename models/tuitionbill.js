@@ -1,6 +1,7 @@
 'use strict'
 
 const { Model } = require('sequelize')
+const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 
 module.exports = (sequelize, DataTypes) => {
   class TuitionBill extends Model {
@@ -26,9 +27,9 @@ module.exports = (sequelize, DataTypes) => {
     studentNameSnapshot: { type: DataTypes.STRING(255), allowNull: false },
     currency: { type: DataTypes.CHAR(3), allowNull: false, defaultValue: 'TWD' },
     status: {
-      type: DataTypes.ENUM('draft', 'issued', 'void'),
+      type: DataTypes.ENUM(TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED, TUITION_BILL_STATUS.VOID),
       allowNull: false,
-      defaultValue: 'draft'
+      defaultValue: TUITION_BILL_STATUS.DRAFT
     },
     totalAmount: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
     version: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },

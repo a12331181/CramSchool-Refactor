@@ -1,4 +1,5 @@
 const { Op, col, fn, literal, where } = require('sequelize')
+const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { Course, Calendar, Teacher, Enrollment, Attend, TuitionBill, TuitionBillItem, sequelize } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
@@ -218,7 +219,7 @@ async function cancelCourseSession(courseId, calendarId) {
           literal("'$.calendars'")
         ), 1)
       },
-      include: [{ model: TuitionBill, attributes: [], where: { status: 'issued' }, required: true }],
+      include: [{ model: TuitionBill, attributes: [], where: { status: TUITION_BILL_STATUS.ISSUED }, required: true }],
       raw: true,
       transaction
     })

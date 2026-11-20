@@ -1,4 +1,5 @@
 const { Op, Transaction, UniqueConstraintError, ValidationError, json } = require('sequelize')
+const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { createHash } = require('node:crypto')
 const { isDeepStrictEqual } = require('node:util')
 const { Attend, Calendar, Course, Enrollment, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionBillRefund, TuitionLeaveReview, Payment, AuditLog, User, sequelize } = require('../models')
@@ -539,7 +540,7 @@ async function getActiveTuitionBillsForStudents(studentIds, billingMonth) {
     where: {
       StudentId: { [Op.in]: studentIds },
       billingMonth,
-      status: { [Op.in]: ['draft', 'issued'] }
+      status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] }
     },
     raw: true
   })
@@ -591,7 +592,7 @@ async function getStudentTuitionList({ billingMonth, statusFilter = 'all', page,
   })
   const matching = allStatuses ? studentsWithBills : studentsWithBills.filter(({ bill, paymentStatus }) => {
     if (!bill) return statusFilter === 'unbilled'
-    if (bill.status === 'draft') return statusFilter === 'draft'
+    if (bill.status === TUITION_BILL_STATUS.DRAFT) return statusFilter === 'draft'
     return statusFilter === getTuitionBillPaymentState(paymentStatus)
   })
   const pageRows = allStatuses ? matching : matching.slice(offset, offset + pageSize)
@@ -649,7 +650,7 @@ async function getStudentTuitionHistory({ courseId, studentId } = {}) {
 
   const savedBills = await TuitionBill.findAll({
     attributes: ['id', 'billingMonth', 'status', 'issuedAt', 'totalAmount'],
-    where: { StudentId: studentId, status: { [Op.in]: ['draft', 'issued'] } },
+    where: { StudentId: studentId, status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] } },
     include: byCourse ? [{
       model: TuitionBillItem,
       as: 'items',
@@ -687,7 +688,7 @@ function getMonthlyCourseTuitionSources({ courseIds, billingMonth }, transaction
       include: [{
         model: TuitionBill,
         attributes: ['id', 'StudentId', 'status', 'totalAmount'],
-        where: { billingMonth, status: { [Op.in]: ['draft', 'issued'] } },
+        where: { billingMonth, status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] } },
         required: true
       }],
       raw: true,
@@ -737,7 +738,7 @@ async function getCoursePaymentOverview({ billingMonth } = {}) {
     for (const { CourseId: courseId, amount, TuitionBill: bill } of courseFeeItems) {
       const summary = summaries.get(courseId)
       summary.studentIds.add(bill.StudentId)
-      if (bill.status !== 'issued') continue
+      if (bill.status !== TUITION_BILL_STATUS.ISSUED) continue
 
       summary.issuedStudentIds.add(bill.StudentId)
       summary.issuedAmounts.push(amount)
@@ -947,7 +948,7 @@ async function createTuitionBillDraft({ studentId, billingMonth } = {}) {
   const where = {
     StudentId: studentId,
     billingMonth,
-    status: { [Op.in]: ['draft', 'issued'] }
+    status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] }
   }
 
   const findActiveBill = (options = {}) => TuitionBill.findOne({
@@ -1001,7 +1002,7 @@ async function createTuitionBillDraft({ studentId, billingMonth } = {}) {
         billingMonth,
         studentNameSnapshot: student.name.trim(),
         currency: 'TWD',
-        status: 'draft',
+        status: TUITION_BILL_STATUS.DRAFT,
         totalAmount
       }, { transaction })
 
@@ -1058,7 +1059,7 @@ async function refreshTuitionBillDraft({ billId, billVersion, actorId } = {}) {
     const bill = await TuitionBill.findByPk(billId, locked)
 
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-    if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+    if (bill.status !== TUITION_BILL_STATUS.DRAFT) return { ok: false, code: 'BILL_NOT_DRAFT' }
     if (bill.version !== billVersion || bill.StudentId !== owner.StudentId) {
       return { ok: false, code: 'BILL_VERSION_CONFLICT' }
     }
@@ -1166,7 +1167,7 @@ async function setTuitionBillDraftDiscount({ billId, billVersion, actorId, amoun
   return sequelize.transaction(async transaction => {
     const bill = await TuitionBill.findByPk(billId, { transaction, lock: transaction.LOCK.UPDATE })
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-    if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+    if (bill.status !== TUITION_BILL_STATUS.DRAFT) return { ok: false, code: 'BILL_NOT_DRAFT' }
     if (bill.version !== billVersion) return { ok: false, code: 'BILL_VERSION_CONFLICT' }
 
     const items = await TuitionBillItem.findAll({
@@ -1245,7 +1246,7 @@ async function removeTuitionBillDraftAdjustment({ billId, billItemId, billVersio
     })
 
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-    if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+    if (bill.status !== TUITION_BILL_STATUS.DRAFT) return { ok: false, code: 'BILL_NOT_DRAFT' }
     if (bill.version !== billVersion) {
       return { ok: false, code: 'BILL_VERSION_CONFLICT' }
     }
@@ -1311,11 +1312,11 @@ async function removeTuitionBillDraftAdjustment({ billId, billItemId, billVersio
 }
 
 async function discardTuitionBillDraft(input) {
-  return voidUnpaidTuitionBill(input, 'draft')
+  return voidUnpaidTuitionBill(input, TUITION_BILL_STATUS.DRAFT)
 }
 
 async function voidIssuedTuitionBill(input) {
-  return voidUnpaidTuitionBill(input, 'issued')
+  return voidUnpaidTuitionBill(input, TUITION_BILL_STATUS.ISSUED)
 }
 
 async function hasTuitionBillPayment(billId, transaction) {
@@ -1330,7 +1331,7 @@ async function hasTuitionBillPayment(billId, transaction) {
 
 async function voidUnpaidTuitionBill({ billId, billVersion, actorId, reason } = {}, fromStatus) {
   const isId = n => Number.isSafeInteger(n) && n > 0
-  const fromDraft = fromStatus === 'draft'
+  const fromDraft = fromStatus === TUITION_BILL_STATUS.DRAFT
   if (
     ![billId, actorId].every(isId) ||
     !Number.isSafeInteger(billVersion) || billVersion < 0 ||
@@ -1352,7 +1353,7 @@ async function voidUnpaidTuitionBill({ billId, billVersion, actorId, reason } = 
 
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
     const matchesIssueState = fromDraft ? bill.issuedAt == null : bill.issuedAt != null
-    if (bill.status === 'void' && matchesIssueState) {
+    if (bill.status === TUITION_BILL_STATUS.VOID && matchesIssueState) {
       return { ok: true, changed: false, billId: bill.id }
     }
     if (bill.status !== fromStatus || !matchesIssueState) {
@@ -1405,14 +1406,14 @@ async function voidUnpaidTuitionBill({ billId, billVersion, actorId, reason } = 
       })
     }
 
-    await bill.update({ status: 'void', version }, { transaction })
+    await bill.update({ status: TUITION_BILL_STATUS.VOID, version }, { transaction })
     await AuditLog.create({
       actorId,
       entityType: 'TuitionBill',
       entityId: bill.id,
       action: 'update',
       before,
-      after: { ...before, status: 'void', version, activeLeaveCredits: [] },
+      after: { ...before, status: TUITION_BILL_STATUS.VOID, version, activeLeaveCredits: [] },
       reason: note
     }, { transaction })
 
@@ -1452,7 +1453,7 @@ async function getTuitionBillDetails(billId) {
   const savedBill = bill.toJSON()
   const addedFeeIds = new Set(savedBill.items.map(item => item.ExtraFeeId))
 
-  const extraFees = savedBill.status === 'draft'
+  const extraFees = savedBill.status === TUITION_BILL_STATUS.DRAFT
     ? (await ExtraFee.findAll({
         attributes: ['id', 'name', 'price'],
         order: [['name', 'ASC'], ['id', 'ASC']],
@@ -1462,7 +1463,7 @@ async function getTuitionBillDetails(billId) {
 
   const leaveCreditData = await getDraftLeaveCreditOptions(savedBill)
 
-  const isIssued = savedBill.status === 'issued'
+  const isIssued = savedBill.status === TUITION_BILL_STATUS.ISSUED
   const payments = isIssued ? await getPaidTuitionBillPayments([savedBill.id]) : []
   const paymentStatus = isIssued ? summarizeTuitionBillPayments(savedBill, payments) : null
   const paymentAllocation = paymentStatus?.ok && paymentStatus.totalAmount > 0
@@ -1531,7 +1532,7 @@ async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersio
     })
 
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-    if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+    if (bill.status !== TUITION_BILL_STATUS.DRAFT) return { ok: false, code: 'BILL_NOT_DRAFT' }
     if (bill.version !== billVersion) {
       return { ok: false, code: 'BILL_VERSION_CONFLICT' }
     }
@@ -1807,7 +1808,7 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
     where: {
       StudentId: studentId,
       billingMonth: range.reviewMonth,
-      status: { [Op.in]: ['draft', 'issued'] }
+      status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] }
     },
     limit: 2,
     raw: true,
@@ -1887,7 +1888,7 @@ async function getTuitionBillPaymentStatus(billId, transaction) {
   })
 
   if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-  if (bill.status !== 'issued') return { ok: false, code: 'BILL_NOT_ISSUED' }
+  if (bill.status !== TUITION_BILL_STATUS.ISSUED) return { ok: false, code: 'BILL_NOT_ISSUED' }
 
   const statuses = await getIssuedTuitionBillPaymentStatuses([bill], transaction)
   return statuses.get(bill.id)
@@ -1903,7 +1904,7 @@ function getPaidTuitionBillPayments(billIds, transaction) {
 }
 
 async function getIssuedTuitionBillPaymentStatuses(bills, transaction) {
-  const issuedBills = bills.filter(bill => bill.status === 'issued')
+  const issuedBills = bills.filter(bill => bill.status === TUITION_BILL_STATUS.ISSUED)
   if (issuedBills.length === 0) return new Map()
 
   const billIds = issuedBills.map(bill => bill.id)
@@ -2027,7 +2028,7 @@ async function getPreviousMonthLeaveCreditCandidate({
 
   const { source } = result
 
-  if (source.billStatus !== 'issued') {
+  if (source.billStatus !== TUITION_BILL_STATUS.ISSUED) {
     return { ok: false, code: 'BILL_NOT_ISSUED' }
   }
 
@@ -2096,7 +2097,7 @@ async function addLeaveCreditToDraft({ billId, attendId, billVersion } = {}) {
     raw: true
   })
   if (!info) return { ok: false, code: 'BILL_NOT_FOUND' }
-  if (info.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+  if (info.status !== TUITION_BILL_STATUS.DRAFT) return { ok: false, code: 'BILL_NOT_DRAFT' }
 
   const input = {
     studentId: info.StudentId,
@@ -2120,13 +2121,13 @@ async function addLeaveCreditToDraft({ billId, attendId, billVersion } = {}) {
       if (!attend) return { ok: false, code: 'LEAVE_UNAVAILABLE' }
 
       const sourceBill = await TuitionBill.findByPk(sourceBillId, locked)
-      if (sourceBill?.status !== 'issued') {
+      if (sourceBill?.status !== TUITION_BILL_STATUS.ISSUED) {
         return { ok: false, code: 'BILL_NOT_ISSUED' }
       }
 
       const bill = await TuitionBill.findByPk(billId, locked)
       if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-      if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+      if (bill.status !== TUITION_BILL_STATUS.DRAFT) return { ok: false, code: 'BILL_NOT_DRAFT' }
 
       if (
         bill.version !== billVersion || bill.StudentId !== info.StudentId ||
@@ -2191,7 +2192,7 @@ async function addLeaveCreditToDraft({ billId, attendId, billVersion } = {}) {
 }
 
 async function getDraftLeaveCreditOptions(bill, { leaveData, transaction } = {}) {
-  if (bill.status !== 'draft') return null
+  if (bill.status !== TUITION_BILL_STATUS.DRAFT) return null
 
   if (!Number.isSafeInteger(bill.totalAmount) || bill.totalAmount < 0) {
     return { ok: false, code: 'INVALID_BILL_AMOUNT' }
@@ -2333,7 +2334,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
         where: {
           StudentId: owner.StudentId,
           billingMonth: sourceMonth,
-          status: { [Op.in]: ['draft', 'issued'] }
+          status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] }
         }
       })
     }
@@ -2341,8 +2342,8 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
     const bill = await TuitionBill.findByPk(billId, locked)
 
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-    if (bill.status === 'issued') return { ok: true, changed: false, billId }
-    if (bill.status !== 'draft') return { ok: false, code: 'BILL_NOT_DRAFT' }
+    if (bill.status === TUITION_BILL_STATUS.ISSUED) return { ok: true, changed: false, billId }
+    if (bill.status !== TUITION_BILL_STATUS.DRAFT) return { ok: false, code: 'BILL_NOT_DRAFT' }
     if (bill.version !== billVersion) {
       return { ok: false, code: 'BILL_VERSION_CONFLICT' }
     }
@@ -2422,7 +2423,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
       const result = await findPreviousMonthLeaveBillSource({ ...input, attendId }, transaction)
       const source = result.source
       if (
-        !result.ok || source.billStatus !== 'issued' ||
+        !result.ok || source.billStatus !== TUITION_BILL_STATUS.ISSUED ||
         source.billId !== snapshot.sourceBillId ||
         source.billItemId !== snapshot.sourceBillItemId ||
         source.calendarId !== snapshot.calendarId ||
@@ -2471,7 +2472,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
       version: bill.version
     }
 
-    await bill.update({ status: 'issued', issuedAt, version }, { transaction })
+    await bill.update({ status: TUITION_BILL_STATUS.ISSUED, issuedAt, version }, { transaction })
     await AuditLog.create({
       actorId,
       entityType: 'TuitionBill',
@@ -2480,7 +2481,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
       before,
       after: {
         ...before,
-        status: 'issued',
+        status: TUITION_BILL_STATUS.ISSUED,
         issuedAt: issuedAt.toISOString(),
         version,
         ...(skipRequested ? { skippedLeaveCredits: remainingCredits.optionSnapshot } : {})
@@ -2520,7 +2521,7 @@ async function recordTuitionBillPayment({ billId, billVersion, amount, selectedI
     })
 
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-    if (bill.status !== 'issued') {
+    if (bill.status !== TUITION_BILL_STATUS.ISSUED) {
       return { ok: false, code: 'BILL_NOT_ISSUED' }
     }
     if (
@@ -2631,7 +2632,7 @@ async function recordTuitionBillRefund({ billId, billVersion, actorId, amount, r
     // 和收款、請假折抵共用來源帳單的鎖，核對後才能登記。
     const bill = await TuitionBill.findByPk(billId, { transaction, lock: transaction.LOCK.UPDATE })
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-    if (bill.status !== 'issued') return { ok: false, code: 'BILL_NOT_ISSUED' }
+    if (bill.status !== TUITION_BILL_STATUS.ISSUED) return { ok: false, code: 'BILL_NOT_ISSUED' }
     if (bill.version !== billVersion) return { ok: false, code: 'BILL_VERSION_CONFLICT' }
 
     const payment = await getTuitionBillPaymentStatus(bill.id, transaction)

@@ -1,4 +1,5 @@
 const db = require('../models')
+const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const Tuition = db.Tuition
 const Course = db.Course
 const Student = db.Student
@@ -54,7 +55,7 @@ const REFUND_MESSAGES = {
 
 function buildTuitionPaymentNotice(bill, paymentStatus) {
   if (
-    bill.status !== 'issued' || !paymentStatus?.ok ||
+    bill.status !== TUITION_BILL_STATUS.ISSUED || !paymentStatus?.ok ||
     !(paymentStatus.remainingAmount > 0) ||
     paymentStatus.totalAmount !== bill.totalAmount ||
     bill.items.length === 0
@@ -102,7 +103,7 @@ function describeTuitionBillChange({ before, after }) {
   const hasTotal = Number.isSafeInteger(after?.totalAmount)
   const amountText = hasTotal ? `帳單金額 NT$ ${after.totalAmount}` : '—'
 
-  if (before?.status === 'draft' && after?.status === 'issued') {
+  if (before?.status === TUITION_BILL_STATUS.DRAFT && after?.status === TUITION_BILL_STATUS.ISSUED) {
     const skippedCount = Array.isArray(after.skippedLeaveCredits) ? after.skippedLeaveCredits.length : 0
     return {
       actionText: '正式出帳',
@@ -110,10 +111,10 @@ function describeTuitionBillChange({ before, after }) {
     }
   }
 
-  if (after?.status === 'void' && ['draft', 'issued'].includes(before?.status)) {
+  if (after?.status === TUITION_BILL_STATUS.VOID && [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED].includes(before?.status)) {
     const releasedCount = Array.isArray(before.activeLeaveCredits) ? before.activeLeaveCredits.length : 0
     return {
-      actionText: before.status === 'draft' ? '捨棄草稿' : '作廢帳單',
+      actionText: before.status === TUITION_BILL_STATUS.DRAFT ? '捨棄草稿' : '作廢帳單',
       detailText: releasedCount > 0 ? `保留原明細，釋放 ${releasedCount} 筆請假折抵` : '保留原明細'
     }
   }
@@ -213,7 +214,7 @@ const tuitionController = {
       ? `/cramschool/tuition/courses/${courseId}/monthly`
       : '/cramschool/tuition/students'
     const rows = result.rows.map(({ bill, amount, paymentStatus }) => {
-      const isIssued = bill.status === 'issued'
+      const isIssued = bill.status === TUITION_BILL_STATUS.ISSUED
       const paidOnText = isIssued && (!paymentStatus?.ok || paymentStatus.paidAmount > 0)
         ? paymentStatus?.lastPaidOn ?? '待核對'
         : '—'
@@ -317,13 +318,13 @@ const tuitionController = {
 
     const billRows = (billsResult.rows ?? []).map(bill => ({
       ...bill,
-      statusText: bill.status === 'void'
+      statusText: bill.status === TUITION_BILL_STATUS.VOID
         ? (bill.issuedAt == null ? '已捨棄草稿' : '已作廢')
-        : (bill.status === 'draft' ? '草稿' : '已出帳'),
+        : (bill.status === TUITION_BILL_STATUS.DRAFT ? '草稿' : '已出帳'),
       detailUrl: `/cramschool/tuition/bills/${bill.id}`
     }))
-    const activeBill = billRows.find(bill => bill.status === 'draft' || bill.status === 'issued') ?? null
-    const voidedBills = billRows.filter(bill => bill.status === 'void')
+    const activeBill = billRows.find(bill => bill.status === TUITION_BILL_STATUS.DRAFT || bill.status === TUITION_BILL_STATUS.ISSUED) ?? null
+    const voidedBills = billRows.filter(bill => bill.status === TUITION_BILL_STATUS.VOID)
 
     const messages = {
       INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
@@ -544,7 +545,7 @@ const tuitionController = {
     }
 
     const { bill, extraFees, leaveCreditData, canVoidIssuedBill } = result
-    const isDraft = bill.status === 'draft'
+    const isDraft = bill.status === TUITION_BILL_STATUS.DRAFT
     const hasExtraFeeForm = isDraft && extraFees.length > 0
     const hasLeaveCreditForm = isDraft && leaveCreditData?.ok === true && leaveCreditData.options.length > 0
 
@@ -624,7 +625,7 @@ const tuitionController = {
         }
       }
     }
-    const labels = { draft: '草稿', issued: '已發單', void: '已作廢' }
+    const labels = { [TUITION_BILL_STATUS.DRAFT]: '草稿', [TUITION_BILL_STATUS.ISSUED]: '已發單', [TUITION_BILL_STATUS.VOID]: '已作廢' }
 
     const items = bill.items.map(item => ({
       ...item,
@@ -640,7 +641,7 @@ const tuitionController = {
     let paymentSummary = null
     let refundSummary = null
 
-    if (bill.status === 'issued') {
+    if (bill.status === TUITION_BILL_STATUS.ISSUED) {
       const paymentStatus = result.paymentStatus
 
       if (paymentStatus?.ok === true) {
@@ -976,7 +977,7 @@ const tuitionController = {
     const detailQuery = listQuery(page)
     const rows = result.rows.map(row => {
       const { bill, paymentStatus } = row
-      const isIssued = bill?.status === 'issued'
+      const isIssued = bill?.status === TUITION_BILL_STATUS.ISSUED
       const amount = bill ? bill.totalAmount : row.baseSubtotal
       const hasAmount = Number.isSafeInteger(amount) && amount >= 0
       const hasRemainingAmount = isIssued && paymentStatus?.ok === true
@@ -1050,15 +1051,15 @@ const tuitionController = {
     const historyQuery = getTuitionNavigationParams({ billingMonth, page })
     const rows = result.rows.map(({ studentId, student, bill, enrollmentNeedsReview, hasCourseFee, courseAmount, paymentStatus }) => {
       const hasCourseAmount = Number.isSafeInteger(courseAmount)
-      const hasRemainingAmount = hasCourseAmount && bill?.status === 'issued' && paymentStatus?.ok === true
+      const hasRemainingAmount = hasCourseAmount && bill?.status === TUITION_BILL_STATUS.ISSUED && paymentStatus?.ok === true
       let statusText = '未開單'
 
       if (hasCourseFee && !hasCourseAmount) {
         statusText = '本課金額待核對'
       } else if (hasCourseFee) {
-        statusText = bill.status === 'draft' ? '草稿' : getTuitionBillPaymentStatusText(paymentStatus)
+        statusText = bill.status === TUITION_BILL_STATUS.DRAFT ? '草稿' : getTuitionBillPaymentStatusText(paymentStatus)
       } else if (bill) {
-        statusText = bill.status === 'draft' ? '草稿未含本課' : '帳單未含本課'
+        statusText = bill.status === TUITION_BILL_STATUS.DRAFT ? '草稿未含本課' : '帳單未含本課'
       } else if (!student) {
         statusText = '學生資料待核對'
       } else if (enrollmentNeedsReview) {
