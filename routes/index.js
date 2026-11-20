@@ -74,6 +74,7 @@ module.exports = (app, passport) => {
   //繳費紀錄相關路由
   app.get('/cramschool/payment', authenticatedAdmin, tuitionController.getCoursePaymentOverview)
   app.get('/cramschool/tuition/cashflow', authenticatedAdmin, tuitionCashflowController.getCashflow)
+  app.get('/cramschool/tuition/cashflow.csv', authenticatedAdmin, tuitionCashflowController.getCashflowCsv)
   //後台相關路由
   app.get('/admin', authenticatedAdmin, (req, res) => res.redirect('/admin/cramschool'))
   app.get('/admin/cramschool', authenticatedAdmin, adminController.getSchoolIndexPage)
