@@ -1,10 +1,10 @@
-{{#if paymentNotice}}
+{{#with paymentNotice}}
 <section class="my-4" aria-labelledby="payment-notice-heading">
-  <h2 id="payment-notice-heading" class="h5">家長繳費通知</h2>
+  <h2 id="payment-notice-heading" class="h5">{{heading}}</h2>
   <p id="payment-notice-help" class="text-muted">核對後可複製下方文字，貼到 LINE 或信件。</p>
   <textarea id="payment-notice-text" class="form-control mb-2" rows="9" readonly
-    aria-labelledby="payment-notice-heading" aria-describedby="payment-notice-help">{{paymentNotice}}</textarea>
-  <button type="button" id="copy-payment-notice" class="btn btn-sm btn-outline-primary">複製繳費通知</button>
+    aria-labelledby="payment-notice-heading" aria-describedby="payment-notice-help">{{text}}</textarea>
+  <button type="button" id="copy-payment-notice" class="btn btn-sm btn-outline-primary">{{copyLabel}}</button>
   <span id="copy-payment-notice-status" class="ml-2" role="status"></span>
 </section>
 <script>
@@ -28,4 +28,4 @@
     })
   })()
 </script>
-{{/if}}
+{{/with}}

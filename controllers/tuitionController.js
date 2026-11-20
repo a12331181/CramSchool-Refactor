@@ -66,10 +66,13 @@ function getCoursePaymentStatusText(coursePayment) {
   return getTuitionBillPaymentStatusText(coursePayment)
 }
 
-function buildTuitionPaymentNotice(bill, paymentStatus) {
+function buildTuitionPaymentNotice(bill, paymentStatus, refundSummary) {
+  const hasRefund =
+    paymentStatus?.isFullyPaid && refundSummary?.ok && refundSummary.refundedAmount > 0 &&
+    refundSummary.netPaidAmount === paymentStatus.paidAmount - refundSummary.refundedAmount
   if (
     bill.status !== TUITION_BILL_STATUS.ISSUED || !paymentStatus?.ok ||
-    !(paymentStatus.remainingAmount > 0) ||
+    (!(paymentStatus.remainingAmount > 0) && !hasRefund) ||
     paymentStatus.totalAmount !== bill.totalAmount ||
     bill.items.length === 0
   ) return null
@@ -99,17 +102,31 @@ function buildTuitionPaymentNotice(bill, paymentStatus) {
   if (itemTotal !== bill.totalAmount) return null
 
   const { totalAmount, paidAmount, remainingAmount } = paymentStatus
-  return [
-    `家長您好，以下是 ${studentName} ${bill.billingMonth} 的學費明細：`,
+  const heading = hasRefund ? '家長退費通知' : '家長繳費通知'
+  const totals = [
+    `本期應收：${money(totalAmount)}`,
+    ...(paidAmount > 0 ? [`已收金額：${money(paidAmount)}`] : [])
+  ]
+  if (hasRefund) {
+    totals.push(
+      `累計已退：${money(refundSummary.refundedAmount)}`,
+      `扣除退費後實收：${money(refundSummary.netPaidAmount)}`,
+      '本期已結清，無須再繳費。'
+    )
+  } else {
+    totals.push(`尚需繳費：${money(remainingAmount)}`)
+  }
+
+  const text = [
+    `家長您好，以下是 ${studentName} ${bill.billingMonth} 的${hasRefund ? '退費摘要' : '學費明細'}：`,
     '',
     ...itemLines,
     '',
-    `本期應收：${money(totalAmount)}`,
-    ...(paidAmount > 0 ? [`已收金額：${money(paidAmount)}`] : []),
-    `尚需繳費：${money(remainingAmount)}`,
+    ...totals,
     '',
     '再麻煩您確認，謝謝！'
   ].join('\n')
+  return { heading, text, copyLabel: hasRefund ? '複製退費通知' : '複製繳費通知' }
 }
 
 function describeTuitionBillChange({ before, after }) {
@@ -785,7 +802,7 @@ const tuitionController = {
       statusText: labels[bill.status] ?? '待核對',
       paymentSummary,
       refundSummary,
-      paymentNotice: buildTuitionPaymentNotice(bill, result.paymentStatus),
+      paymentNotice: buildTuitionPaymentNotice(bill, result.paymentStatus, refund),
       billHistory: buildTuitionBillHistory(result.history),
       previewUrl,
       isDraft, 
