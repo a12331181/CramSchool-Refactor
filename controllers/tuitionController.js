@@ -1156,10 +1156,8 @@ const tuitionController = {
     const pageUrl = targetPage => `${listUrl}?${new URLSearchParams({ billingMonth, page: String(targetPage) })}`
     if (page > pagination.totalPages) return res.redirect(pageUrl(pagination.totalPages))
 
-    const monthQuery = new URLSearchParams({ billingMonth })
-    const historyQuery = getTuitionNavigationParams({ billingMonth, page })
     const rows = result.rows.map(({
-      studentId, student, bill, courseBills, draftCount, enrollmentNeedsReview, hasCourseFee, courseAmount, coursePayment
+      studentId, student, bill, draftCount, enrollmentNeedsReview, hasCourseFee, courseAmount, coursePayment
     }) => {
       const isIssuedForCourse = hasCourseFee && bill?.status === TUITION_BILL_STATUS.ISSUED
       const hasAmount = Number.isSafeInteger(courseAmount) && courseAmount >= 0
@@ -1188,12 +1186,7 @@ const tuitionController = {
         refundedText: issuedAmountText('refundedAmount'),
         netReceivedText: issuedAmountText('netReceivedAmount'),
         remainingText: issuedAmountText('remainingAmount'),
-        bills: courseBills.map(({ id }) => ({ id, url: `/cramschool/tuition/bills/${id}` })),
-        pendingDraftCount: isIssuedForCourse ? draftCount : 0,
-        historyUrl: student
-          ? withQuery(`/cramschool/tuition/courses/${courseId}/students/${studentId}`, historyQuery)
-          : null,
-        previewUrl: student ? `/cramschool/tuition/students/${studentId}/preview?${monthQuery}` : null
+        pendingDraftCount: isIssuedForCourse ? draftCount : 0
       }
     })
 

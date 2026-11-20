@@ -946,7 +946,6 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
         studentId,
         student,
         bill: issued[0] ?? drafts[0] ?? studentBills[0] ?? null,
-        courseBills,
         draftCount: drafts.length,
         enrollmentNeedsReview: enrollmentReviewIds.has(studentId),
         hasCourseFee: courseBills.length > 0,
