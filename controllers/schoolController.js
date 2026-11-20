@@ -60,7 +60,7 @@ const schoolController = {
         include: [Teacher]
       })
     ]).then(([courses, user]) => {
-      return res.render('courses', { courses: courses, isAdmin: req.user.isAdmin, user: user })
+      return res.render('courses/index', { courses: courses, isAdmin: req.user.isAdmin, user: user })
     })
   },
 
@@ -85,7 +85,7 @@ const schoolController = {
 
     const { course, sessions, currentPeriod, legacyCalendars } = result
 
-    return res.render('course', {
+    return res.render('courses/calendar', {
       course,
       sessions: sessions.map(session => ({
         startAtText: formatTaipeiDateTime(session.startAt) ?? '待核對',
@@ -112,7 +112,7 @@ const schoolController = {
         const students = course.EnrolledStudents.map(r => ({
           ...r.dataValues
         }))
-        return res.render('enrolledstudents', { 
+        return res.render('courses/students', {
           course: course.toJSON(), 
           students: students 
         })

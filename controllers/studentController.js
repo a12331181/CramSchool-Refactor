@@ -52,7 +52,7 @@ const studentController = {
       return res.redirect(pageUrl(pagination.totalPages))
     }
 
-    return res.render('students', {
+    return res.render('students/index', {
       students: result.rows,
       courses: result.courses,
       courseId: queryOptions.courseId ?? '',
@@ -68,7 +68,7 @@ const studentController = {
      return res.redirect('/cramschool/students')
     }
 
-    return res.render('student', result)
+    return res.render('students/detail', result)
   },
 
   getStudentAttend: (req, res) => {
@@ -101,7 +101,7 @@ const studentController = {
               ...r.dataValues,
               ...r.dataValues.Attends['0'].dataValues
             }))
-            return res.render('studentattend', { 
+            return res.render('students/attendance', {
               student: student.toJSON(), 
               course: course.toJSON(), 
               attends: data,

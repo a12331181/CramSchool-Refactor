@@ -4,7 +4,7 @@ const teacherController = {
   getTeachers: async (req, res) => {
     const teachers = await teacherService.getActiveTeachers()
 
-    return res.render('teachers', {
+    return res.render('teachers/index', {
       teachers,
       isAdmin: req.user.isAdmin
     })

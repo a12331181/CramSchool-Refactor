@@ -22,7 +22,7 @@ const attendController = {
       [CALENDAR_STATUS.CANCELLED]: '已取消'
     }
 
-    return res.render('courseattend', {
+    return res.render('attendance/index', {
       courses,
       calendars: calendars.map(calendar => ({
         id: calendar.id,
@@ -100,7 +100,7 @@ const attendController = {
       [ATTEND_STATUS.UNMARKED]: '未點名'
     }
 
-    return res.render('attend', {
+    return res.render('attendance/roster', {
       ...result,
       isFormalCalendar: true,
       startAtText: formatTaipeiDateTime(result.calendar.startAt),
@@ -194,7 +194,7 @@ const attendController = {
           ...r.dataValues,
           isChecked: calendar.Attends.map(d => d.StudentId).includes(r.id)
         }))
-        return res.render('attend', { 
+        return res.render('attendance/roster', {
           calendar: calendar.toJSON(),
           students: students,
           course: course.toJSON() 
@@ -376,7 +376,7 @@ const attendController = {
       })
     )
 
-    return res.render('attendhistory', {
+    return res.render('attendance/history', {
       course: result.course,
       student: result.student,
       startAtText: formatTaipeiDateTime(result.calendar.startAt) ?? '待核對',
