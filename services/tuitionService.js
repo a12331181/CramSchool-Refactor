@@ -634,7 +634,7 @@ async function getStudentTuitionHistory({ courseId, studentId } = {}) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
 
-  return readTuitionReport(async transaction => {
+  return readTuitionSnapshot(async transaction => {
     const [course, student] = await Promise.all([
       byCourse ? Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true, transaction }) : null,
       Student.findByPk(studentId, { attributes: ['id', 'name'], raw: true, transaction })
@@ -708,7 +708,7 @@ function getCourseFeeItemsForMonth({ courseIds, billingMonth }, transaction) {
   })
 }
 
-function readTuitionReport(read) {
+function readTuitionSnapshot(read) {
   return sequelize.transaction({
     isolationLevel: Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
     readOnly: true
@@ -719,7 +719,7 @@ async function getCoursePaymentOverview({ billingMonth } = {}) {
   const range = getTaipeiMonthRange(billingMonth)
   if (!range) return { ok: false, code: 'INVALID_BILLING_MONTH' }
 
-  return readTuitionReport(async transaction => {
+  return readTuitionSnapshot(async transaction => {
     const courseFeeItems = await getCourseFeeItemsForMonth({ billingMonth }, transaction)
     const billedCourseIds = [...new Set(courseFeeItems
       .map(item => item.CourseId)
@@ -809,7 +809,7 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
     return { ok: false, code: 'INVALID_PAGE' }
   }
 
-  return readTuitionReport(async transaction => {
+  return readTuitionSnapshot(async transaction => {
     const course = await Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true, transaction })
     if (!course) return { ok: false, code: 'COURSE_NOT_FOUND' }
 
@@ -1460,75 +1460,80 @@ async function getTuitionBillDetails(billId) {
     return { ok: false, code: 'INVALID_BILL_ID' }
   }
 
-  const bill = await TuitionBill.findByPk(billId, {
-    attributes: [
-      'id', 'StudentId', 'billingMonth', 'studentNameSnapshot',
-      'status', 'totalAmount', 'version', 'issuedAt'
-    ],
-    include: [{
-      model: TuitionBillItem,
-      as: 'items',
+  return readTuitionSnapshot(async transaction => {
+    const bill = await TuitionBill.findByPk(billId, {
       attributes: [
-        'id', 'kind', 'descriptionSnapshot', 'quantity', 'unitPrice',
-        'amount', 'reason', 'sourceSnapshot', 'ExtraFeeId'
-      ]
-    }],
-    order: [[{ model: TuitionBillItem, as: 'items' }, 'id', 'ASC']]
+        'id', 'StudentId', 'billingMonth', 'studentNameSnapshot',
+        'status', 'totalAmount', 'version', 'issuedAt'
+      ],
+      include: [{
+        model: TuitionBillItem,
+        as: 'items',
+        attributes: [
+          'id', 'kind', 'descriptionSnapshot', 'quantity', 'unitPrice',
+          'amount', 'reason', 'sourceSnapshot', 'ExtraFeeId'
+        ]
+      }],
+      order: [[{ model: TuitionBillItem, as: 'items' }, 'id', 'ASC']],
+      transaction
+    })
+
+    if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+
+    const savedBill = bill.toJSON()
+    const addedFeeIds = new Set(savedBill.items.map(item => item.ExtraFeeId))
+
+    const extraFees = savedBill.status === TUITION_BILL_STATUS.DRAFT
+      ? (await ExtraFee.findAll({
+          attributes: ['id', 'name', 'price'],
+          order: [['name', 'ASC'], ['id', 'ASC']],
+          raw: true,
+          transaction
+        })).filter(fee => isUsableBillExtraFee(fee) && !addedFeeIds.has(fee.id))
+      : []
+
+    const leaveCreditData = await getDraftLeaveCreditOptions(savedBill, { transaction })
+
+    const isIssued = savedBill.status === TUITION_BILL_STATUS.ISSUED
+    const payments = isIssued ? await getPaidTuitionBillPayments([savedBill.id], transaction) : []
+    const paymentStatus = isIssued ? summarizeTuitionBillPayments(savedBill, payments) : null
+    const paymentAllocation = paymentStatus?.ok && paymentStatus.totalAmount > 0
+      ? await paymentAllocationService.getAllocationState({ items: savedBill.items, payments, paymentStatus }, transaction)
+      : null
+    const refundSummary = paymentStatus?.isFullyPaid
+      ? await getTuitionBillRefundSummary(savedBill.id, { paymentStatus, paymentAllocation }, transaction)
+      : null
+
+    const canVoidIssuedBill =
+      savedBill.issuedAt != null &&
+      paymentStatus?.ok === true &&
+      paymentStatus.paidAmount === 0 &&
+      !(await hasTuitionBillPayment(savedBill.id, transaction))
+
+    const history = await getTuitionBillHistoryData(savedBill.id, transaction)
+
+    return {
+      ok: true,
+      bill: savedBill,
+      extraFees,
+      leaveCreditData,
+      paymentStatus,
+      paymentAllocation,
+      refundSummary,
+      canVoidIssuedBill,
+      history
+    }
   })
-
-  if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-
-  const savedBill = bill.toJSON()
-  const addedFeeIds = new Set(savedBill.items.map(item => item.ExtraFeeId))
-
-  const extraFees = savedBill.status === TUITION_BILL_STATUS.DRAFT
-    ? (await ExtraFee.findAll({
-        attributes: ['id', 'name', 'price'],
-        order: [['name', 'ASC'], ['id', 'ASC']],
-        raw: true
-      })).filter(fee => isUsableBillExtraFee(fee) && !addedFeeIds.has(fee.id))
-    : []
-
-  const leaveCreditData = await getDraftLeaveCreditOptions(savedBill)
-
-  const isIssued = savedBill.status === TUITION_BILL_STATUS.ISSUED
-  const payments = isIssued ? await getPaidTuitionBillPayments([savedBill.id]) : []
-  const paymentStatus = isIssued ? summarizeTuitionBillPayments(savedBill, payments) : null
-  const paymentAllocation = paymentStatus?.ok && paymentStatus.totalAmount > 0
-    ? await paymentAllocationService.getAllocationState({ items: savedBill.items, payments, paymentStatus })
-    : null
-  const refundSummary = paymentStatus?.isFullyPaid
-    ? await getTuitionBillRefundSummary(savedBill.id, { paymentStatus, paymentAllocation })
-    : null
-
-  const canVoidIssuedBill =
-    savedBill.issuedAt != null &&
-    paymentStatus?.ok === true &&
-    paymentStatus.paidAmount === 0 &&
-    !(await hasTuitionBillPayment(savedBill.id))
-
-  const history = await getTuitionBillHistoryData(savedBill.id)
-
-  return {
-    ok: true,
-    bill: savedBill,
-    extraFees,
-    leaveCreditData,
-    paymentStatus,
-    paymentAllocation,
-    refundSummary,
-    canVoidIssuedBill,
-    history
-  }
 }
 
-async function getTuitionBillHistoryData(billId) {
+async function getTuitionBillHistoryData(billId, transaction) {
   const logs = await AuditLog.findAll({
     attributes: ['actorId', 'before', 'after', 'reason', 'occurredAt'],
     where: { entityType: 'TuitionBill', entityId: billId },
     order: [['id', 'DESC']],
     limit: TUITION_BILL_HISTORY_LIMIT,
-    raw: true
+    raw: true,
+    transaction
   })
 
   const actorIds = [...new Set(logs.map(log => log.actorId))]
@@ -1537,7 +1542,8 @@ async function getTuitionBillHistoryData(billId) {
     : await User.findAll({
         attributes: ['id', 'name', 'userNo'],
         where: { id: { [Op.in]: actorIds } },
-        raw: true
+        raw: true,
+        transaction
       })
 
   return { logs, actors, limit: TUITION_BILL_HISTORY_LIMIT }
