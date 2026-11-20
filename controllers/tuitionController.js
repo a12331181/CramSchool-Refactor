@@ -10,7 +10,7 @@ const tuitionService = require('../services/tuitionService')
 const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const { randomBytes, timingSafeEqual } = require('node:crypto')
-const ATTEND_STATUS = require('../constants/attendStatus')
+const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 
 function getTuitionNavigationParams({ billingMonth, page, status }) {
@@ -271,11 +271,8 @@ const tuitionController = {
       INVALID_AMOUNT: '試算金額超出可處理範圍。'
     }
     
-     const attendanceLabels = {
-      [ATTEND_STATUS.PRESENT]: '出席',
-      [ATTEND_STATUS.ABSENT]: '缺席',
-      [ATTEND_STATUS.EXCUSED]: '請假',
-      [ATTEND_STATUS.UNMARKED]: '未點名',
+    const attendanceLabels = {
+      ...ATTEND_STATUS_LABELS,
       not_due: '尚未到結束時間',
       requires_review: '待核對'
     }

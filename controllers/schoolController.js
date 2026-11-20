@@ -6,7 +6,7 @@ const Student = db.Student
 const Diary = db.Diary
 const User = db.User
 const calendarService = require('../services/calendarService')
-const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
+const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
 const { formatTaipeiDateTime } = require('../utils/date')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const pageLimit = 10
@@ -77,12 +77,6 @@ const schoolController = {
       return res.redirect('/cramschool/courses')
     }
 
-    const statusLabels = {
-      [COURSE_SESSION_STATUS.SCHEDULED]: '已排定',
-      [COURSE_SESSION_STATUS.COMPLETED]: '已完成',
-      [COURSE_SESSION_STATUS.CANCELLED]: '已取消'
-    }
-
     const { course, sessions, currentPeriod, legacyCalendars } = result
 
     return res.render('courses/calendar', {
@@ -90,7 +84,7 @@ const schoolController = {
       sessions: sessions.map(session => ({
         startAtText: formatTaipeiDateTime(session.startAt) ?? '待核對',
         endAtText: formatTaipeiDateTime(session.endAt) ?? '待核對',
-        statusText: statusLabels[session.status] ?? '待核對',
+        statusText: COURSE_SESSION_STATUS_LABELS[session.status] ?? '待核對',
         content: session.content
       })),
       calendars: legacyCalendars,

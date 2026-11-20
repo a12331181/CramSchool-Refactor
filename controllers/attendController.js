@@ -1,6 +1,8 @@
 const attendService = require('../services/attendService')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
+const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
 const ATTEND_STATUS = require('../constants/attendStatus')
+const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
 const { formatTaipeiDateTime } = require('../utils/date')
 
 const attendController = {
@@ -9,12 +11,6 @@ const attendController = {
       await attendService.getAttendIndexData({
         userId: req.user.id
       })
-
-    const statusLabels = {
-      [COURSE_SESSION_STATUS.SCHEDULED]: '已排定',
-      [COURSE_SESSION_STATUS.COMPLETED]: '已完成',
-      [COURSE_SESSION_STATUS.CANCELLED]: '已取消'
-    }
 
     return res.render('attendance/index', {
       calendars: calendars.map(calendar => ({
@@ -26,7 +22,7 @@ const attendController = {
           calendar.status === COURSE_SESSION_STATUS.COMPLETED,
         startAtText: formatTaipeiDateTime(calendar.startAt) ?? '待核對',
         endAtText: formatTaipeiDateTime(calendar.endAt) ?? '待核對',
-        statusText: statusLabels[calendar.status] ?? '待核對',
+        statusText: COURSE_SESSION_STATUS_LABELS[calendar.status] ?? '待核對',
         content: calendar.content
       })),
       isAdmin
@@ -67,13 +63,6 @@ const attendController = {
         ].includes(result.calendar.status)
       : canCreate
 
-    const labels = {
-      [ATTEND_STATUS.PRESENT]: '出席',
-      [ATTEND_STATUS.ABSENT]: '缺席',
-      [ATTEND_STATUS.EXCUSED]: '請假',
-      [ATTEND_STATUS.UNMARKED]: '未點名'
-    }
-
     return res.render('attendance/roster', {
       ...result,
       startAtText: formatTaipeiDateTime(result.calendar.startAt),
@@ -83,8 +72,8 @@ const attendController = {
       students: result.students.map(student => ({
         ...student,
         attendText: student.hasAttend
-          ? labels[student.attendStatus] ?? '舊紀錄待核對'
-          : '未點名',
+          ? ATTEND_STATUS_LABELS[student.attendStatus] ?? '舊紀錄待核對'
+          : ATTEND_STATUS_LABELS[ATTEND_STATUS.UNMARKED],
         canCreateAttend: canCreate && !student.hasAttend,
         canUpdateAttend:
           canUpdate && student.hasAttend &&
@@ -232,13 +221,6 @@ const attendController = {
       return res.redirect('/cramschool/attend')
     }
 
-    const labels = {
-      [ATTEND_STATUS.PRESENT]: '出席',
-      [ATTEND_STATUS.ABSENT]: '缺席',
-      [ATTEND_STATUS.EXCUSED]: '請假',
-      [ATTEND_STATUS.UNMARKED]: '未點名'
-    }
-
     const actorNames = new Map(
       result.actors.map(actor => {
         const accountName = actor.name?.trim() || '未設定名稱'
@@ -256,13 +238,13 @@ const attendController = {
       student: result.student,
       startAtText: formatTaipeiDateTime(result.calendar.startAt) ?? '待核對',
       endAtText: formatTaipeiDateTime(result.calendar.endAt) ?? '待核對',
-      currentStatusText: labels[result.attend.status] ?? '待核對',
+      currentStatusText: ATTEND_STATUS_LABELS[result.attend.status] ?? '待核對',
       logs: result.logs.map(log => ({
         id: log.id,
         occurredAtText: formatTaipeiDateTime(log.occurredAt) ?? '待核對',
         actorName: actorNames.get(log.actorId) || `帳號 #${log.actorId}`,
-        beforeStatusText: labels[log.before?.status] ?? '待核對',
-        afterStatusText: labels[log.after?.status] ?? '待核對',
+        beforeStatusText: ATTEND_STATUS_LABELS[log.before?.status] ?? '待核對',
+        afterStatusText: ATTEND_STATUS_LABELS[log.after?.status] ?? '待核對',
         beforeReason: log.before?.reason,
         afterReason: log.after?.reason,
         correctionReason: log.reason

@@ -9,11 +9,7 @@ const calendarService = require('../services/calendarService')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const { formatTaipeiDateTime } = require('../utils/date')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
-const CALENDAR_STATUS_LABELS = Object.freeze({
-  [COURSE_SESSION_STATUS.SCHEDULED]: '已排定',
-  [COURSE_SESSION_STATUS.COMPLETED]: '已完成',
-  [COURSE_SESSION_STATUS.CANCELLED]: '已取消'
-})
+const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
 
 const adminController = {
   // 後臺首頁
@@ -90,8 +86,8 @@ const adminController = {
       endAtText:
         formatTaipeiDateTime(calendar.endAt) ?? '待核對',
 
-      statusText: Object.hasOwn(CALENDAR_STATUS_LABELS, calendar.status)
-        ? CALENDAR_STATUS_LABELS[calendar.status]
+      statusText: Object.hasOwn(COURSE_SESSION_STATUS_LABELS, calendar.status)
+        ? COURSE_SESSION_STATUS_LABELS[calendar.status]
         : '待核對'
     }))
     return res.render('admin/calendars/index', {
