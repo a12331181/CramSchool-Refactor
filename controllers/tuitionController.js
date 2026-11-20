@@ -50,11 +50,17 @@ function getTuitionBillPaymentStatusText(paymentStatus) {
   return STUDENT_TUITION_STATUS[tuitionService.getTuitionBillPaymentState(paymentStatus)]
 }
 
+function getRefundStatusText(summary) {
+  if (summary?.ok && summary.refundedAmount > 0) {
+    return summary.netReceivedAmount === 0 ? '已全額退費' : '已部分退費'
+  }
+  return null
+}
+
 function getCoursePaymentStatusText(coursePayment) {
   if (coursePayment?.code === COURSE_PAYMENT_REVIEW.REFUND_INVALID) return '退費紀錄待核對'
-  if (coursePayment?.ok && coursePayment.refundedAmount > 0 && coursePayment.remainingAmount === 0) {
-    return coursePayment.netReceivedAmount === 0 ? '已全額退費' : '已部分退費'
-  }
+  const refundStatus = coursePayment?.remainingAmount === 0 ? getRefundStatusText(coursePayment) : null
+  if (refundStatus) return refundStatus
   if (coursePayment?.code === COURSE_PAYMENT_REVIEW.REFUND_UNASSIGNED) return '整單退費待核對'
   if (coursePayment?.code === COURSE_PAYMENT_REVIEW.PAYMENT_UNASSIGNED) return '分項收款待核對'
   return getTuitionBillPaymentStatusText(coursePayment)
@@ -259,7 +265,7 @@ const tuitionController = {
     const backPath = course
       ? `/cramschool/tuition/courses/${courseId}/monthly`
       : '/cramschool/tuition/students'
-    const rows = result.rows.map(({ bill, amount, paymentStatus }) => {
+    const rows = result.rows.map(({ bill, amount, paymentStatus, refunds }) => {
       const isIssued = bill.status === TUITION_BILL_STATUS.ISSUED
       const isVoid = bill.status === TUITION_BILL_STATUS.VOID
       const wasIssued = isIssued || (isVoid && bill.issuedAt != null)
@@ -268,9 +274,12 @@ const tuitionController = {
         : '—'
       let statusText = '未出帳'
       if (isVoid) statusText = wasIssued ? '已作廢' : '草稿已廢棄'
-      else if (isIssued) statusText = course
-        ? getCoursePaymentStatusText(paymentStatus)
-        : getTuitionBillPaymentStatusText(paymentStatus)
+      else if (isIssued && course) statusText = getCoursePaymentStatusText(paymentStatus)
+      else if (isIssued && paymentStatus?.ok && !refunds?.ok) statusText = '退費紀錄待核對'
+      else if (isIssued) statusText = getRefundStatusText(refunds) ?? getTuitionBillPaymentStatusText(paymentStatus)
+
+      const refundAmountText = field =>
+        !isIssued ? '—' : refunds?.ok ? `NT$ ${amountFormat.format(refunds[field])}` : '待核對'
 
       return {
         billId: bill.id,
@@ -280,6 +289,8 @@ const tuitionController = {
         hasAmount: Number.isSafeInteger(amount) && amount >= 0,
         amountUnavailableText: isVoid ? '—' : '待核對',
         statusText,
+        refundedText: refundAmountText('refundedAmount'),
+        netReceivedText: refundAmountText('netReceivedAmount'),
         paidOnText,
         detailUrl: `/cramschool/tuition/bills/${bill.id}${isIssued ? '#payment-summary-heading' : ''}`,
         detailText: isVoid ? '查看作廢紀錄' : isIssued ? '查看收款資訊' : '查看草稿'

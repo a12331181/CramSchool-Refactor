@@ -11,7 +11,7 @@
   {{else}}
   帳單總額包含該學生當月所有課程、額外費用和折抵。
   {{/if}}
-  若有多筆付款，顯示最近一次可確認的付款日期。作廢帳單或廢棄草稿只保留紀錄，不列為應收。
+  付款日期保持原收款日期；實收已扣除該範圍的退費。若有多筆付款，顯示最近一次可確認的付款日期。作廢帳單或廢棄草稿只保留紀錄，不列為應收。
 </p>
 
 <div class="table-responsive">
@@ -22,6 +22,8 @@
         <th scope="col">期數（月份）</th>
         <th scope="col">開立日期</th>
         <th scope="col">{{#if course}}本課學費{{else}}帳單總額{{/if}}</th>
+        <th scope="col">已退</th>
+        <th scope="col">實收</th>
         <th scope="col">付款狀態</th>
         <th scope="col">付款日期</th>
         <th scope="col">收款資訊</th>
@@ -34,12 +36,14 @@
         <td class="text-nowrap">{{billingMonth}}</td>
         <td class="text-nowrap">{{issuedOnText}}</td>
         <td class="text-nowrap">{{#if hasAmount}}NT$ {{amount}}{{else}}{{amountUnavailableText}}{{/if}}</td>
+        <td class="text-nowrap">{{refundedText}}</td>
+        <td class="text-nowrap">{{netReceivedText}}</td>
         <td class="text-nowrap">{{statusText}}</td>
         <td class="text-nowrap">{{paidOnText}}</td>
         <td><a href="{{detailUrl}}" class="btn btn-sm btn-outline-primary text-nowrap">{{detailText}}</a></td>
       </tr>
       {{else}}
-      <tr><td colspan="7">{{#if course}}這位學生目前沒有含本課程的月帳單。{{else}}這位學生目前沒有月帳單。{{/if}}</td></tr>
+      <tr><td colspan="9">{{#if course}}這位學生目前沒有含本課程的月帳單。{{else}}這位學生目前沒有月帳單。{{/if}}</td></tr>
       {{/each}}
     </tbody>
   </table>

@@ -14,6 +14,7 @@ const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
 const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
 const paymentAllocationService = require('./tuitionPaymentAllocationService')
 const { getIssuedCoursePaymentStatuses } = require('./tuitionCoursePaymentService')
+const { getIssuedTuitionBillFinancialData } = require('./tuitionBillFinancialService')
 const {
   getTuitionBillRefundSummary, hasTuitionBillRefund, recordTuitionBillRefund
 } = require('./tuitionRefundService')
@@ -662,18 +663,30 @@ async function getStudentTuitionHistory({ courseId, studentId } = {}) {
     })
 
     const bills = savedBills.map(bill => bill.toJSON())
-    const paymentStatuses = byCourse
-      ? await getIssuedCoursePaymentStatuses(bills, transaction)
-      : await getIssuedTuitionBillPaymentStatuses(bills, transaction)
+    const coursePayments = byCourse ? await getIssuedCoursePaymentStatuses(bills, transaction) : null
+    const billFinancialData = byCourse ? null : await getIssuedTuitionBillFinancialData(bills, transaction)
     const rows = bills.map(({ items, ...bill }) => {
       const isIssued = bill.status === TUITION_BILL_STATUS.ISSUED
-      const paymentStatus = byCourse ? paymentStatuses.get(bill.id)?.get(courseId) : paymentStatuses.get(bill.id)
+      const billData = billFinancialData?.get(bill.id)
+      const paymentStatus = byCourse ? coursePayments.get(bill.id)?.get(courseId) : billData?.paymentStatus
       const amount = bill.status === TUITION_BILL_STATUS.VOID
         ? null
         : !byCourse ? bill.totalAmount
           : isIssued ? paymentStatus?.totalAmount ?? null : sumCourseFeeAmounts(items.map(item => item.amount))
 
-      return { bill, amount, paymentStatus: paymentStatus ?? null }
+      const ledger = billData?.refundLedger
+      const refunds = !isIssued ? null : byCourse
+        ? {
+            ok: paymentStatus?.ok === true,
+            refundedAmount: paymentStatus?.refundedAmount,
+            netReceivedAmount: paymentStatus?.netReceivedAmount
+          }
+        : {
+            ok: ledger?.ok === true,
+            refundedAmount: ledger?.refundedAmount,
+            netReceivedAmount: ledger?.netPaidAmount
+          }
+      return { bill, amount, paymentStatus: paymentStatus ?? null, refunds }
     })
 
     return { ok: true, course, student, rows }
