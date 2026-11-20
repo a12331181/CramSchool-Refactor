@@ -36,12 +36,12 @@ const schoolController = {
         order: [['createdAt', 'DESC']]
       }),
     ]).then(([meetings, diaries]) => {
-      return res.render('cramschool', { isAdmin: req.user.isAdmin, meetings: meetings, diaries: diaries})
+      return res.render('school/home', { isAdmin: req.user.isAdmin, meetings: meetings, diaries: diaries})
     })
   },
   
   getIntroduction: (req, res) => {
-    return res.render('introduction')
+    return res.render('school/introduction')
   },
 
   getCourses: (req, res) => {
@@ -142,7 +142,7 @@ const schoolController = {
       return res.redirect(pageUrl(pagination.totalPages))
     }
 
-    return res.render('meetings', {
+    return res.render('school/meetings/index', {
       meetings: meetings.rows,
       isAdmin: req.user.isAdmin,
       ...getPaginationLinks(pagination, pageUrl)
@@ -159,7 +159,7 @@ const schoolController = {
         console.log('Not found!')
         res.redirect('/cramschool/meetings')
       } else {
-        return res.render('meeting',{ meeting: meeting })
+        return res.render('school/meetings/detail',{ meeting: meeting })
       }
     })
   },
@@ -172,7 +172,7 @@ const schoolController = {
         UserId: req.user.id
       }
     }).then(teacher => {
-      return res.render('createmeeting',{ teacher: teacher })
+      return res.render('school/meetings/create',{ teacher: teacher })
     })
   },
 
@@ -230,7 +230,7 @@ const schoolController = {
       return res.redirect(pageUrl(pagination.totalPages))
     }
 
-    return res.render('diarieslist', {
+    return res.render('school/diaries/index', {
       diaries: diaries.rows,
       isAdmin: req.user.isAdmin,
       ...getPaginationLinks(pagination, pageUrl)
@@ -286,7 +286,7 @@ const schoolController = {
       return res.redirect(pageUrl(pagination.totalPages))
     }
 
-    return res.render('diaries', {
+    return res.render('school/diaries/course-list', {
       diaries: diaries.rows,
       course,
       isDiaryNotExist: diaries.count === 0,
@@ -307,7 +307,7 @@ const schoolController = {
         console.log('Not found!')
         return res.redirect('/cramschool/courses')
       } else {
-        return res.render('diary', { diary: diary })
+        return res.render('school/diaries/detail', { diary: diary })
       }
     })
   },
@@ -330,7 +330,7 @@ const schoolController = {
         console.log('Not found!')
         return res.redirect('/cramschool/courses')
       } else {
-        res.render('creatediary', { course: course, user: user })
+        res.render('school/diaries/create', { course: course, user: user })
       }
     })
   },
