@@ -1,8 +1,5 @@
 <form action="/admin/courses/{{calendar.Course.id}}/calendar/{{calendar.id}}?_method=PUT" method="POST">
-  <div class="form-group">
-    <label for="courseId">課程ID</label>
-    <input type="number" class="form-control" name="courseId" id="courseId" value="{{calendar.CourseId}}" readonly>
-  </div>
+  <p>課程：{{referenceLabel calendar.Course.courseNo calendar.Course.name}}</p>
   
   <div class="form-group">
     <label for="date">日期</label>

@@ -42,7 +42,7 @@
       <tbody>
         {{#each rows}}
           <tr>
-            <th scope="row">{{referenceLabel this.student.studentNo this.student.name}}</th>
+            <th scope="row">{{this.studentLabel}}</th>
             <td>
               {{#if this.hasAmount}}
               NT$ {{this.amount}}

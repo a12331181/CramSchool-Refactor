@@ -75,10 +75,10 @@ const diaryController = {
   },
 
   getCreateDiaryPage: async (req, res) => {
-    const result = await diaryService.getCreateDiaryFormData({ courseId: req.params.courseId, userId: req.user.id })
-    if (!result) return res.redirect('/cramschool/courses')
+    const course = await diaryService.getCreateDiaryFormData({ courseId: req.params.courseId, userId: req.user.id })
+    if (!course) return res.redirect('/cramschool/courses')
 
-    return res.render('school/diaries/create', result)
+    return res.render('school/diaries/create', { course })
   },
 
   createDiary: async (req, res) => {

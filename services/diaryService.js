@@ -1,5 +1,5 @@
 const { getTeacherAccountInclude } = require('./teacherService')
-const { Course, Diary, Teacher, User } = require('../models')
+const { Course, Diary, Teacher } = require('../models')
 
 function activeCourseWithTeacher() {
   return { model: Course, where: { isActive: true }, include: [{ model: Teacher, attributes: ['name'], include: [getTeacherAccountInclude()] }] }
@@ -27,14 +27,14 @@ function getDiariesPage({ offset, limit }) {
 }
 
 async function getCourseDiariesPage({ courseId, offset, limit }) {
-  const course = await Course.findOne({ raw: true, nest: true, where: { id: courseId, isActive: true } })
+  const course = await Course.findOne({ attributes: ['id', 'courseNo', 'name'], raw: true, where: { id: courseId, isActive: true } })
   if (!course) return null
 
   const diaries = await Diary.findAndCountAll({
     raw: true,
     nest: true,
+    attributes: ['id', 'date', 'subject'],
     where: { CourseId: courseId },
-    include: { model: Course, include: { model: Teacher } },
     offset,
     limit,
     order: [['createdAt', 'DESC'], ['id', 'DESC']]
@@ -47,11 +47,11 @@ function getDiaryDetails({ courseId, diaryId }) {
 }
 
 async function getCreateDiaryFormData({ courseId, userId }) {
-  const [course, user] = await Promise.all([
-    Course.findOne({ raw: true, nest: true, include: [Teacher], where: { id: courseId, isActive: true } }),
-    User.findByPk(userId, { raw: true, nest: true, include: [Teacher] })
+  const [course, teacher] = await Promise.all([
+    Course.findOne({ attributes: ['id', 'courseNo', 'name'], raw: true, where: { id: courseId, isActive: true } }),
+    Teacher.findOne({ attributes: ['id'], raw: true, where: { UserId: userId } })
   ])
-  return course && user?.Teacher?.id ? { course, user } : null
+  return course && teacher ? course : null
 }
 
 async function createDiary({ courseId, userId, date, subject, content }) {

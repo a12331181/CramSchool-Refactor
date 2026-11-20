@@ -288,12 +288,13 @@ const tuitionBillController = {
     }
     const labels = { [TUITION_BILL_STATUS.DRAFT]: '草稿', [TUITION_BILL_STATUS.ISSUED]: '已發單', [TUITION_BILL_STATUS.VOID]: '已作廢' }
 
-    const items = bill.items.map(item => ({
-      ...item,
-      canRemove: isDraft && [TUITION_BILL_ITEM_KIND.EXTRA_FEE, TUITION_BILL_ITEM_KIND.LEAVE_CREDIT, TUITION_BILL_ITEM_KIND.DISCOUNT].includes(item.kind),
-      reviewCount: Array.isArray(item.sourceSnapshot?.reviewItems)
-        ? item.sourceSnapshot.reviewItems.length
-        : 0
+    const items = bill.items.map(({ id, kind, descriptionSnapshot, quantity, unitPrice, amount, reason, sourceSnapshot, Course }) => ({
+      id, quantity, unitPrice, amount, reason,
+      label: formatReferenceLabel(Course?.courseNo, descriptionSnapshot),
+      canRemove: isDraft && [
+        TUITION_BILL_ITEM_KIND.EXTRA_FEE, TUITION_BILL_ITEM_KIND.LEAVE_CREDIT, TUITION_BILL_ITEM_KIND.DISCOUNT
+      ].includes(kind),
+      reviewCount: Array.isArray(sourceSnapshot?.reviewItems) ? sourceSnapshot.reviewItems.length : 0
     }))
 
     const previewUrl = `/cramschool/tuition/students/${bill.StudentId}/preview?` +
@@ -322,7 +323,7 @@ const tuitionBillController = {
         if (allocation?.ok && allocation.itemized) {
           const canRecord = remainingAmount > 0
           if (canRecord) req.session.tuitionFormToken ??= createSessionFormToken()
-          const courseNumbersByItem = new Map(items.map(item => [item.id, item.Course?.courseNo]))
+          const courseNumbersByItem = new Map(bill.items.map(item => [item.id, item.Course?.courseNo]))
           paymentSummary.itemizedPayment = {
             canRecord,
             action: `/cramschool/tuition/bills/${bill.id}/payments`,

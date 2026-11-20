@@ -14,7 +14,7 @@
   <tbody>
     {{#each items}}
     <tr>
-      <th scope="row">{{referenceLabel this.Course.courseNo this.descriptionSnapshot}}</th>
+      <th scope="row">{{this.label}}</th>
       <td>{{this.quantity}}</td>
       <td>NT$ {{this.unitPrice}}</td>
       <td>NT$ {{this.amount}}</td>
@@ -29,7 +29,7 @@
           <input type="hidden" name="tuitionFormToken" value="{{../issueForm.formToken}}">
           <input type="hidden" name="billVersion" value="{{../bill.version}}">
           <button type="submit" class="btn btn-sm btn-outline-danger"
-            aria-label="移除 {{referenceLabel this.Course.courseNo this.descriptionSnapshot}}">移除</button>
+            aria-label="移除 {{this.label}}">移除</button>
         </form>
         {{else}}
         <span class="text-muted">—</span>

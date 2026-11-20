@@ -95,7 +95,11 @@ const tuitionPricingController = {
       ? 'NT$ ' + amountFormat.format(value)
       : '待核對'
     const billRows = (billsResult.rows ?? []).map(bill => ({
-      ...bill,
+      status: bill.status,
+      SupplementCourseId: bill.SupplementCourseId,
+      canReceiveGroupedPayment: bill.canReceiveGroupedPayment,
+      studentNameSnapshot: bill.studentNameSnapshot,
+      totalAmount: bill.totalAmount,
       documentNo: getTuitionDocumentNo(bill),
       statusText: bill.status === TUITION_BILL_STATUS.VOID
         ? (bill.issuedAt == null ? '已捨棄草稿' : '已作廢')
@@ -216,7 +220,9 @@ const tuitionPricingController = {
       backUrl: withQuery('/cramschool/tuition/students', navigation),
       listStatus: navigation.get('status'),
       billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
-      preview: result.ok ? result : null,
+      preview: result.ok ? {
+        student: result.student, billingMonth: result.billingMonth, baseSubtotal: result.baseSubtotal
+      } : null,
       hasSubtotal,
       activeBills,
       monthSummary,
@@ -226,7 +232,9 @@ const tuitionPricingController = {
       voidedBills,
       draftFormToken,
       draftAction: `/cramschool/tuition/students/${studentId}/bills/draft`,
-      courseRows: courses,
+      courseRows: courses.map(({ course, billableCount, quantity, unitPrice, baseAmount }) => ({
+        course, billableCount, quantity, unitPrice, baseAmount
+      })),
       reviewRows,
       leaveReviewPanel,
       errorMessage: result.ok ? null : (messages[result.code] ?? '目前無法試算。')

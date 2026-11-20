@@ -200,7 +200,7 @@ const tuitionReportController = {
       }
 
       return {
-        student: row.student,
+        studentLabel: formatReferenceLabel(row.student.studentNo, row.student.name),
         amount,
         hasAmount,
         amountSourceText: isIssued ? '正式帳單合計' : (summary ? '草稿金額' : '基本學費試算'),
