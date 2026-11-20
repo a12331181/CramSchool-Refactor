@@ -7,7 +7,7 @@ const fs = require('fs')
 
 const userController = {
   signUpPage: (req, res) => {
-    return res.render('signup')
+    return res.render('account/sign-up')
   },
 
   signUp: async (req, res) => {
@@ -48,7 +48,7 @@ const userController = {
   },
 
   signInPage: (req, res) => {
-    return res.render('signin')
+    return res.render('account/sign-in')
   },
 
   signIn: (req, res) => {
@@ -91,7 +91,7 @@ const userController = {
         const courses = teacher.Courses.map(r => ({
           ...r.dataValues
         }))
-        return res.render('userprofile', {
+        return res.render('account/profile', {
           teacher: userData,
           courses: courses,
           userIsMatch: userIsMatch
@@ -109,7 +109,7 @@ const userController = {
       if (req.user.id !== Number(req.params.id)){
         return res.redirect(`/users/${req.user.id}`)
       }
-      return res.render('editprofile', { 
+      return res.render('account/edit-profile', {
         user: user
       })
     })
