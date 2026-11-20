@@ -1,5 +1,5 @@
 const tuitionService = require('../services/tuitionService')
-const { timingSafeEqual } = require('node:crypto')
+const { isValidSessionFormToken } = require('../utils/sessionFormToken')
 const REFUND_MESSAGES = require('../constants/tuitionRefundMessages')
 
 const paymentController = {
@@ -7,13 +7,7 @@ const paymentController = {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
+    if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
@@ -71,12 +65,7 @@ const paymentController = {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
+    if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 

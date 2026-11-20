@@ -3,7 +3,7 @@ const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const tuitionService = require('../services/tuitionService')
 const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
-const { randomBytes, timingSafeEqual } = require('node:crypto')
+const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
@@ -402,7 +402,7 @@ const tuitionController = {
     const canCreateDraft = hasSubtotal && !activeBill
 
     if (canCreateDraft || hasLeaveReviewForm) {
-      req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
+      req.session.tuitionFormToken ??= createSessionFormToken()
     }
 
     const draftFormToken = canCreateDraft ? req.session.tuitionFormToken : null
@@ -438,13 +438,7 @@ const tuitionController = {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
+    if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟學費預覽再試。')
     }
 
@@ -501,17 +495,7 @@ const tuitionController = {
     }
 
     const expectedToken = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)
-
-    if (
-      !isToken(tuitionFormToken) ||
-      !isToken(expectedToken) ||
-      !timingSafeEqual(
-        Buffer.from(tuitionFormToken, 'hex'),
-        Buffer.from(expectedToken, 'hex')
-      )
-    ) {
+    if (!isValidSessionFormToken(tuitionFormToken, expectedToken)) {
       return res.status(403).send('表單已失效，請重新開啟合併預覽再試。')
     }
 
@@ -566,7 +550,7 @@ const tuitionController = {
     const hasLeaveCreditForm = isDraft && leaveCreditData?.ok === true && leaveCreditData.options.length > 0
 
     if (isDraft || canVoidIssuedBill) {
-      req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
+      req.session.tuitionFormToken ??= createSessionFormToken()
     }
 
     const extraFeeFormToken = hasExtraFeeForm ? req.session.tuitionFormToken : null
@@ -668,7 +652,7 @@ const tuitionController = {
         const allocation = result.paymentAllocation
         if (allocation?.ok && allocation.itemized) {
           const canRecord = remainingAmount > 0
-          if (canRecord) req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
+          if (canRecord) req.session.tuitionFormToken ??= createSessionFormToken()
           paymentSummary.itemizedPayment = {
             canRecord,
             action: `/cramschool/tuition/bills/${bill.id}/payments`,
@@ -685,7 +669,7 @@ const tuitionController = {
         } else if (allocation?.ok === false) {
           paymentSummary.allocationMessage = '分項收款紀錄需要核對，暫時不能再登記收款。'
         } else if (remainingAmount > 0 && remainingAmount <= 2_147_483_647) {
-          req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
+          req.session.tuitionFormToken ??= createSessionFormToken()
           paymentSummary.allocationMessage = allocation?.reason === 'LEGACY_UNALLOCATED_PAYMENT'
             ? '先前收款沒有記錄對應項目，剩餘金額可整筆登記。'
             : '這張帳單的明細無法拆分，剩餘金額可整筆登記。'
@@ -724,7 +708,7 @@ const tuitionController = {
             : refund.netPaidAmount === 0 ? '已全額退費' : '已部分退費'
         }
         if (refund.netPaidAmount > 0 && !refund.blockedCode) {
-          req.session.tuitionFormToken ??= randomBytes(32).toString('hex')
+          req.session.tuitionFormToken ??= createSessionFormToken()
           refundSummary.form = {
             action: `/cramschool/tuition/bills/${bill.id}/refunds`,
             formToken: req.session.tuitionFormToken,
@@ -767,13 +751,7 @@ const tuitionController = {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
+    if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
@@ -814,13 +792,7 @@ const tuitionController = {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
+    if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
@@ -868,13 +840,7 @@ const tuitionController = {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
+    if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
@@ -1110,13 +1076,7 @@ const tuitionController = {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
+    if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
@@ -1178,13 +1138,7 @@ const tuitionController = {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
+    if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
@@ -1245,13 +1199,7 @@ const tuitionController = {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
+    if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
@@ -1308,13 +1256,7 @@ const tuitionController = {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
+    if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
@@ -1368,13 +1310,7 @@ const tuitionController = {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
+    if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
