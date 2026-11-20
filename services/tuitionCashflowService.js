@@ -24,7 +24,8 @@ function cashRow(record, kind, today) {
   return {
     kind,
     id: record.id,
-    billId: bill?.id ?? null,
+    billId: record.TuitionBillId ?? null,
+    billAvailable: Number.isSafeInteger(bill?.id),
     billingMonth: bill?.billingMonth ?? null,
     studentName: bill?.studentNameSnapshot ?? null,
     date: date ?? null,

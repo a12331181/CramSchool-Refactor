@@ -13,6 +13,7 @@ const paymentController = require('../controllers/paymentController.js')
 const teacherController = require('../controllers/teacherController.js')
 const studentController = require('../controllers/studentController.js')
 const tuitionController = require('../controllers/tuitionController.js')
+const tuitionCashflowController = require('../controllers/tuitionCashflowController')
 
 module.exports = (app, passport) => {
   //前台相關路由
@@ -72,6 +73,7 @@ module.exports = (app, passport) => {
   app.post('/cramschool/tuition/bills/:billId/refunds', authenticatedAdmin, paymentController.recordTuitionBillRefund)
   //繳費紀錄相關路由
   app.get('/cramschool/payment', authenticatedAdmin, tuitionController.getCoursePaymentOverview)
+  app.get('/cramschool/tuition/cashflow', authenticatedAdmin, tuitionCashflowController.getCashflow)
   //後台相關路由
   app.get('/admin', authenticatedAdmin, (req, res) => res.redirect('/admin/cramschool'))
   app.get('/admin/cramschool', authenticatedAdmin, adminController.getSchoolIndexPage)
