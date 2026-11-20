@@ -188,10 +188,22 @@ function buildTuitionBillHistory({ logs, actors, limit }) {
 
 const tuitionController = {
   getCoursePaymentOverview: async (req, res) => {
-    const billingMonth = getTaipeiDate().slice(0, 7)
+    const listUrl = '/cramschool/payment'
+    const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
+    const viewData = { listUrl, billingMonth: typeof billingMonth === 'string' ? billingMonth : '' }
     res.set('Cache-Control', 'no-store')
     const result = await tuitionService.getCoursePaymentOverview({ billingMonth })
-    if (!result.ok) return res.status(500).send('無法取得本月課程收費資料。')
+    if (!result.ok) {
+      if (result.code === 'INVALID_BILLING_MONTH') {
+        return res.status(400).render('tuition/course-overview', {
+          ...viewData,
+          errorMessage: '請選擇有效的計費月份。'
+        })
+      }
+      return res.status(500).send('無法取得課程收費資料。')
+    }
+
+    const monthQuery = new URLSearchParams({ billingMonth })
 
     const formatAmount = amount => amount === null ? '待核對' : `NT$ ${amountFormat.format(amount)}`
     const courses = result.courses.map(course => {
@@ -204,11 +216,11 @@ const tuitionController = {
         remainingText: formatAmount(course.remainingAmount),
         collectionText,
         collectionClass,
-        detailUrl: `/cramschool/tuition/courses/${course.id}/monthly?billingMonth=${billingMonth}`
+        detailUrl: `/cramschool/tuition/courses/${course.id}/monthly?${monthQuery}`
       }
     })
 
-    return res.render('tuition/course-overview', { billingMonth, courses })
+    return res.render('tuition/course-overview', { ...viewData, courses })
   },
 
   getStudentTuitionHistory: async (req, res) => {
@@ -1020,7 +1032,11 @@ const tuitionController = {
     const page = Number(req.query.page ?? 1)
     const pageSize = 12
     const listUrl = `/cramschool/tuition/courses/${courseId}/monthly`
-    const viewData = { listUrl, billingMonth: typeof billingMonth === 'string' ? billingMonth : '' }
+    const viewData = {
+      listUrl,
+      billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
+      backUrl: withQuery('/cramschool/payment', getTuitionNavigationParams({ billingMonth }))
+    }
 
     res.set('Cache-Control', 'no-store')
     const result = await tuitionService.getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageSize })

@@ -5,7 +5,11 @@
 <br>
 
 <h1 class="h4">課程收費列表</h1>
-<p class="mb-1">計費月份：{{billingMonth}}</p>
+{{> tuition/billing-month-filter formAction=listUrl monthLabel="計費月份：" submitText="查看月份"}}
+
+{{#if errorMessage}}
+<p class="alert alert-warning" role="alert">{{errorMessage}}</p>
+{{else}}
 <p class="text-muted">
   金額以所選計費月份的正式帳單為準。應收是分攤折扣與折抵後的本課金額，不含其他課程或額外費用。
   無法分配到本課的舊收款或整單退費會標示待核對。
@@ -45,3 +49,4 @@
     </tbody>
   </table>
 </div>
+{{/if}}
