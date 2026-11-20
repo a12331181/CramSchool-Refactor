@@ -1,7 +1,7 @@
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const tuitionService = require('../services/tuitionService')
-const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
+const { getTaipeiDate, formatTaipeiDateTime, isTaipeiDateKey } = require('../utils/date')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
@@ -168,7 +168,7 @@ function describeTuitionBillChange({ before, after }) {
       : ''
     return {
       actionText: '登記收款',
-      detailText: `NT$ ${after.receivedAmount}（收款 #${after.paymentId}${items}）`
+      detailText: `${isTaipeiDateKey(after.paidOn) ? after.paidOn + '｜' : ''}NT$ ${after.receivedAmount}（收款 #${after.paymentId}${items}）`
     }
   }
 
@@ -717,7 +717,11 @@ const tuitionController = {
         const { totalAmount, paidAmount, remainingAmount } = paymentStatus
         const statusText = getTuitionBillPaymentStatusText(paymentStatus)
 
-        paymentSummary = { totalAmount, paidAmount, remainingAmount, statusText }
+        const today = getTaipeiDate()
+        const paymentRows = result.payments.map(({ id, time, amount }) => ({
+          id, amount, paidOn: isTaipeiDateKey(time) ? time : null
+        })).sort((a, b) => (b.paidOn ?? '').localeCompare(a.paidOn ?? '') || b.id - a.id)
+        paymentSummary = { totalAmount, paidAmount, remainingAmount, statusText, paymentRows }
         const allocation = result.paymentAllocation
         if (allocation?.ok && allocation.itemized) {
           const canRecord = remainingAmount > 0
@@ -727,6 +731,7 @@ const tuitionController = {
             action: `/cramschool/tuition/bills/${bill.id}/payments`,
             formToken: canRecord ? req.session.tuitionFormToken : null,
             billVersion: bill.version,
+            today,
             hasAdjustments: allocation.hasAdjustments,
             items: allocation.items.map(item => ({
               ...item,
@@ -746,6 +751,7 @@ const tuitionController = {
             action: `/cramschool/tuition/bills/${bill.id}/payments`,
             amount: remainingAmount,
             billVersion: bill.version,
+            today,
             formToken: req.session.tuitionFormToken
           }
         }

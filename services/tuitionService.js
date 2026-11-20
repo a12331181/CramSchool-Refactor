@@ -1541,6 +1541,7 @@ async function getTuitionBillDetails(billId) {
       extraFees,
       leaveCreditData,
       paymentStatus,
+      payments,
       paymentAllocation,
       refundSummary,
       canVoidIssuedBill,
