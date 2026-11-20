@@ -1,17 +1,11 @@
-const db = require('../models')
-const Course = db.Course
-const Student = db.Student
-const Calendar = db.Calendar
-const Attend = db.Attend
 const attendService = require('../services/attendService')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const { formatTaipeiDateTime } = require('../utils/date')
-const { UniqueConstraintError } = require('sequelize')
 
 const attendController = {
   getAttendIndexpage: async (req, res) => {
-    const { courses, calendars, isAdmin } =
+    const { calendars, isAdmin } =
       await attendService.getAttendIndexData({
         userId: req.user.id
       })
@@ -23,7 +17,6 @@ const attendController = {
     }
 
     return res.render('attendance/index', {
-      courses,
       calendars: calendars.map(calendar => ({
         id: calendar.id,
         courseId: calendar.CourseId,
@@ -38,25 +31,6 @@ const attendController = {
       })),
       isAdmin
     })
-  },
-
-  getAttendCourse: async (req, res) => {
-    const courseId = Number(req.params.id)
-
-    if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
-    }
-
-    const result = await attendService.getAttendCourseData({
-      courseId,
-      userId: req.user.id
-    })
-
-    if (!result) {
-      return res.redirect('/cramschool/attend')
-    }
-
-    return res.render('coursecalendar', result)
   },
 
   getAttendStudents: async (req, res) => {
@@ -102,7 +76,6 @@ const attendController = {
 
     return res.render('attendance/roster', {
       ...result,
-      isFormalCalendar: true,
       startAtText: formatTaipeiDateTime(result.calendar.startAt),
       endAtText: formatTaipeiDateTime(result.calendar.endAt),
       calendarStartAt: result.calendar.startAt.toISOString(),
@@ -173,85 +146,6 @@ const attendController = {
     )
   },
 
-  getAttend:(req, res) => {
-    Promise.all([
-      Calendar.findOne({
-        where: { id: req.params.calendarId, isActive: true },
-        include: [Attend]
-      }),
-      Course.findOne({
-        where: { id: req.params.courseId, isActive: true },
-        include: [{ model: Student, as: 'EnrolledStudents' }]
-      })
-    ]).then(([calendar, course]) => {
-      let url = '/cramschool/attend/courses/'+ String(req.params.courseId)
-      if (calendar === null || course === null) {
-        console.log('Not found!')
-        res.redirect(url)
-      } else {
-        const data = course.EnrolledStudents
-        const students = data.map(r => ({
-          ...r.dataValues,
-          isChecked: calendar.Attends.map(d => d.StudentId).includes(r.id)
-        }))
-        return res.render('attendance/roster', {
-          calendar: calendar.toJSON(),
-          students: students,
-          course: course.toJSON() 
-        })
-      }
-    })
-  },
-
-  postAttend: async (req, res) => {
-    const legacyCalendar = await Calendar.findOne({
-      attributes: ['id'],
-      where: {
-        id: req.params.calendarId,
-        status: null,
-        startAt: null,
-        endAt: null,
-        TeacherId: null
-      }
-    })
-
-    if (!legacyCalendar) {
-      req.flash('error_messages', '正式課堂請由學生名單登記點名。')
-      return res.redirect('/cramschool/attend')
-    }
-
-    const status = req.body.status
-    let isAttend = ''
-    let reason = ''
-    let statusArray = status.split("/")
-    if (status.includes('出席')) {
-      isAttend = true
-      reason = ''
-    } else {
-      isAttend = false
-      reason = statusArray[1]
-    }
-    return Attend.create({
-      CalendarId: req.params.calendarId,
-      StudentId: req.params.studentId,
-      isAttend: isAttend,
-      reason: reason
-    }).then((attend) => {
-      req.flash('success_messages', '已成功新增出席紀錄')
-      return res.redirect('back')
-    }).catch(error => {
-      if (
-        !(error instanceof UniqueConstraintError) ||
-        !Object.hasOwn(error.fields ?? {}, 'uq_attends_calendar_student')
-      ) {
-        throw error
-      }
-
-      req.flash('error_messages', '這位學生已有本堂點名紀錄。')
-      return res.redirect('/cramschool/attend')
-    })
-  },
-
   updateAttend: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const calendarId = Number(req.params.calendarId)
@@ -312,25 +206,6 @@ const attendController = {
       303,
       `/cramschool/attend/courses/${courseId}/calendar/${calendarId}/students`
     )
-  },
-
-  deleteAttend: (req, res) => {
-    return Attend.findOne({
-      where: {
-        CalendarId: req.params.calendarId,
-        StudentId: req.params.studentId,
-        status: null
-      }
-    }).then((attend) => {
-      if (!attend) {
-        req.flash('error_messages', '查無可刪除的舊點名紀錄。')
-        return res.redirect('/cramschool/attend')
-      }
-      attend.destroy().then((attend) => {
-        req.flash('success_messages', '已成功刪除出席紀錄')
-        return res.redirect('back')
-      })
-    })
   },
 
   getAttendHistory: async (req, res) => {
