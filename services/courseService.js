@@ -1,6 +1,5 @@
 const {Course, Teacher, Student, Calendar, Enrollment, Tuition, TuitionBillItem, Diary, Attend, sequelize} = require('../models')
 const {COURSE_TIMES, COURSE_TYPES} = require('../constants/courseOptions')
-const moment = require('moment')
 const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
 
