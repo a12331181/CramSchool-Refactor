@@ -1,6 +1,6 @@
 const { getTeacherAccountInclude } = require('./teacherService')
 const { allocateCourseNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
-const {Course, Teacher, Student, Calendar, Enrollment, Tuition, TuitionBillItem, Diary, Attend, sequelize} = require('../models')
+const {Course, Teacher, Student, Calendar, Enrollment, LegacyTuition, TuitionBillItem, Diary, Attend, sequelize} = require('../models')
 const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
 const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
@@ -285,13 +285,13 @@ async function deleteCourse(courseId) {
       return { ok: false, code: 'COURSE_HAS_ENROLLMENTS' }
     }
 
-    const tuition = await Tuition.findOne({
+    const legacyCharge = await LegacyTuition.findOne({
       attributes: ['id'],
       where: { CourseId: courseId },
       transaction
     })
 
-    if (tuition) {
+    if (legacyCharge) {
       return { ok: false, code: 'COURSE_HAS_TUITIONS' }
     }
 

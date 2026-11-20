@@ -19,7 +19,6 @@ module.exports = (sequelize, DataTypes) => {
         as: 'EnrolledCourses'
       })
       Student.hasMany(models.Attend)
-      Student.hasMany(models.Tuition)
     }
   };
   Student.init({

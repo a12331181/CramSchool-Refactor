@@ -1,5 +1,5 @@
 const { allocateStudentNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
-const {Student, Course, Enrollment, Calendar, Attend, Tuition, TuitionBill, sequelize} = require('../models')
+const {Student, Course, Enrollment, Calendar, Attend, LegacyTuition, TuitionBill, sequelize} = require('../models')
 const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
@@ -271,7 +271,7 @@ async function deleteStudent(studentId) {
       }
     }
 
-    const tuition = await Tuition.findOne({
+    const legacyCharge = await LegacyTuition.findOne({
       attributes: ['id'],
       where: {
         StudentId: studentId
@@ -279,7 +279,7 @@ async function deleteStudent(studentId) {
       transaction
     })
 
-    if (tuition) {
+    if (legacyCharge) {
       return {
         deleted: false,
         reason: 'HAS_TUITION'

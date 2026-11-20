@@ -5,7 +5,6 @@ const {
 module.exports = (sequelize, DataTypes) => {
   class Payment extends Model {
     static associate(models) {
-      Payment.belongsTo(models.Tuition)
       Payment.belongsTo(models.TuitionBill, {
         foreignKey: { name: 'TuitionBillId', allowNull: true },
         onDelete: 'RESTRICT',
@@ -23,7 +22,6 @@ module.exports = (sequelize, DataTypes) => {
     amount: DataTypes.INTEGER,
     isPaid: DataTypes.BOOLEAN,
     TuitionId: DataTypes.INTEGER,
-    currentPeriod: DataTypes.INTEGER,
   }, {
     sequelize,
     modelName: 'Payment',
