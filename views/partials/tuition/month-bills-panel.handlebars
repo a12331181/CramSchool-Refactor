@@ -19,7 +19,7 @@
       <tbody>
         {{#each activeBills}}
         <tr>
-          <th scope="row"><a href="{{detailUrl}}">帳單 #{{id}}</a></th>
+          <th scope="row"><a href="{{detailUrl}}">{{#if isSupplement}}補單{{else}}主帳單{{/if}} #{{id}}</a></th>
           <td>{{statusText}}</td><td>{{totalText}}</td><td>{{remainingText}}</td>
         </tr>
         {{/each}}

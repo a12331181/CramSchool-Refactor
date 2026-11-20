@@ -1,0 +1,37 @@
+{{#if supplementPanel}}
+<section class="my-3" aria-labelledby="course-supplement-heading">
+  <h2 id="course-supplement-heading" class="h5">補開本月未出帳的課程費</h2>
+  <p class="text-muted">補單各自出帳與收款。已出帳的月費或堂次不會再次計入。</p>
+  {{#if supplementPanel.requiresReview}}
+  <p class="alert alert-warning">部分既有課程明細需要核對，暫時不能補開。</p>
+  {{/if}}
+  {{#if supplementPanel.options.length}}
+  <div class="table-responsive">
+    <table class="table table-sm">
+      <thead><tr><th scope="col">課程</th><th scope="col">未出帳數量</th><th scope="col">試算金額</th><th scope="col">操作</th></tr></thead>
+      <tbody>
+        {{#each supplementPanel.options}}
+        <tr>
+          <th scope="row">{{name}} <small class="text-muted">{{type}}</small></th>
+          <td>{{quantity}}</td>
+          <td>{{totalText}}</td>
+          <td>
+            <form method="POST" action="{{../supplementPanel.action}}">
+              <input type="hidden" name="tuitionFormToken" value="{{../supplementPanel.formToken}}">
+              <input type="hidden" name="billingMonth" value="{{../supplementPanel.billingMonth}}">
+              <input type="hidden" name="courseId" value="{{id}}">
+              {{#if ../supplementPanel.page}}<input type="hidden" name="page" value="{{../supplementPanel.page}}">{{/if}}
+              {{#if ../supplementPanel.status}}<input type="hidden" name="status" value="{{../supplementPanel.status}}">{{/if}}
+              <button class="btn btn-sm btn-outline-primary" type="submit">建立補單草稿</button>
+            </form>
+          </td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="text-muted">暫無可建立的補單。有草稿時，可從上方「本月繳費總覽」繼續處理。</p>
+  {{/if}}
+</section>
+{{/if}}

@@ -13,6 +13,7 @@ const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
 const { parseTaipeiDateTime, isTaipeiDateKey, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
 const paymentAllocationService = require('./tuitionPaymentAllocationService')
+const { getIssuedCourseFees, excludeIssuedCourseFees } = require('./tuitionCourseChargeService')
 const { getIssuedCoursePaymentStatuses } = require('./tuitionCoursePaymentService')
 const {
   getIssuedTuitionBillFinancialData, getBillRefundAmounts, summarizeStudentBillGroup,
@@ -373,8 +374,9 @@ async function getTuitionAttendanceSummary({ studentId, calendars }, transaction
   return { counts, reviewCount, items }
 }
 
-async function getStudentTuitionPreview({ studentId, billingMonth } = {}, transaction) {
-  if (!Number.isSafeInteger(studentId) || studentId < 1) {
+async function getStudentTuitionPreview({ studentId, billingMonth, courseId } = {}, transaction) {
+  if (!Number.isSafeInteger(studentId) || studentId < 1 ||
+      (courseId !== undefined && (!Number.isSafeInteger(courseId) || courseId < 1))) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
 
@@ -398,7 +400,7 @@ async function getStudentTuitionPreview({ studentId, billingMonth } = {}, transa
 
   const rows = await Enrollment.findAll({
     attributes: ['id', 'CourseId'],
-    where: { StudentId: studentId },
+    where: { StudentId: studentId, ...(courseId === undefined ? {} : { CourseId: courseId }) },
     order: [['CourseId', 'ASC'], ['id', 'ASC']],
     raw: true,
     transaction
@@ -520,7 +522,7 @@ async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) 
 
   return readTuitionSnapshot(async transaction => {
     const bills = await TuitionBill.findAll({
-      attributes: ['id', 'studentNameSnapshot', 'status', 'totalAmount', 'issuedAt'],
+      attributes: ['id', 'studentNameSnapshot', 'SupplementCourseId', 'status', 'totalAmount', 'issuedAt'],
       where: { StudentId: studentId, billingMonth },
       order: [['id', 'DESC']],
       raw: true,
@@ -1031,22 +1033,81 @@ function buildDraftCourseFeeItems(preview) {
   return { ok: true, items, totalAmount }
 }
 
+async function getSupplementalTuitionOptions({ studentId, billingMonth, preview }) {
+  if (!preview.ok) return preview
+  return readTuitionSnapshot(async transaction => {
+    const issuedFees = await getIssuedCourseFees({ studentId, billingMonth }, transaction)
+    const adjusted = excludeIssuedCourseFees(preview, issuedFees)
+    if (!adjusted.ok) return adjusted
+
+    const blocked = new Set(adjusted.reviewItems
+      .filter(item => !DRAFT_NON_BLOCKING_REVIEW_CODES.has(item.code))
+      .map(item => item.courseId))
+    const options = adjusted.courses.filter(entry =>
+      entry.quantity > 0 && !blocked.has(entry.course.id) &&
+      Number.isSafeInteger(entry.baseAmount) && entry.baseAmount <= MAX_BILL_ITEM_AMOUNT
+    )
+    return {
+      ok: true,
+      options,
+      requiresReview: adjusted.reviewItems.some(item => item.code === 'ISSUED_COURSE_FEES_REQUIRE_REVIEW')
+    }
+  })
+}
+
+async function getDraftPricing({ studentId, billingMonth, courseId }, transaction) {
+  const preview = await getStudentTuitionPreview({ studentId, billingMonth, courseId }, transaction)
+  if (!preview.ok) return preview
+  const issuedFees = await getIssuedCourseFees({ studentId, billingMonth }, transaction)
+  const adjusted = excludeIssuedCourseFees(preview, issuedFees)
+  if (!adjusted.ok) return adjusted
+
+  if (courseId !== undefined) {
+    adjusted.courses = adjusted.courses.filter(entry => entry.quantity > 0)
+  }
+  if (adjusted.courses.length === 0 &&
+      !adjusted.reviewItems.some(item => !DRAFT_NON_BLOCKING_REVIEW_CODES.has(item.code))) {
+    return { ok: false, code: 'NO_UNBILLED_COURSE_FEES' }
+  }
+  return adjusted
+}
+
+function findIssuedBillForMonth(studentId, billingMonth, transaction) {
+  return TuitionBill.findOne({
+    attributes: ['id'],
+    where: { StudentId: studentId, billingMonth, status: TUITION_BILL_STATUS.ISSUED },
+    raw: true,
+    transaction
+  })
+}
+
 async function createTuitionBillDraft({ studentId, billingMonth } = {}) {
-  if (!Number.isSafeInteger(studentId) || studentId < 1) {
+  return createScopedBillDraft({ studentId, billingMonth })
+}
+
+async function createSupplementalTuitionBillDraft({ studentId, billingMonth, courseId, actorId } = {}) {
+  if (![courseId, actorId].every(id => Number.isSafeInteger(id) && id > 0)) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
 
-  if (
-    typeof billingMonth !== 'string' ||
-    !parseTaipeiDateTime(`${billingMonth}-01T00:00`)
-  ) {
+  return createScopedBillDraft({ studentId, billingMonth, courseId, actorId })
+}
+
+async function createScopedBillDraft({ studentId, billingMonth, courseId, actorId }) {
+  if (!Number.isSafeInteger(studentId) || studentId < 1) {
+    return { ok: false, code: 'INVALID_INPUT' }
+  }
+  if (!getTaipeiMonthRange(billingMonth)) {
     return { ok: false, code: 'INVALID_BILLING_MONTH' }
   }
 
+  const supplemental = courseId !== undefined
   const where = {
     StudentId: studentId,
     billingMonth,
-    status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] }
+    SupplementCourseId: courseId ?? null,
+    status: supplemental ? TUITION_BILL_STATUS.DRAFT
+      : { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] }
   }
 
   const findActiveBill = (options = {}) => TuitionBill.findOne({
@@ -1056,77 +1117,68 @@ async function createTuitionBillDraft({ studentId, billingMonth } = {}) {
     ...options
   })
 
-  const existing = await findActiveBill()
-
-  if (existing) {
-    return { ok: true, created: false, bill: existing }
-  }
-
-  const preview = await getStudentTuitionPreview({ studentId, billingMonth })
-
-  const fees = buildDraftCourseFeeItems(preview)
-  if (!fees.ok) return fees
-  const { items, totalAmount } = fees
-
   try {
-    return await sequelize.transaction(async transaction => {
+    return await sequelize.transaction({
+      isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED
+    }, async transaction => {
+      // All draft creation, issuance and voiding for one student serialize here.
       const locked = { transaction, lock: transaction.LOCK.UPDATE }
-
       const student = await Student.findByPk(studentId, {
         ...locked,
         attributes: ['id', 'name']
       })
 
-      if (!student) {
-        return { ok: false, code: 'STUDENT_NOT_FOUND' }
-      }
+      if (!student) return { ok: false, code: 'STUDENT_NOT_FOUND' }
 
       const current = await findActiveBill(locked)
+      if (current) return { ok: true, created: false, bill: current }
 
-      if (current) {
-        return { ok: true, created: false, bill: current }
+      if (supplemental && !await findIssuedBillForMonth(studentId, billingMonth, transaction)) {
+        return { ok: false, code: 'SUPPLEMENT_REQUIRES_ISSUED_BILL' }
       }
 
-      if (
-        typeof student.name !== 'string' ||
-        !student.name.trim() ||
-        student.name.trim().length > 255
-      ) {
+      const preview = await getDraftPricing({ studentId, billingMonth, courseId }, transaction)
+      const fees = buildDraftCourseFeeItems(preview)
+      if (!fees.ok) return fees
+
+      if (typeof student.name !== 'string' || !student.name.trim() || student.name.trim().length > 255) {
         return { ok: false, code: 'STUDENT_NAME_UNCONFIRMED' }
       }
 
       const bill = await TuitionBill.create({
         StudentId: studentId,
+        SupplementCourseId: courseId ?? null,
         billingMonth,
         studentNameSnapshot: student.name.trim(),
         currency: 'TWD',
         status: TUITION_BILL_STATUS.DRAFT,
-        totalAmount
+        totalAmount: fees.totalAmount
       }, { transaction })
 
-      await TuitionBillItem.bulkCreate(items.map(item => ({
-        ...item,
-        TuitionBillId: bill.id
+      await TuitionBillItem.bulkCreate(fees.items.map(item => ({
+        ...item, TuitionBillId: bill.id
       })), { transaction })
 
+      if (supplemental) {
+        await AuditLog.create({
+          actorId,
+          entityType: 'TuitionBill',
+          entityId: bill.id,
+          action: 'create',
+          after: { billingMonth, courseId, status: bill.status, totalAmount: bill.totalAmount },
+          reason: '建立課程補單草稿'
+        }, { transaction })
+      }
+
       return {
-        ok: true,
-        created: true,
+        ok: true, created: true,
         bill: { id: bill.id, status: bill.status, totalAmount: bill.totalAmount }
       }
     })
   } catch (error) {
-    if (
-      !(error instanceof UniqueConstraintError) ||
-      !Object.hasOwn(error.fields ?? {}, 'uq_tuition_bills_active_month')
-    ) {
-      throw error
-    }
-
+    if (!(error instanceof UniqueConstraintError)) throw error
     const current = await findActiveBill()
-
     if (!current) throw error
-
     return { ok: true, created: false, bill: current }
   }
 }
@@ -1181,9 +1233,14 @@ async function refreshTuitionBillDraft({ billId, billVersion, actorId } = {}) {
       return { ok: false, code: 'DRAFT_TOTAL_MISMATCH' }
     }
 
-    const preview = await getStudentTuitionPreview({
+    if (bill.SupplementCourseId != null &&
+        !await findIssuedBillForMonth(bill.StudentId, bill.billingMonth, transaction)) {
+      return { ok: false, code: 'SUPPLEMENT_REQUIRES_ISSUED_BILL' }
+    }
+    const preview = await getDraftPricing({
       studentId: bill.StudentId,
-      billingMonth: bill.billingMonth
+      billingMonth: bill.billingMonth,
+      courseId: bill.SupplementCourseId ?? undefined
     }, transaction)
     const fees = buildDraftCourseFeeItems(preview)
     if (!fees.ok) return fees
@@ -1443,13 +1500,19 @@ async function voidUnpaidTuitionBill({ billId, billVersion, actorId, reason } = 
     return { ok: false, code: fromDraft ? 'INVALID_DISCARD_REASON' : 'INVALID_VOID_REASON' }
   }
 
-  return sequelize.transaction(async transaction => {
-    const bill = await TuitionBill.findByPk(billId, {
-      transaction,
-      lock: transaction.LOCK.UPDATE
-    })
+  return sequelize.transaction({
+    isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED
+  }, async transaction => {
+    const owner = await TuitionBill.findByPk(billId, { attributes: ['StudentId'], raw: true, transaction })
+    if (!owner) return { ok: false, code: 'BILL_NOT_FOUND' }
+    const locked = { transaction, lock: transaction.LOCK.UPDATE }
+    const student = await Student.findByPk(owner.StudentId, { ...locked, attributes: ['id'] })
+    const bill = await TuitionBill.findByPk(billId, locked)
 
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
+    if (!student || bill.StudentId !== owner.StudentId) {
+      return { ok: false, code: 'BILL_VERSION_CONFLICT' }
+    }
     const matchesIssueState = fromDraft ? bill.issuedAt == null : bill.issuedAt != null
     if (bill.status === TUITION_BILL_STATUS.VOID && matchesIssueState) {
       return { ok: true, changed: false, billId: bill.id }
@@ -1533,7 +1596,7 @@ async function getTuitionBillDetails(billId) {
   return readTuitionSnapshot(async transaction => {
     const bill = await TuitionBill.findByPk(billId, {
       attributes: [
-        'id', 'StudentId', 'billingMonth', 'studentNameSnapshot',
+        'id', 'StudentId', 'billingMonth', 'studentNameSnapshot', 'SupplementCourseId',
         'status', 'totalAmount', 'version', 'issuedAt'
       ],
       include: [{
@@ -1687,7 +1750,7 @@ async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersio
   })
 }
 
-async function getPreviousMonthLeaveReviews({ studentId, billingMonth }, transaction) {
+async function getPreviousMonthLeaveReviews({ studentId, billingMonth, courseId }, transaction) {
   const range = previousMonthWindow(billingMonth)
   if (!Number.isSafeInteger(studentId) || studentId < 1 || !range) return null
 
@@ -1707,6 +1770,7 @@ async function getPreviousMonthLeaveReviews({ studentId, billingMonth }, transac
       required: true,
       attributes: ['startAt'],
       where: {
+        ...(courseId === undefined ? {} : { CourseId: courseId }),
         status: { [Op.in]: [COURSE_SESSION_STATUS.SCHEDULED, COURSE_SESSION_STATUS.COMPLETED] },
         startAt: { [Op.gte]: range.from, [Op.lt]: range.until },
         endAt: { [Op.lte]: new Date() }
@@ -2113,6 +2177,11 @@ async function addLeaveCreditToDraft({ billId, attendId, billVersion } = {}) {
         return { ok: false, code: 'CREDIT_SOURCE_CHANGED' }
       }
 
+      if (bill.SupplementCourseId != null &&
+          checked.candidate.source.courseId !== bill.SupplementCourseId) {
+        return { ok: false, code: 'LEAVE_CREDIT_COURSE_MISMATCH' }
+      }
+
       const itemData = buildLeaveCreditBillItem({
         draftBillId: bill.id,
         candidate: checked.candidate
@@ -2171,7 +2240,9 @@ async function getDraftLeaveCreditOptions(bill, { leaveData, transaction } = {})
 
   const studentId = bill.StudentId
   const billingMonth = bill.billingMonth
-  const reviews = leaveData ?? await getPreviousMonthLeaveReviews({ studentId, billingMonth }, transaction)
+  const reviews = leaveData ?? await getPreviousMonthLeaveReviews({
+    studentId, billingMonth, courseId: bill.SupplementCourseId ?? undefined
+  }, transaction)
 
   if (!reviews) return { ok: false, code: 'INVALID_INPUT' }
   if (reviews.timezoneError) return { ok: false, code: 'UTC_REQUIRED' }
@@ -2346,8 +2417,17 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
       return { ok: false, code: 'DRAFT_COURSE_FEES_REQUIRE_REVIEW' }
     }
 
-    const input = { studentId: bill.StudentId, billingMonth: bill.billingMonth }
-    const preview = await getStudentTuitionPreview(input, transaction)
+    const input = {
+      studentId: bill.StudentId,
+      billingMonth: bill.billingMonth,
+      courseId: bill.SupplementCourseId ?? undefined
+    }
+    if (input.courseId !== undefined &&
+        !await findIssuedBillForMonth(bill.StudentId, bill.billingMonth, transaction)) {
+      return { ok: false, code: 'SUPPLEMENT_REQUIRES_ISSUED_BILL' }
+    }
+    const preview = await getDraftPricing(input, transaction)
+    if (!preview.ok && preview.code === 'NO_UNBILLED_COURSE_FEES') return preview
 
     if (
       !preview.ok ||
@@ -2383,6 +2463,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
         code: 'LEAVE_CREDIT_REQUIRES_REVIEW',
         billItemId: item.id
       }
+      if (input.courseId !== undefined && item.CourseId !== input.courseId) return invalid
       const attendId = item.ActiveLeaveAttendId
       const snapshot = item.sourceSnapshot
 
@@ -2657,6 +2738,8 @@ module.exports = {
   getCoursePaymentOverview,
   getCourseMonthlyTuitionList,
   createTuitionBillDraft,
+  createSupplementalTuitionBillDraft,
+  getSupplementalTuitionOptions,
   refreshTuitionBillDraft,
   setTuitionBillDraftDiscount,
   removeTuitionBillDraftAdjustment,

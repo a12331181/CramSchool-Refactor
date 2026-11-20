@@ -1,4 +1,4 @@
-<h1 class="mt-3">本期帳單 編號#{{bill.id}}</h1>
+<h1 class="mt-3">{{#if bill.SupplementCourseId}}課程補單{{else}}本期帳單{{/if}} 編號#{{bill.id}}</h1>
 <p>姓名: {{bill.studentNameSnapshot}}｜期數: {{bill.billingMonth}}｜帳單狀態: {{statusText}}</p>
 
 {{> tuition/bill-items}}
@@ -23,4 +23,4 @@
 {{> tuition/bill-history}}
 
 
-<a href="{{previewUrl}}">回到基本月費試算(草稿)</a>
+<a href="{{previewUrl}}">回到本月繳費總覽與試算</a>

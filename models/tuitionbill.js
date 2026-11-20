@@ -23,6 +23,7 @@ module.exports = (sequelize, DataTypes) => {
 
   TuitionBill.init({
     StudentId: { type: DataTypes.INTEGER, allowNull: false },
+    SupplementCourseId: { type: DataTypes.INTEGER, allowNull: true },
     billingMonth: { type: DataTypes.CHAR(7), allowNull: false },
     studentNameSnapshot: { type: DataTypes.STRING(255), allowNull: false },
     currency: { type: DataTypes.CHAR(3), allowNull: false, defaultValue: 'TWD' },

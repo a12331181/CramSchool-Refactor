@@ -139,6 +139,10 @@ function describeTuitionBillChange({ before, after }) {
   const hasTotal = Number.isSafeInteger(after?.totalAmount)
   const amountText = hasTotal ? `帳單金額 NT$ ${after.totalAmount}` : '—'
 
+  if (!before && after?.status === TUITION_BILL_STATUS.DRAFT && Number.isSafeInteger(after.courseId)) {
+    return { actionText: '建立課程補單草稿', detailText: amountText }
+  }
+
   if (before?.status === TUITION_BILL_STATUS.DRAFT && after?.status === TUITION_BILL_STATUS.ISSUED) {
     const skippedCount = Array.isArray(after.skippedLeaveCredits) ? after.skippedLeaveCredits.length : 0
     return {
@@ -409,6 +413,7 @@ const tuitionController = {
       statusText: bill.status === TUITION_BILL_STATUS.VOID
         ? (bill.issuedAt == null ? '已捨棄草稿' : '已作廢')
         : (bill.status === TUITION_BILL_STATUS.DRAFT ? '草稿' : getTuitionBillPaymentStatusText(bill.paymentStatus)),
+      isSupplement: bill.SupplementCourseId != null,
       totalText: money(bill.totalAmount),
       remainingText: bill.status === TUITION_BILL_STATUS.ISSUED
         ? money(bill.paymentStatus?.ok ? bill.paymentStatus.remainingAmount : null)
@@ -485,13 +490,34 @@ const tuitionController = {
     }))
 
     const hasLeaveReviewForm = leaveRows.some(row => row.canReview)
-    const canCreateDraft = hasSubtotal && activeBills.length === 0
+    const canCreateDraft = hasSubtotal && billsResult.ok && !activeBills.some(bill => !bill.isSupplement)
+    const supplement = result.ok && summary?.issuedCount > 0
+      ? await tuitionService.getSupplementalTuitionOptions({ ...input, preview: result })
+      : null
+    const draftCourses = new Set(activeBills
+      .filter(bill => bill.isSupplement && bill.status === TUITION_BILL_STATUS.DRAFT)
+      .map(bill => bill.SupplementCourseId))
+    const supplementOptions = (supplement?.options ?? [])
+      .filter(entry => !draftCourses.has(entry.course.id))
+      .map(entry => ({
+        id: entry.course.id, name: entry.course.name, type: entry.course.type,
+        quantity: entry.quantity, totalText: money(entry.baseAmount)
+      }))
 
-    if (canCreateDraft || hasLeaveReviewForm) {
+    if (canCreateDraft || hasLeaveReviewForm || supplementOptions.length > 0) {
       req.session.tuitionFormToken ??= createSessionFormToken()
     }
 
     const draftFormToken = canCreateDraft ? req.session.tuitionFormToken : null
+    const supplementPanel = supplement && {
+      action: `/cramschool/tuition/students/${studentId}/bills/supplement`,
+      billingMonth,
+      page: navigation.get('page'),
+      status: navigation.get('status'),
+      options: supplementOptions,
+      requiresReview: !supplement.ok || supplement.requiresReview,
+      formToken: supplementOptions.length > 0 ? req.session.tuitionFormToken : null
+    }
 
     const leaveReviewPanel = leaveData && {
       ...leaveData,
@@ -511,6 +537,7 @@ const tuitionController = {
       hasSubtotal,
       activeBills,
       monthSummary,
+      supplementPanel,
       voidedBills,
       draftFormToken,
       draftAction: `/cramschool/tuition/students/${studentId}/bills/draft`,
@@ -595,6 +622,8 @@ const tuitionController = {
       const errors = {
         DRAFT_REQUIRES_REVIEW: '有課程還無法試算，請核對後再儲存草稿。',
         NO_COURSES_IN_BILLING_MONTH: '本月沒有可儲存的課程明細。',
+        NO_UNBILLED_COURSE_FEES: '本月沒有尚未出帳的課程費用。',
+        ISSUED_COURSE_FEES_REQUIRE_REVIEW: '既有帳單的課程明細需要核對。',
         INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
         UTC_TIMEZONE_REQUIRED: '系統時間設定異常，暫時無法儲存。',
         STUDENT_NOT_FOUND: '找不到學生。',
@@ -613,9 +642,45 @@ const tuitionController = {
 
     req.flash(
       'success_messages',
-      result.created ? '已儲存帳單草稿。' : '本月已有帳單，已開啟原單。'
+      result.created ? '已儲存帳單草稿。' : '本月已有主帳單，已開啟原單。'
     )
 
+    return res.redirect(303, `/cramschool/tuition/bills/${result.bill.id}`)
+  },
+
+  createSupplementalTuitionBillDraft: async (req, res) => {
+    const { courseId: rawCourseId, billingMonth, tuitionFormToken, page, status } = req.body ?? {}
+    if (!isValidSessionFormToken(tuitionFormToken, req.session?.tuitionFormToken)) {
+      return res.status(403).send('表單已失效，請重新開啟月度總覽再試。')
+    }
+
+    const parseId = value => typeof value === 'string' && /^[1-9]\d*$/.test(value) ? Number(value) : NaN
+    const studentId = parseId(req.params.studentId)
+    const courseId = parseId(rawCourseId)
+    if (![studentId, courseId].every(Number.isSafeInteger) ||
+        typeof billingMonth !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)) {
+      return res.status(400).send('學生、課程或計費月份不正確。')
+    }
+
+    const result = await tuitionService.createSupplementalTuitionBillDraft({
+      studentId, billingMonth, courseId, actorId: req.user.id
+    })
+    if (!result.ok) {
+      const errors = {
+        SUPPLEMENT_REQUIRES_ISSUED_BILL: '本月尚未正式出帳，請先使用主帳單草稿。',
+        NO_COURSES_IN_BILLING_MONTH: '這位學生本月沒有選修這門課。',
+        NO_UNBILLED_COURSE_FEES: '這門課本月沒有尚未出帳的費用或堂次。',
+        ISSUED_COURSE_FEES_REQUIRE_REVIEW: '既有帳單的課程明細需要核對，暫時不能補開。',
+        DRAFT_REQUIRES_REVIEW: '這門課的選課或計費資料需要核對。',
+        INVALID_AMOUNT: '應收金額超出可儲存的範圍。'
+      }
+      req.flash('error_messages', errors[result.code] ?? '目前無法補開帳單。')
+      const target = withQuery(`/cramschool/tuition/students/${studentId}/preview`,
+        getTuitionNavigationParams({ billingMonth, page, status }))
+      return res.redirect(303, target + '#course-supplement-heading')
+    }
+
+    req.flash('success_messages', result.created ? '已建立課程補單草稿。' : '已開啟現有課程補單草稿。')
     return res.redirect(303, `/cramschool/tuition/bills/${result.bill.id}`)
   },
 
@@ -986,6 +1051,7 @@ const tuitionController = {
       INVALID_PAYMENT_AMOUNT: '原帳單的收款金額需要核對。',
       PAYMENT_TOTAL_EXCEEDS_BILL: '原帳單的收款超過帳單金額，請先核對。',
       CREDIT_SOURCE_CHANGED: '折抵來源已變動，請重新核對。',
+      LEAVE_CREDIT_COURSE_MISMATCH: '這份補單只能加入同一門課的請假折抵。',
       INVALID_BILL_AMOUNT: '帳單金額需要核對。',
       CREDIT_EXCEEDS_DRAFT_TOTAL: '折抵金額超過目前草稿總額。',
       LEAVE_CREDIT_VALIDATION_FAILED: '折抵明細未通過資料檢查。'
@@ -1232,7 +1298,9 @@ const tuitionController = {
       BILL_HAS_NO_ITEMS: '帳單沒有明細，暫時不能出帳。',
       INVALID_BILL_AMOUNT: '帳單明細的金額需要核對。',
       DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不一致，請先核對。',
-      DRAFT_COURSE_FEES_REQUIRE_REVIEW: '草稿的課程明細已變動或無法核對，請回到同月合併預覽查看最新試算。',
+      DRAFT_COURSE_FEES_REQUIRE_REVIEW: '草稿的課程明細已變動或無法核對，請更新草稿後再試。',
+      NO_UNBILLED_COURSE_FEES: '本張課程費已出帳或不再適用，請核對後捨棄草稿。',
+      SUPPLEMENT_REQUIRES_ISSUED_BILL: '本月已無正式帳單，請先核對主帳單。',
       DISCOUNT_REQUIRES_REVIEW: '草稿裡有帳單折扣需要核對，暫時不能出帳。',
       LEAVE_REVIEW_UNAVAILABLE: '目前無法核對上月請假，暫時不能出帳。',
       LEAVE_CREDIT_REQUIRES_REVIEW: '草稿裡有折抵需要重新核對，暫時不能出帳。',
@@ -1300,7 +1368,10 @@ const tuitionController = {
       DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不符，請先核對。',
       INVALID_BILLING_MONTH: '帳單的計費月份需要核對。',
       UTC_TIMEZONE_REQUIRED: '系統時間設定異常，暫時無法更新。',
-      DRAFT_REQUIRES_REVIEW: '仍有課程資料待核對，請回到同月合併預覽確認。',
+      DRAFT_REQUIRES_REVIEW: '仍有課程資料待核對，請回到月度總覽確認。',
+      NO_UNBILLED_COURSE_FEES: '已無未計費的課程費，請核對後捨棄草稿。',
+      ISSUED_COURSE_FEES_REQUIRE_REVIEW: '既有帳單的課程明細需要核對。',
+      SUPPLEMENT_REQUIRES_ISSUED_BILL: '本月已無正式帳單，請先核對主帳單。',
       NO_COURSES_IN_BILLING_MONTH: '本月沒有可建立明細的課程，草稿未更新。',
       COURSE_NAME_UNCONFIRMED: '課程名稱需要核對，草稿未更新。',
       INVALID_AMOUNT: '更新後的金額超出可儲存範圍，草稿未更新。',
