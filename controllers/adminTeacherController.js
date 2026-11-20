@@ -5,7 +5,7 @@ const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const pageLimit = 12
 
 const adminTeacherController = {
-  getTeachers: async (req, res) => {
+  getTeacherListPage: async (req, res) => {
     const page = Number(req.query.page || 1)
     const status = req.query.status
       ? Number(req.query.status)
@@ -58,8 +58,8 @@ const adminTeacherController = {
     })
   },
 
-  getTeacher: async (req, res) => {
-    const teacherId = Number(req.params.id)
+  getTeacherDetailsPage: async (req, res) => {
+    const teacherId = Number(req.params.teacherId)
 
     if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
       return res.status(400).send('教師 ID 必須是正整數')
@@ -76,8 +76,8 @@ const adminTeacherController = {
     })
   },
 
-  editTeacher: async (req, res) => {
-    const teacherId = Number(req.params.id)
+  getEditTeacherPage: async (req, res) => {
+    const teacherId = Number(req.params.teacherId)
 
     if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
       return res.status(400).send('教師 ID 必須是正整數')
@@ -104,7 +104,7 @@ const adminTeacherController = {
   },
 
   updateTeacher: async (req, res) => {
-    const teacherId = Number(req.params.id)
+    const teacherId = Number(req.params.teacherId)
 
     if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
       return res.status(400).send('教師 ID 必須是正整數')

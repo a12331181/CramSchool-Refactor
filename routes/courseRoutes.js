@@ -1,11 +1,11 @@
 const { Router } = require('express')
 const { authenticated } = require('../middlewares/auth')
-const schoolController = require('../controllers/schoolController')
+const courseController = require('../controllers/courseController')
 
 const router = Router()
 
-router.get('/', authenticated, schoolController.getCourses)
-router.get('/:id/calendar', authenticated, schoolController.getCourse)
-router.get('/:id/enrolledstudents', authenticated, schoolController.getCourseEnrolledStudents)
+router.get('/', authenticated, courseController.getCourseListPage)
+router.get('/:courseId/calendar', authenticated, courseController.getCourseCalendarPage)
+router.get('/:courseId/enrolledstudents', authenticated, courseController.getCourseStudentsPage)
 
 module.exports = router

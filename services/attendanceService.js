@@ -37,7 +37,7 @@ function getVisibleSessionJoin(viewer) {
   }
 }
 
-async function getAttendanceHomeData({ userId }) {
+async function getAttendanceHome({ userId }) {
   const viewer = await getAttendanceViewer(userId)
   if (!viewer) return { courses: [], isAdmin: false }
 
@@ -90,7 +90,7 @@ async function getCourseAttendanceSessions({ courseId, userId, month, status, pa
   return { ok: true, course, rows, count, isAdmin: viewer.isAdmin }
 }
 
-async function getAttendStudentsData({ courseId, calendarId, userId }) {
+async function getAttendanceRoster({ courseId, calendarId, userId }) {
    const user = await User.findByPk(userId, {
     attributes: ['id', 'isAdmin'],
     raw: true
@@ -231,7 +231,7 @@ async function getAttendStudentsData({ courseId, calendarId, userId }) {
   }
 }
 
-async function createAttend({
+async function recordAttendance({
   courseId, calendarId, studentId, userId, calendarStartAt, calendarEndAt, status, reason = ''
 }) {
   if (
@@ -394,7 +394,7 @@ async function createAttend({
   }
 }
 
-async function updateAttend({
+async function updateAttendance({
   courseId, calendarId, studentId, attendId, attendVersion, userId,
   calendarStartAt, calendarEndAt, status, reason = '', correctionReason
 }) {
@@ -601,7 +601,7 @@ async function updateAttend({
   })
 }
 
-async function getAttendHistoryData({
+async function getAttendanceHistory({
   courseId, calendarId, studentId, userId
 }) {
     const user = await User.findByPk(userId, {
@@ -694,10 +694,10 @@ async function getAttendHistoryData({
 }
 
 module.exports = { 
-  getAttendanceHomeData,
+  getAttendanceHome,
   getCourseAttendanceSessions,
-  getAttendStudentsData,
-  createAttend,
-  updateAttend,
-  getAttendHistoryData
+  getAttendanceRoster,
+  recordAttendance,
+  updateAttendance,
+  getAttendanceHistory
 }

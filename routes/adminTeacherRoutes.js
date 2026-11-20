@@ -6,22 +6,22 @@ const router = express.Router()
 router.use(authenticatedAdmin)
 
 router.get(
-  '/', 
-  adminTeacherController.getTeachers
+  '/',
+  adminTeacherController.getTeacherListPage
 )
 
 router.get(
-  '/:id', 
-  adminTeacherController.getTeacher
+  '/:teacherId',
+  adminTeacherController.getTeacherDetailsPage
 )
 
 router.get(
-  '/:id/edit', 
-  adminTeacherController.editTeacher
+  '/:teacherId/edit',
+  adminTeacherController.getEditTeacherPage
 )
 
 router.put(
-  '/:id', 
+  '/:teacherId',
   adminTeacherController.updateTeacher
 )
 

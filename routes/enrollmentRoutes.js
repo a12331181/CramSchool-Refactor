@@ -6,8 +6,8 @@ const router = express.Router()
 router.use(authenticatedAdmin)
 
 router.get(
-  '/:id/enrolls',
-  enrollmentController.enrollCoursePage
+  '/:studentId/enrolls',
+  enrollmentController.getEnrollmentPage
 )
 
 router.post(

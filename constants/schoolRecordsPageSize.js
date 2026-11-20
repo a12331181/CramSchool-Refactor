@@ -1,0 +1,3 @@
+const SCHOOL_RECORDS_PAGE_SIZE = 10
+
+module.exports = SCHOOL_RECORDS_PAGE_SIZE

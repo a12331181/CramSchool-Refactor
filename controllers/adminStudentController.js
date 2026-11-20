@@ -5,7 +5,7 @@ const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const pageLimit = 12
 
 const adminStudentController = {
-  getStudents: async (req, res) => {
+  getStudentListPage: async (req, res) => {
     const page = Number(req.query.page || 1)
     const courseId = req.query.courseId
       ? Number(req.query.courseId)
@@ -82,7 +82,7 @@ const adminStudentController = {
     })
   },
 
-  postStudent: async (req, res) => {
+  createStudent: async (req, res) => {
     let uploadedImage
     let createCompleted = false
 
@@ -131,8 +131,8 @@ const adminStudentController = {
     }
   },
 
-  getStudent: async (req, res) => {
-    const studentId = Number(req.params.id)
+  getStudentDetailsPage: async (req, res) => {
+    const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
       return res.status(400).send('學生 ID 必須是正整數')
@@ -151,7 +151,7 @@ const adminStudentController = {
     })
   },
 
-  editStudent: async (req, res) => {
+  getEditStudentPage: async (req, res) => {
     const sexList = [
       { id: 1, sex: '男' },
       { id: 2, sex: '女' },
@@ -172,7 +172,7 @@ const adminStudentController = {
       { id: 9, grade: '九年級' },
       { id: 10, grade: '其他' },
     ]
-    const studentId = Number(req.params.id)
+    const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
       return res.status(400).send('學生 ID 必須是正整數')
@@ -194,12 +194,12 @@ const adminStudentController = {
     })
   },
 
-  putStudent: async (req, res) => {
+  updateStudent: async (req, res) => {
     let uploadedImage
     let updateCompleted = false
 
     try {
-      const studentId = Number(req.params.id)
+      const studentId = Number(req.params.studentId)
 
       if (!Number.isSafeInteger(studentId) || studentId < 1) {
         return res.status(400).send('學生 ID 必須是正整數')
@@ -260,7 +260,7 @@ const adminStudentController = {
   },
 
   deleteStudent: async (req, res) => {
-    const studentId = Number(req.params.id)
+    const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
       return res.status(400).send('學生 ID 必須是正整數')

@@ -5,7 +5,7 @@ const pageLimit = 12
 
 const adminCourseController = {
 // 課程相關程式碼
-  getCourses: async (req, res) => {
+  getCourseListPage: async (req, res) => {
     const page = Number(req.query.page || 1)
 
     if (
@@ -56,7 +56,7 @@ const adminCourseController = {
     })
   },
 
-  postCourse: async (req, res) => {
+  createCourse: async (req, res) => {
     const body = req.body ?? {}
     const numericFields = ['price', 'teacherId']
 
@@ -94,8 +94,8 @@ const adminCourseController = {
     return res.redirect('/admin/courses')
   },
 
-  editCourse: async (req, res) => {
-    const courseId = Number(req.params.id)
+  getEditCoursePage: async (req, res) => {
+    const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
       return res.status(400).send('課程 ID 必須是正整數')
@@ -123,8 +123,8 @@ const adminCourseController = {
     })
   },
 
-  putCourse: async (req, res) => {
-    const courseId = Number(req.params.id)
+  updateCourse: async (req, res) => {
+    const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
       return res.status(400).send('課程 ID 必須是正整數')
@@ -187,7 +187,7 @@ const adminCourseController = {
   },
 
   deleteCourse: async (req, res) => {
-    const courseId = Number(req.params.id)
+    const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
       return res.status(400).send('課程 ID 必須是正整數')
@@ -220,7 +220,7 @@ const adminCourseController = {
   },
 
   closeCourse: async (req, res) => {
-    const courseId = Number(req.params.id)
+    const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
       return res.status(400).send('課程 ID 必須是正整數')
@@ -247,7 +247,7 @@ const adminCourseController = {
   },
 
   openCourse: async (req, res) => {
-    const courseId = Number(req.params.id)
+    const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
       return res.status(400).send('課程 ID 必須是正整數')

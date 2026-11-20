@@ -2,7 +2,7 @@ const userService = require('../services/userService')
 const imageStorage = require('../utils/imageStorage')
 
 const userController = {
-  signUpPage: (req, res) => {
+  getSignUpPage: (req, res) => {
     return res.render('account/sign-up')
   },
 
@@ -43,7 +43,7 @@ const userController = {
     return res.redirect(303, '/signin')
   },
 
-  signInPage: (req, res) => {
+  getSignInPage: (req, res) => {
     return res.render('account/sign-in')
   },
 
@@ -62,8 +62,8 @@ const userController = {
       return res.redirect('/signin')
     })
   },
-  getUser: async (req, res) => {
-    const userId = Number(req.params.id)
+  getUserProfilePage: async (req, res) => {
+    const userId = Number(req.params.userId)
     if (!Number.isSafeInteger(userId) || userId < 1) return res.redirect('/cramschool/teachers')
 
     const result = await userService.getTeacherProfile(userId)
@@ -73,7 +73,7 @@ const userController = {
   },
 
   getEditUserPage: async (req, res) => {
-    if (req.user.id !== Number(req.params.id)) return res.redirect(`/users/${req.user.id}`)
+    if (req.user.id !== Number(req.params.userId)) return res.redirect(`/users/${req.user.id}`)
 
     const user = await userService.getEditableTeacherProfile(req.user.id)
     if (!user) return res.redirect('/cramschool/teachers')
@@ -81,12 +81,12 @@ const userController = {
     return res.render('account/edit-profile', { user })
   },
 
-  putUser: async (req, res) => {
+  updateUserProfile: async (req, res) => {
     let uploadedImage
     let updated = false
 
     try {
-      if (req.user.id !== Number(req.params.id)) return res.redirect(303, `/users/${req.user.id}`)
+      if (req.user.id !== Number(req.params.userId)) return res.redirect(303, `/users/${req.user.id}`)
 
       if (req.file) {
         uploadedImage = await imageStorage.saveImage({

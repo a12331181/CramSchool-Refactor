@@ -1,10 +1,10 @@
 const { Router } = require('express')
 const { authenticatedAdmin } = require('../middlewares/auth')
-const adminController = require('../controllers/adminController')
+const adminUserController = require('../controllers/adminUserController')
 
 const router = Router()
 
-router.get('/', authenticatedAdmin, adminController.getUsers)
-router.put('/:id/toggleAdmin', authenticatedAdmin, adminController.toggleAdmin )
+router.get('/', authenticatedAdmin, adminUserController.getUserListPage)
+router.put('/:userId/toggleAdmin', authenticatedAdmin, adminUserController.toggleUserAdmin )
 
 module.exports = router

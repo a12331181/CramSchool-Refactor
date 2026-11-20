@@ -11,7 +11,7 @@ router.use(authenticatedAdmin)
 
 router.get(
   '/',
-  adminStudentController.getStudents
+  adminStudentController.getStudentListPage
 )
 
 router.get(
@@ -22,27 +22,27 @@ router.get(
 router.post(
   '/',
   upload.single('image'),
-  adminStudentController.postStudent
+  adminStudentController.createStudent
 )
 
 router.get(
-  '/:id',
-  adminStudentController.getStudent
+  '/:studentId',
+  adminStudentController.getStudentDetailsPage
 )
 
 router.get(
-  '/:id/edit',
-  adminStudentController.editStudent
+  '/:studentId/edit',
+  adminStudentController.getEditStudentPage
 )
 
 router.put(
-  '/:id',
+  '/:studentId',
   upload.single('image'),
-  adminStudentController.putStudent
+  adminStudentController.updateStudent
 )
 
 router.delete(
-  '/:id',
+  '/:studentId',
   adminStudentController.deleteStudent
 )
 

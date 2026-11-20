@@ -92,8 +92,8 @@ const adminCalendarController = {
     return renderBatchForm(req, res, form, { status, error, body, conflictDates: result.conflictDates })
   },
 
-  getCourseCalendar: async (req, res) => {
-    const courseId = Number(req.params.id)
+  getCourseCalendarPage: async (req, res) => {
+    const courseId = Number(req.params.courseId)
     const page = Number(req.query.page || 1)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
@@ -293,7 +293,7 @@ const adminCalendarController = {
 
   completeCourseSession: async (req, res) => {
     const courseId = Number(req.params.courseId)
-    const calendarId = Number(req.params.calendarId)
+    const calendarId = Number(req.params.sessionId)
 
     if (
       ![courseId, calendarId]
@@ -358,7 +358,7 @@ const adminCalendarController = {
 
   cancelCourseSession: async (req, res) => {
     const courseId = Number(req.params.courseId)
-    const calendarId = Number(req.params.calendarId)
+    const calendarId = Number(req.params.sessionId)
     const result = await calendarService.cancelCourseSession(courseId, calendarId)
 
     if (['INVALID_COURSE_ID', 'INVALID_CALENDAR_ID'].includes(result.code)) {

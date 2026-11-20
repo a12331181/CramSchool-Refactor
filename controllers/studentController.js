@@ -3,7 +3,7 @@ const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const pageLimit = 12
 
 const studentController = {
-  getStudents: async (req, res) => {
+  getStudentListPage: async (req, res) => {
     const requestedPage = Number(req.query.page || 1)
 
     const requestedCourseId = req.query.courseId
@@ -56,8 +56,8 @@ const studentController = {
     })
   },
 
-  getStudent: async (req, res) => {
-    const result = await studentService.getStudentDetails(req.params.id)
+  getStudentDetailsPage: async (req, res) => {
+    const result = await studentService.getStudentDetails(req.params.studentId)
 
     if (!result) {
      return res.redirect('/cramschool/students')
@@ -66,7 +66,7 @@ const studentController = {
     return res.render('students/detail', result)
   },
 
-  getStudentAttendanceHistory: async (req, res) => {
+  getStudentAttendanceHistoryPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const studentId = Number(req.params.studentId)
     if (![courseId, studentId].every(id => Number.isSafeInteger(id) && id > 0)) {

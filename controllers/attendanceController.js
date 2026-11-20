@@ -1,4 +1,4 @@
-const attendService = require('../services/attendService')
+const attendanceService = require('../services/attendanceService')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
 const ATTEND_STATUS = require('../constants/attendStatus')
@@ -8,14 +8,14 @@ const { getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const SESSION_PAGE_SIZE = 20
 
-const attendController = {
-  getAttendanceHome: async (req, res) => {
-    const data = await attendService.getAttendanceHomeData({ userId: req.user.id })
+const attendanceController = {
+  getAttendanceHomePage: async (req, res) => {
+    const data = await attendanceService.getAttendanceHome({ userId: req.user.id })
     res.set('Cache-Control', 'no-store')
     return res.render('attendance/index', data)
   },
 
-  getCourseAttendanceSessions: async (req, res) => {
+  getCourseAttendanceSessionsPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
       return res.status(400).send('課程 ID 必須是正整數。')
@@ -31,7 +31,7 @@ const attendController = {
     }
 
     const { month = '', status = '' } = req.query
-    const result = await attendService.getCourseAttendanceSessions({
+    const result = await attendanceService.getCourseAttendanceSessions({
       courseId, userId: req.user.id, month, status, page, pageSize: SESSION_PAGE_SIZE
     })
     res.set('Cache-Control', 'no-store')
@@ -70,7 +70,7 @@ const attendController = {
     })
   },
 
-  getAttendStudents: async (req, res) => {
+  getAttendanceRosterPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const calendarId = Number(req.params.calendarId)
 
@@ -81,7 +81,7 @@ const attendController = {
       return res.status(400).send('課程與課堂 ID 必須是正整數')
     }
 
-    const result = await attendService.getAttendStudentsData({
+    const result = await attendanceService.getAttendanceRoster({
       courseId,
       calendarId,
       userId: req.user.id
@@ -129,7 +129,7 @@ const attendController = {
     })
   },
 
-  createAttend: async (req, res) => {
+  recordAttendance: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const calendarId = Number(req.params.calendarId)
     const studentId = Number(req.params.studentId)
@@ -142,7 +142,7 @@ const attendController = {
       return res.status(400).send('課程、課堂、學生或時間格式不正確')
     }
 
-    const result = await attendService.createAttend({
+    const result = await attendanceService.recordAttendance({
       courseId,
       calendarId,
       studentId,
@@ -176,7 +176,7 @@ const attendController = {
     )
   },
 
-  updateAttend: async (req, res) => {
+  updateAttendance: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const calendarId = Number(req.params.calendarId)
     const studentId = Number(req.params.studentId)
@@ -197,7 +197,7 @@ const attendController = {
       return res.status(400).send('課程、課堂、學生或點名版本格式不正確')
     }
 
-    const result = await attendService.updateAttend({
+    const result = await attendanceService.updateAttendance({
       courseId,
       calendarId,
       studentId,
@@ -238,7 +238,7 @@ const attendController = {
     )
   },
 
-  getAttendHistory: async (req, res) => {
+  getAttendanceHistoryPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const calendarId = Number(req.params.calendarId)
     const studentId = Number(req.params.studentId)
@@ -250,7 +250,7 @@ const attendController = {
       return res.status(400).send('課程、課堂與學生 ID 必須是正整數')
     }
 
-    const result = await attendService.getAttendHistoryData({
+    const result = await attendanceService.getAttendanceHistory({
       courseId,
       calendarId,
       studentId,
@@ -294,4 +294,4 @@ const attendController = {
   },
 }
 
-module.exports = attendController
+module.exports = attendanceController

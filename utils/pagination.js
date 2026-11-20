@@ -32,7 +32,16 @@ function getPaginationLinks(pagination, pageUrl) {
   }
 }
 
+function getPageOffset(value, pageSize) {
+  const page = Number(value || 1)
+  if (!Number.isSafeInteger(page) || page < 1) return null
+
+  const offset = (page - 1) * pageSize
+  return Number.isSafeInteger(offset) ? { page, offset } : null
+}
+
 module.exports = {
   getPagination,
-  getPaginationLinks
+  getPaginationLinks,
+  getPageOffset
 }

@@ -1,8 +1,8 @@
 const enrollmentService = require('../services/enrollmentService')
 
 const enrollmentController = {
-  enrollCoursePage: async (req, res) => {
-    const studentId = Number(req.params.id)
+  getEnrollmentPage: async (req, res) => {
+    const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
       return res.status(400).send('學生 ID 必須是正整數')
