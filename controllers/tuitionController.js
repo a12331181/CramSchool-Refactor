@@ -7,6 +7,7 @@ const { createSessionFormToken, isValidSessionFormToken } = require('../utils/se
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
+const COURSE_PAYMENT_REVIEW = require('../constants/coursePaymentReview')
 const REFUND_MESSAGES = require('../constants/tuitionRefundMessages')
 
 const COURSE_COLLECTION_LABELS = {
@@ -45,6 +46,12 @@ function withQuery(path, params) {
 
 function getTuitionBillPaymentStatusText(paymentStatus) {
   return STUDENT_TUITION_STATUS[tuitionService.getTuitionBillPaymentState(paymentStatus)]
+}
+
+function getCoursePaymentStatusText(coursePayment) {
+  if (coursePayment?.code === COURSE_PAYMENT_REVIEW.REFUND_UNASSIGNED) return '整單退費待核對'
+  if (coursePayment?.code === COURSE_PAYMENT_REVIEW.PAYMENT_UNASSIGNED) return '分項收款待核對'
+  return getTuitionBillPaymentStatusText(coursePayment)
 }
 
 function buildTuitionPaymentNotice(bill, paymentStatus) {
@@ -1033,15 +1040,16 @@ const tuitionController = {
 
     const monthQuery = new URLSearchParams({ billingMonth })
     const historyQuery = getTuitionNavigationParams({ billingMonth, page })
-    const rows = result.rows.map(({ studentId, student, bill, enrollmentNeedsReview, hasCourseFee, courseAmount, paymentStatus }) => {
-      const hasCourseAmount = Number.isSafeInteger(courseAmount)
-      const hasRemainingAmount = hasCourseAmount && bill?.status === TUITION_BILL_STATUS.ISSUED && paymentStatus?.ok === true
+    const rows = result.rows.map(({ studentId, student, bill, enrollmentNeedsReview, hasCourseFee, courseAmount, coursePayment }) => {
+      const isIssuedForCourse = hasCourseFee && bill?.status === TUITION_BILL_STATUS.ISSUED
+      const hasAmount = Number.isSafeInteger(courseAmount) && courseAmount >= 0
+      const amountText = amount => `NT$ ${amountFormat.format(amount)}`
       let statusText = '未開單'
 
-      if (hasCourseFee && !hasCourseAmount) {
-        statusText = '本課金額待核對'
-      } else if (hasCourseFee) {
-        statusText = bill.status === TUITION_BILL_STATUS.DRAFT ? '草稿' : getTuitionBillPaymentStatusText(paymentStatus)
+      if (hasCourseFee) {
+        statusText = isIssuedForCourse
+          ? getCoursePaymentStatusText(coursePayment)
+          : hasAmount ? '草稿' : '本課金額待核對'
       } else if (bill) {
         statusText = bill.status === TUITION_BILL_STATUS.DRAFT ? '草稿未含本課' : '帳單未含本課'
       } else if (!student) {
@@ -1053,10 +1061,9 @@ const tuitionController = {
       return {
         studentName: student?.name ?? bill?.studentNameSnapshot ?? `學生 #${studentId}`,
         statusText,
-        hasCourseAmount,
-        courseAmount,
-        hasRemainingAmount,
-        remainingAmount: hasRemainingAmount ? paymentStatus.remainingAmount : null,
+        amountText: hasAmount ? amountText(courseAmount) : hasCourseFee ? '待核對' : '—',
+        receivedText: !isIssuedForCourse ? '—' : coursePayment?.ok ? amountText(coursePayment.paidAmount) : '待核對',
+        remainingText: !isIssuedForCourse ? '—' : coursePayment?.ok ? amountText(coursePayment.remainingAmount) : '待核對',
         billUrl: bill ? `/cramschool/tuition/bills/${bill.id}` : null,
         historyUrl: student
           ? withQuery(`/cramschool/tuition/courses/${courseId}/students/${studentId}`, historyQuery)

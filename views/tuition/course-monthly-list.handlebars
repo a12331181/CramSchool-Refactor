@@ -8,18 +8,19 @@
 <p class="alert alert-warning">{{errorMessage}}</p>
 {{else}}
 <p class="text-muted">
-  顯示已選取月份之學生收費狀態。
+  正式帳單顯示分攤折扣與折抵後的本課金額。草稿顯示本課原價，尚未形成應收。
 </p>
-<p>共 {{totalCount}} 位在學學生</p>
+<p>共 {{totalCount}} 位學生</p>
 
 <div class="table-responsive">
   <table class="table table-bordered">
     <thead>
       <tr class="table-secondary">
         <th scope="col">學生姓名</th>
-        <th scope="col">費用金額</th>
+        <th scope="col">本課金額</th>
+        <th scope="col">本課已收</th>
+        <th scope="col">本課未收</th>
         <th scope="col">帳單／收款狀態</th>
-        <th scope="col">整張帳單未收</th>
         <th scope="col">明細</th>
       </tr>
     </thead>
@@ -27,9 +28,10 @@
       {{#each rows}}
       <tr>
         <th scope="row">{{studentName}}</th>
-        <td>{{#if hasCourseAmount}}NT$ {{courseAmount}}{{else}}—{{/if}}</td>
+        <td>{{amountText}}</td>
+        <td>{{receivedText}}</td>
+        <td>{{remainingText}}</td>
         <td>{{statusText}}</td>
-        <td>{{#if hasRemainingAmount}}NT$ {{remainingAmount}}{{else}}—{{/if}}</td>
         <td>
           {{#if billUrl}}<a class="mr-2" href="{{billUrl}}">查看帳單</a>{{/if}}
           {{#if previewUrl}}<a class="mr-2" href="{{previewUrl}}">帳單草稿</a>{{/if}}
@@ -37,7 +39,7 @@
         </td>
       </tr>
       {{else}}
-      <tr><td colspan="5">本月沒有選課或有效帳單紀錄。</td></tr>
+      <tr><td colspan="6">本月沒有選課或有效帳單紀錄。</td></tr>
       {{/each}}
     </tbody>
   </table>

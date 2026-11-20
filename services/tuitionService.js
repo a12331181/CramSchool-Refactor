@@ -521,7 +521,7 @@ async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) 
   return { ok: true, rows }
 }
 
-async function getActiveTuitionBillsForStudents(studentIds, billingMonth) {
+async function getActiveTuitionBillsForStudents(studentIds, billingMonth, transaction) {
   if (studentIds.length === 0) return []
 
   return TuitionBill.findAll({
@@ -531,7 +531,8 @@ async function getActiveTuitionBillsForStudents(studentIds, billingMonth) {
       billingMonth,
       status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] }
     },
-    raw: true
+    raw: true,
+    transaction
   })
 }
 
@@ -687,14 +688,18 @@ function getMonthlyCourseTuitionSources({ courseIds, billingMonth }, transaction
   ])
 }
 
+function readTuitionReport(read) {
+  return sequelize.transaction({
+    isolationLevel: Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
+    readOnly: true
+  }, read)
+}
+
 async function getCoursePaymentOverview({ billingMonth } = {}) {
   const range = getTaipeiMonthRange(billingMonth)
   if (!range) return { ok: false, code: 'INVALID_BILLING_MONTH' }
 
-  return sequelize.transaction({
-    isolationLevel: Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
-    readOnly: true
-  }, async transaction => {
+  return readTuitionReport(async transaction => {
     const courses = await Course.findAll({
       attributes: ['id', 'name'],
       where: { isActive: true },
@@ -781,72 +786,79 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
     return { ok: false, code: 'INVALID_PAGE' }
   }
 
-  const course = await Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true })
-  if (!course) return { ok: false, code: 'COURSE_NOT_FOUND' }
+  return readTuitionReport(async transaction => {
+    const course = await Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true, transaction })
+    if (!course) return { ok: false, code: 'COURSE_NOT_FOUND' }
 
-  const [enrollments, courseFeeItems] = await getMonthlyCourseTuitionSources({
-    courseIds: [courseId],
-    billingMonth
-  })
+    const [enrollments, courseFeeItems] = await getMonthlyCourseTuitionSources({
+      courseIds: [courseId],
+      billingMonth
+    }, transaction)
 
-  const studentIds = new Set()
-  const enrollmentReviewIds = new Set()
-  for (const enrollment of enrollments) {
-    const { StudentId: studentId } = enrollment
-    if (!Number.isSafeInteger(studentId) || studentId < 1) continue
+    const studentIds = new Set()
+    const enrollmentReviewIds = new Set()
+    for (const enrollment of enrollments) {
+      const { StudentId: studentId } = enrollment
+      if (!Number.isSafeInteger(studentId) || studentId < 1) continue
 
-    const state = getTuitionEnrollmentStateForMonth(enrollment, range)
-    if (state === 'outside_month') continue
+      const state = getTuitionEnrollmentStateForMonth(enrollment, range)
+      if (state === 'outside_month') continue
 
-    studentIds.add(studentId)
-    if (state === 'requires_review') enrollmentReviewIds.add(studentId)
-  }
-
-  const courseFeesByBillId = new Map()
-  for (const item of courseFeeItems) {
-    studentIds.add(item.TuitionBill.StudentId)
-    const amounts = courseFeesByBillId.get(item.TuitionBillId) ?? []
-    amounts.push(item.amount)
-    courseFeesByBillId.set(item.TuitionBillId, amounts)
-  }
-
-  const offset = (page - 1) * pageSize
-  const pageStudentIds = [...studentIds].sort((a, b) => a - b).slice(offset, offset + pageSize)
-  if (pageStudentIds.length === 0) {
-    return { ok: true, course, rows: [], totalCount: studentIds.size }
-  }
-
-  const [students, bills] = await Promise.all([
-    Student.findAll({
-      attributes: ['id', 'name'],
-      where: { id: { [Op.in]: pageStudentIds } },
-      raw: true
-    }),
-    getActiveTuitionBillsForStudents(pageStudentIds, billingMonth)
-  ])
-  const studentsById = new Map(students.map(student => [student.id, student]))
-  const billsByStudentId = new Map(bills.map(bill => [bill.StudentId, bill]))
-  const paymentStatuses = await getIssuedTuitionBillPaymentStatuses(
-    bills.filter(bill => courseFeesByBillId.has(bill.id))
-  )
-
-  const rows = pageStudentIds.map(studentId => {
-    const student = studentsById.get(studentId) ?? null
-    const bill = billsByStudentId.get(studentId) ?? null
-    const amounts = courseFeesByBillId.get(bill?.id) ?? []
-
-    return {
-      studentId,
-      student,
-      bill,
-      enrollmentNeedsReview: enrollmentReviewIds.has(studentId),
-      hasCourseFee: amounts.length > 0,
-      courseAmount: sumCourseFeeAmounts(amounts),
-      paymentStatus: paymentStatuses.get(bill?.id) ?? null
+      studentIds.add(studentId)
+      if (state === 'requires_review') enrollmentReviewIds.add(studentId)
     }
-  })
 
-  return { ok: true, course, rows, totalCount: studentIds.size }
+    const courseFeesByBillId = new Map()
+    for (const item of courseFeeItems) {
+      studentIds.add(item.TuitionBill.StudentId)
+      const amounts = courseFeesByBillId.get(item.TuitionBillId) ?? []
+      amounts.push(item.amount)
+      courseFeesByBillId.set(item.TuitionBillId, amounts)
+    }
+
+    const offset = (page - 1) * pageSize
+    const pageStudentIds = [...studentIds].sort((a, b) => a - b).slice(offset, offset + pageSize)
+    if (pageStudentIds.length === 0) {
+      return { ok: true, course, rows: [], totalCount: studentIds.size }
+    }
+
+    const [students, bills] = await Promise.all([
+      Student.findAll({
+        attributes: ['id', 'name'],
+        where: { id: { [Op.in]: pageStudentIds } },
+        raw: true,
+        transaction
+      }),
+      getActiveTuitionBillsForStudents(pageStudentIds, billingMonth, transaction)
+    ])
+    const studentsById = new Map(students.map(student => [student.id, student]))
+    const billsByStudentId = new Map(bills.map(bill => [bill.StudentId, bill]))
+    const coursePayments = await getIssuedCoursePaymentStatuses(
+      bills.filter(bill => courseFeesByBillId.has(bill.id)),
+      transaction
+    )
+
+    const rows = pageStudentIds.map(studentId => {
+      const student = studentsById.get(studentId) ?? null
+      const bill = billsByStudentId.get(studentId) ?? null
+      const amounts = courseFeesByBillId.get(bill?.id) ?? []
+      const coursePayment = coursePayments.get(bill?.id)?.get(courseId) ?? null
+
+      return {
+        studentId,
+        student,
+        bill,
+        enrollmentNeedsReview: enrollmentReviewIds.has(studentId),
+        hasCourseFee: amounts.length > 0,
+        courseAmount: bill?.status === TUITION_BILL_STATUS.ISSUED
+          ? coursePayment?.totalAmount ?? null
+          : sumCourseFeeAmounts(amounts),
+        coursePayment
+      }
+    })
+
+    return { ok: true, course, rows, totalCount: studentIds.size }
+  })
 }
 
 function buildDraftCourseFeeItems(preview) {
