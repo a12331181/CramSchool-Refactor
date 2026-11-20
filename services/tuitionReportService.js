@@ -12,7 +12,7 @@ const { canReceiveBillPayment } = require('./tuitionPaymentService')
 const { getIssuedCoursePaymentStatuses } = require('./tuitionCoursePaymentService')
 const { getIssuedTuitionBillFinancialData, getBillRefundAmounts, summarizeStudentBillGroup, combinePaymentStatuses, sumKnownAmounts } = require('./tuitionBillFinancialService')
 const { getTuitionBillPaymentState, getIssuedTuitionBillPaymentStatuses } = require('./tuitionPaymentStateService')
-const { getTuitionEnrollmentStateForMonth } = require('./tuitionPricingService')
+const { getTuitionEnrollmentStateForMonth, getStudentTuitionPreview } = require('./tuitionPricingService')
 
 async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) {
   if (!Number.isSafeInteger(studentId) || studentId < 1) {
