@@ -37,9 +37,13 @@ module.exports = (app, passport) => {
   app.get('/cramschool/courses/:id/calendar', authenticated, schoolController.getCourse)
   app.get('/cramschool/courses/:id/enrolledstudents', authenticated, schoolController.getCourseEnrolledStudents)
   app.get('/cramschool/attend', authenticated, attendController.getAttendIndexpage)
+  app.get('/cramschool/attend/courses/:id', authenticated, attendController.getAttendCourse)
+  app.get('/cramschool/attend/courses/:courseId/calendar/:calendarId', authenticated, attendController.getAttend)
   app.get('/cramschool/attend/courses/:courseId/calendar/:calendarId/students', authenticated, attendController.getAttendStudents)
   app.post('/cramschool/attend/courses/:courseId/calendar/:calendarId/students/:studentId', authenticated, attendController.createAttend)
   app.put('/cramschool/attend/courses/:courseId/calendar/:calendarId/students/:studentId', authenticated, attendController.updateAttend)
+  app.post('/cramschool/attend/calendar/:calendarId/students/:studentId', authenticated, attendController.postAttend)
+  app.delete('/cramschool/attend/calendar/:calendarId/students/:studentId', authenticated, attendController.deleteAttend)
   app.get(
   '/cramschool/attend/courses/:courseId/calendar/:calendarId/students/:studentId/history', authenticated, attendController.getAttendHistory)
   //老師資料相關路由

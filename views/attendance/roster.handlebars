@@ -1,3 +1,4 @@
+{{#if isFormalCalendar}}
 <br>
 <h1>{{course.name}}</h1>
 <h5>本堂學生名單</h5>
@@ -107,3 +108,65 @@
 </table>
 
 <a href="/cramschool/attend">回到點名首頁</a>
+{{else}}
+
+<br>
+
+<h1><strong>上課日期: </strong>{{calendar.date}}</h1>
+
+<h5 class="ml-2" style="color: rgb(126, 120, 113);"><strong>課程內容: </strong>{{calendar.content}}</h5>
+
+<table class="table table-bordered">
+  <thead>
+    <tr class="table-primary">
+      <th scope="col">#</th>
+      <th scope="col">學生姓名</th>
+      <th scope="col">性別</th>
+      <th scope="col">年級</th>
+      <th scope="col">表單</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each students}}
+    <tr class="table-light">
+      <th scope="row">{{this.id}}</th>
+      <td>{{this.name}}</td>
+      <td>{{this.sex}}</td>
+      <td>{{this.grade}}</td>
+      <th scope="col">
+        {{#if this.isChecked }}
+        <div class="container">
+          <div class="row">
+            <p class="mr-3 my-1" style="color: rgb(95, 209, 80);">√已提交</p>
+            <form action="/cramschool/attend/calendar/{{../calendar.id}}/students/{{this.id}}?_method=DELETE" method="POST"
+            style="display: inline;">
+              <button type="submit" class="btn btn-danger btn-sm">刪除紀錄</button>
+            </form>
+          </div>
+        </div>
+        {{else}}
+        <form action="/cramschool/attend/calendar/{{../calendar.id}}/students/{{this.id}}" method="POST" style="display: inline;">
+          <div class="form-group mb-3">
+            <label for="status"></label>
+            <select class="form-select" id="status" name="status">
+              <option value="出席">出席</option>
+              <option value="缺席/事假">事假</option>
+              <option value="缺席/病假">病假</option>
+              <option value="缺席/喪假">喪假</option>
+              <option value="缺席/無故缺席">無故缺席</option>
+            </select>
+            <button class="btn-sm btn-secondary" type="submit">送出</button>
+          </div>
+        </form>
+        {{/if}}
+      </th>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+
+<br />
+<br />
+<a href="/cramschool/attend/courses/{{course.id}}">回到上一頁</a>
+
+{{/if}}

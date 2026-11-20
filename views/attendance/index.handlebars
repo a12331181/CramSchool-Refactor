@@ -49,3 +49,29 @@
     {{/each}}
   </tbody>
 </table>
+
+{{#if courses.length}}
+<h5>原有課程點名</h5>
+<table class="table table-bordered">
+  <thead>
+    <tr class="table-primary">
+      <th scope="col">#</th>
+      <th scope="col">課程名稱</th>
+      <th scope="col">授課老師</th>
+      <th scope="col">#</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each courses}}
+    <tr class="table-light">
+      <th scope="row">{{this.dataValues.id}}</th>
+      <td>{{this.dataValues.name}}</td>
+      <td>{{this.dataValues.Teacher.dataValues.name}}</td>
+      <th scope="col">
+        <a href="/cramschool/attend/courses/{{this.dataValues.id}}" class="btn btn-sm btn-dark">課程行事曆列表</a>
+      </th>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+{{/if}}
