@@ -1,5 +1,6 @@
 'use strict';
 const { faker } = require('@faker-js/faker')
+const { allocateStudentNo } = require('../services/referenceNumberService')
 
 function randomSex() {
   const sexList = [
@@ -19,22 +20,26 @@ function randomGrade() {
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.bulkInsert('Students',
-      Array.from({ length: 50 }).map((d, i) =>
-      ({
-        name: faker.person.fullName(),
-        sex: randomSex(),
-        birth: '2011-11-11',
-        school: faker.person.fullName() + ' School',
-        grade: randomGrade(),
-        tel: faker.phone.number(),
-        address: faker.location.streetAddress(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        image: `https://loremflickr.com/400/320/students,school/?random=${Math.random() * 100}`,
-        status: Math.floor(Math.random() * 2)+1 
-      })
-    ), {})
+    await queryInterface.sequelize.transaction(async transaction => {
+      const rows = []
+      for (let i = 0; i < 50; i += 1) {
+        rows.push({
+          studentNo: await allocateStudentNo(transaction),
+          name: faker.person.fullName(),
+          sex: randomSex(),
+          birth: '2011-11-11',
+          school: faker.person.fullName() + ' School',
+          grade: randomGrade(),
+          tel: faker.phone.number(),
+          address: faker.location.streetAddress(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          image: `https://loremflickr.com/400/320/students,school/?random=${Math.random() * 100}`,
+          status: Math.floor(Math.random() * 2)+1
+        })
+      }
+      await queryInterface.bulkInsert('Students', rows, { transaction })
+    })
   },
 
   down: async (queryInterface, Sequelize) => {

@@ -1,3 +1,4 @@
+const SCHOOL_CODE = require('../constants/schoolCode')
 const bcrypt = require('bcryptjs')
 const { Op, Validator, UniqueConstraintError } = require('sequelize')
 const { User, UserNoCounter, Teacher, Course, sequelize } = require('../models')
@@ -66,7 +67,7 @@ async function signUp({ name, email, password, realName, phone } = {}) {
 
       const { userNo } = await assignUserNo({
         userId: user.id,
-        schoolCode: '001',
+        schoolCode: SCHOOL_CODE,
         transaction
       })
 

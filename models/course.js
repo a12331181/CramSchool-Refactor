@@ -25,6 +25,12 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   Course.init({
+    courseNo: {
+      type: DataTypes.CHAR(9),
+      allowNull: true,
+      unique: 'uq_courses_course_no',
+      validate: { len: [9, 9], is: /^[A-Z]{2}\d{7}$/ }
+    },
     name: DataTypes.STRING,
     time: DataTypes.STRING,
     type: DataTypes.STRING,

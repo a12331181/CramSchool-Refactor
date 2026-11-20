@@ -3,6 +3,30 @@
 {{else}}
 <form action="/admin/courses" method="POST">
 {{/if}}
+  {{#if course}}
+  <p>課程編號：<strong>{{#if course.courseNo}}{{course.courseNo}}{{else}}—{{/if}}</strong></p>
+  {{else}}
+  <fieldset class="form-group">
+    <legend class="h6">課程編號開頭</legend>
+    <div class="form-row">
+      <div class="col">
+        <label for="course-prefix-first">第一個英文字母</label>
+        <select class="form-control" name="coursePrefixFirst" id="course-prefix-first" required>
+          <option value="">請選擇</option>
+          {{#each prefixLetters}}<option value="{{this}}">{{this}}</option>{{/each}}
+        </select>
+      </div>
+      <div class="col">
+        <label for="course-prefix-second">第二個英文字母</label>
+        <select class="form-control" name="coursePrefixSecond" id="course-prefix-second" required>
+          <option value="">請選擇</option>
+          {{#each prefixLetters}}<option value="{{this}}">{{this}}</option>{{/each}}
+        </select>
+      </div>
+    </div>
+    <small class="form-text text-muted">系統會接上補習班代碼與流水號，例如 MA0010001。</small>
+  </fieldset>
+  {{/if}}
   <div class="form-group">
     <label for="name">課程名稱</label>
     <input type="text" class="form-control" name="name" id="name" placeholder="輸入課程名稱" value="{{course.name}}" required {{#if course}} readonly {{/if}}>
@@ -10,7 +34,7 @@
 
   <div class="form-group">
     <label for="time">上課時長</label>
-    <select class="form-control" name="time" id="time" value="{{course.time}}">
+    <select class="form-control" name="time" id="time">
       {{#each timeList}}
       <option value="{{this.time}}" 
         {{#ifCond ../course.time this.time}} 
@@ -23,7 +47,7 @@
 
   <div class="form-group">
     <label for="type">計費方式</label>
-    <select class="form-control" name="type" id="type" value="{{course.type}}">
+    <select class="form-control" name="type" id="type">
       {{#each typeList}}
       <option value="{{this.type}}" 
         {{#ifCond ../course.type this.type}} 

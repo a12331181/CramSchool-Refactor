@@ -1,3 +1,4 @@
+const { COURSE_PREFIX_LETTERS } = require('../constants/referenceNumbers')
 const courseService = require('../services/courseService')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
@@ -51,6 +52,7 @@ const adminCourseController = {
     }))
     return res.render('admin/courses/form', {
       teachers: formData.teachers,
+      prefixLetters: COURSE_PREFIX_LETTERS,
       typeList,
       timeList
     })
@@ -67,8 +69,14 @@ const adminCourseController = {
       return res.status(400).send('價格與教師 ID 必須填寫數字')
     }
 
+    const { coursePrefixFirst, coursePrefixSecond } = body
+    const coursePrefix = [coursePrefixFirst, coursePrefixSecond].every(letter => COURSE_PREFIX_LETTERS.includes(letter))
+      ? coursePrefixFirst + coursePrefixSecond
+      : null
+
     const result = await courseService.createCourse({
       name: body.name,
+      coursePrefix,
       time: body.time,
       type: body.type,
       price: Number(body.price),
@@ -78,6 +86,8 @@ const adminCourseController = {
     if (!result.created) {
       const errorMessages = {
         INVALID_NAME: '課程名稱必填，且不可超過 255 字',
+        INVALID_COURSE_PREFIX: '請選擇兩個大寫英文字母作為課程編號開頭',
+        COURSE_NUMBER_EXHAUSTED: '這個課程前綴的編號已用完，請改用其他前綴',
         INVALID_TIME: '上課時長只能是 60、90 或 120 分鐘',
         INVALID_TYPE: '計費方式不正確',
         INVALID_PRICE: '價格必須是有效的非負整數',
@@ -85,12 +95,13 @@ const adminCourseController = {
         TEACHER_NOT_FOUND: '找不到所選教師，請重新選擇'
       }
 
-      return res.status(400).send(
+      const status = result.reason === 'COURSE_NUMBER_EXHAUSTED' ? 409 : 400
+      return res.status(status).send(
         errorMessages[result.reason] ?? '課程資料不正確'
       )
     }
 
-    req.flash('success_messages', '成功建立課程')
+    req.flash('success_messages', `成功建立課程｜${result.courseNo}`)
     return res.redirect('/admin/courses')
   },
 

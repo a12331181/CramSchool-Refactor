@@ -1,3 +1,4 @@
+const { allocateStudentNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
 const {Student, Course, Enrollment, Calendar, Attend, Tuition, TuitionBill, sequelize} = require('../models')
 const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
@@ -209,21 +210,26 @@ async function createStudent(studentData) {
     }
   }
 
-  await Student.create({
-    name: studentData.name,
-    sex: studentData.sex,
-    birth: studentData.birth,
-    school: studentData.school,
-    grade: studentData.grade,
-    tel: studentData.tel,
-    address: studentData.address,
-    image: studentData.image ?? null,
-    status: studentData.status
-  })
+  return sequelize.transaction(async transaction => {
+    const studentNo = await allocateStudentNo(transaction)
+    const student = await Student.create({
+      studentNo,
+      name: studentData.name,
+      sex: studentData.sex,
+      birth: studentData.birth,
+      school: studentData.school,
+      grade: studentData.grade,
+      tel: studentData.tel,
+      address: studentData.address,
+      image: studentData.image ?? null,
+      status: studentData.status
+    }, { transaction })
 
-  return {
-    created: true
-  }
+    return { created: true, studentId: student.id, studentNo }
+  }).catch(error => {
+    if (error instanceof ReferenceNumberExhaustedError) return { created: false, reason: 'STUDENT_NUMBER_EXHAUSTED' }
+    throw error
+  })
 }
 
 async function deleteStudent(studentId) {

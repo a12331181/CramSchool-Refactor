@@ -109,12 +109,15 @@ const adminStudentController = {
       })
 
       if (!result.created) {
+        if (result.reason === 'STUDENT_NUMBER_EXHAUSTED') {
+          return res.status(409).send('今年的學生編號已用完，請聯繫管理員。')
+        }
         return res.status(400).send('學生狀態不正確')
       }
 
       createCompleted = true
 
-      req.flash('success_messages', '成功建立學生資料')
+      req.flash('success_messages', `成功建立學生資料｜${result.studentNo}`)
       return res.redirect('/admin/students')
     } finally {
       if (uploadedImage && !createCompleted) {

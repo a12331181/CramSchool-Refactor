@@ -1,3 +1,4 @@
+const { allocateCourseNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
 const {Course, Teacher, Student, Calendar, Enrollment, Tuition, TuitionBillItem, Diary, Attend, sequelize} = require('../models')
 const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
 const { Op } = require('sequelize')
@@ -88,7 +89,8 @@ async function createCourse(courseData) {
     time,
     type,
     price,
-    teacherId
+    teacherId,
+    coursePrefix
   } = courseData
 
   if (
@@ -97,6 +99,10 @@ async function createCourse(courseData) {
     name.trim().length > 255
   ) {
     return { created: false, reason: 'INVALID_NAME' }
+  }
+
+  if (typeof coursePrefix !== 'string' || coursePrefix.length !== 2 || !/^[A-Z]{2}$/.test(coursePrefix)) {
+    return { created: false, reason: 'INVALID_COURSE_PREFIX' }
   }
 
   if (!Object.values(COURSE_TIMES).includes(time)) {
@@ -129,7 +135,9 @@ async function createCourse(courseData) {
       return { created: false, reason: 'TEACHER_NOT_FOUND' }
     }
 
-    await Course.create({
+    const courseNo = await allocateCourseNo(coursePrefix, transaction)
+    const course = await Course.create({
+      courseNo,
       name: name.trim(),
       time,
       type,
@@ -138,7 +146,10 @@ async function createCourse(courseData) {
       isActive: true
     }, { transaction })
 
-    return { created: true }
+    return { created: true, courseId: course.id, courseNo }
+  }).catch(error => {
+    if (error instanceof ReferenceNumberExhaustedError) return { created: false, reason: 'COURSE_NUMBER_EXHAUSTED' }
+    throw error
   })
 }
 
@@ -146,6 +157,7 @@ async function getCourseEditData(courseId) {
   const course = await Course.findByPk(courseId, {
     attributes: [
       'id',
+      'courseNo',
       'name',
       'time',
       'type',

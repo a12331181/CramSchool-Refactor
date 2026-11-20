@@ -23,6 +23,12 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   Student.init({
+    studentNo: {
+      type: DataTypes.CHAR(11),
+      allowNull: true,
+      unique: 'uq_students_student_no',
+      validate: { len: [11, 11], is: /^S\d{10}$/ }
+    },
     name: DataTypes.STRING,
     sex: DataTypes.STRING,
     birth: DataTypes.STRING,
