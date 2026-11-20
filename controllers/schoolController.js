@@ -1,11 +1,11 @@
 const db = require('../models')
 const Course = db.Course
 const Teacher = db.Teacher
-const Meeting = db.Meeting
 const Student = db.Student
 const Diary = db.Diary
 const User = db.User
 const calendarService = require('../services/calendarService')
+const meetingService = require('../services/meetingService')
 const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
 const { formatTaipeiDateTime } = require('../utils/date')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
@@ -20,14 +20,9 @@ function parseListPage(value) {
 }
 
 const schoolController = {
-  getSchoolIndexPage: (req, res) => {
-    Promise.all([
-      Meeting.findAll({ 
-        raw: true,
-        nest: true,
-        limit: 5,
-        order: [['createdAt', 'DESC']]
-      }),
+  getSchoolIndexPage: async (req, res) => {
+    const [meetings, diaries] = await Promise.all([
+      meetingService.getRecentMeetings(5),
       Diary.findAll({ 
         raw: true,
         nest: true,
@@ -35,9 +30,8 @@ const schoolController = {
         include: [{ model: Course, where: {isActive: true }, include: [{ model: Teacher}] }],
         order: [['createdAt', 'DESC']]
       }),
-    ]).then(([meetings, diaries]) => {
-      return res.render('school/home', { isAdmin: req.user.isAdmin, meetings: meetings, diaries: diaries})
-    })
+    ])
+    return res.render('school/home', { isAdmin: req.user.isAdmin, meetings, diaries })
   },
   
   getIntroduction: (req, res) => {
@@ -121,13 +115,7 @@ const schoolController = {
     }
     const { page, offset } = listPage
 
-    const meetings = await Meeting.findAndCountAll({
-      raw: true,
-      nest: true,
-      offset,
-      limit: pageLimit,
-      order: [['createdAt', 'DESC'], ['id', 'DESC']]
-    })
+    const meetings = await meetingService.getMeetingsPage({ offset, limit: pageLimit })
 
     const pagination = getPagination({ page, pageSize: pageLimit, totalCount: meetings.count })
     const pageUrl = targetPage => `/cramschool/meetings?page=${targetPage}`
@@ -143,64 +131,39 @@ const schoolController = {
     })
   },
   
-  getMeeting: (req, res) => {
-    Meeting.findByPk(req.params.id, {
-      raw: true,
-      nest: true,
-      include: [Teacher]
-    }).then(meeting => {
-      if (meeting === null) {
-        console.log('Not found!')
-        res.redirect('/cramschool/meetings')
-      } else {
-        return res.render('school/meetings/detail',{ meeting: meeting })
-      }
-    })
+  getMeeting: async (req, res) => {
+    const meeting = await meetingService.getMeetingDetails(req.params.id)
+    if (!meeting) return res.redirect('/cramschool/meetings')
+
+    return res.render('school/meetings/detail', { meeting })
   },
 
-  getCreateMeetingPage: (req, res) => {
-    Teacher.findOne({
-      raw: true,
-      nest: true,
-      where: {
-        UserId: req.user.id
-      }
-    }).then(teacher => {
-      return res.render('school/meetings/create',{ teacher: teacher })
-    })
+  getCreateMeetingPage: async (req, res) => {
+    const teacher = await meetingService.getMeetingAuthor(req.user.id)
+    return res.render('school/meetings/create', { teacher })
   },
 
-  createMeeting: (req, res) => {
-    Teacher.findOne({
-      raw: true,
-      nest: true,
-      where: {
-        UserId: req.user.id
-      }
-    }).then(teacher => {
-      return Meeting.create({
-        date: req.body.date,
-        subject: req.body.subject,
-        content: req.body.content,
-        TeacherId: teacher.id,
-      })
-    }).then((meeting) => {
-      req.flash('success_messages', '已成功建立會議紀錄')
-      return res.redirect('/cramschool')
-    })
+  createMeeting: async (req, res) => {
+    const { date, subject, content } = req.body ?? {}
+    const created = await meetingService.createMeeting({ userId: req.user.id, date, subject, content })
+    if (!created) {
+      req.flash('error_messages', '找不到教師資料，無法建立會議紀錄')
+      return res.redirect('/cramschool/meetings')
+    }
+
+    req.flash('success_messages', '已成功建立會議紀錄')
+    return res.redirect('/cramschool')
   },
 
-  deleteMeeting: (req, res) => {
-    return Meeting.findByPk(req.params.id)
-      .then((meeting) => {
-        meeting.destroy()
-          .then((meeting) => {
-            req.flash('success_messages', '已成功刪除會議記錄')
-            res.redirect('/cramschool/meetings')
-          })
-      })
+  deleteMeeting: async (req, res) => {
+    const deleted = await meetingService.deleteMeeting(req.params.id)
+    req.flash(
+      deleted ? 'success_messages' : 'error_messages',
+      deleted ? '已成功刪除會議記錄' : '找不到會議紀錄'
+    )
+    return res.redirect('/cramschool/meetings')
   },
-  
+
   getDiariesList: async (req, res) => {
     const listPage = parseListPage(req.query.page)
     if (!listPage) {
