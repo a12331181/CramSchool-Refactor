@@ -1,7 +1,7 @@
 const { Op } = require('sequelize')
 const { Payment, TuitionBill } = require('../models')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
-const { parseTaipeiDateTime } = require('../utils/date')
+const { isTaipeiDateKey } = require('../utils/date')
 
 function getTuitionBillPaymentState(paymentStatus) {
   if (!paymentStatus?.ok) return 'payment_review'
@@ -63,7 +63,7 @@ async function getIssuedTuitionBillPaymentStatuses(bills, transaction) {
 function getLastPaidOn(payments) {
   let lastPaidOn = null
   for (const { time } of payments) {
-    if (typeof time !== 'string' || !parseTaipeiDateTime(`${time}T00:00`)) return null
+    if (!isTaipeiDateKey(time)) return null
     if (!lastPaidOn || time > lastPaidOn) lastPaidOn = time
   }
   return lastPaidOn

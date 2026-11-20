@@ -31,10 +31,12 @@ const paymentController = {
       billVersion: body.billVersion === undefined ? undefined : readInt(body.billVersion),
       amount: readInt(body.amount),
       selectedItemIds,
+      paidOn: body.paidOn,
       actorId: req.user.id
     })
 
     if (result.code === 'INVALID_INPUT') return res.status(400).send(invalidInput)
+    if (result.code === 'INVALID_PAYMENT_DATE') return res.status(400).send('請輸入有效的實際收款日，不可晚於今天。')
     if (result.code === 'BILL_NOT_FOUND') return res.status(404).send('找不到這張帳單。')
 
     const errors = {

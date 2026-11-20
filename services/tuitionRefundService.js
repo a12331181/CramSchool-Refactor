@@ -2,7 +2,7 @@ const { Op, Transaction, json } = require('sequelize')
 const { TuitionBill, TuitionBillItem, TuitionBillRefund, TuitionBillRefundAllocation, AuditLog, sequelize } = require('../models')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
-const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
+const { isTaipeiDateKey, getTaipeiDate } = require('../utils/date')
 const { getPaidTuitionBillPayments, summarizeTuitionBillPayments } = require('./tuitionPaymentStateService')
 const { MAX_PAYMENT_ITEMS, getAllocationState } = require('./tuitionPaymentAllocationService')
 const { getRefundLedger } = require('./tuitionRefundLedgerService')
@@ -112,9 +112,7 @@ async function recordTuitionBillRefund({ billId, billVersion, actorId, amount, r
   const note = typeof reason === 'string' ? reason.trim() : ''
   if (!note || note.length > 255) return { ok: false, code: 'INVALID_REFUND_REASON' }
   if (
-    typeof refundedOn !== 'string' ||
-    !parseTaipeiDateTime(`${refundedOn}T00:00`) ||
-    refundedOn > getTaipeiDate()
+    !isTaipeiDateKey(refundedOn) || refundedOn > getTaipeiDate()
   ) return { ok: false, code: 'INVALID_REFUND_DATE' }
 
   return sequelize.transaction({

@@ -11,7 +11,7 @@ const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
-const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
+const { parseTaipeiDateTime, isTaipeiDateKey, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
 const paymentAllocationService = require('./tuitionPaymentAllocationService')
 const { getIssuedCoursePaymentStatuses } = require('./tuitionCoursePaymentService')
 const { getIssuedTuitionBillFinancialData, getBillRefundAmounts } = require('./tuitionBillFinancialService')
@@ -2403,7 +2403,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
   })
 }
 
-async function recordTuitionBillPayment({ billId, billVersion, amount, selectedItemIds, actorId } = {}) {
+async function recordTuitionBillPayment({ billId, billVersion, amount, selectedItemIds, paidOn, actorId } = {}) {
   const itemized = selectedItemIds !== undefined
   const validVersion = Number.isSafeInteger(billVersion) && billVersion >= 0 && billVersion < 2_147_483_647
   if (
@@ -2421,6 +2421,12 @@ async function recordTuitionBillPayment({ billId, billVersion, amount, selectedI
       new Set(selectedItemIds).size !== selectedItemIds.length
     ) return { ok: false, code: 'INVALID_INPUT' }
     if (selectedItemIds.length === 0) return { ok: false, code: 'PAYMENT_ITEMS_REQUIRED' }
+  }
+
+  const today = getTaipeiDate()
+  const receivedOn = paidOn === undefined ? today : paidOn
+  if (!isTaipeiDateKey(receivedOn) || receivedOn > today) {
+    return { ok: false, code: 'INVALID_PAYMENT_DATE' }
   }
 
   return sequelize.transaction(async transaction => {
@@ -2484,7 +2490,7 @@ async function recordTuitionBillPayment({ billId, billVersion, amount, selectedI
       TuitionId: null,
       amount: receivedAmount,
       isPaid: true,
-      time: getTaipeiDate(now)
+      time: receivedOn
     }, { transaction })
     await paymentAllocationService.createAllocations(payment.id, paidItems, transaction)
     await bill.update({ version: bill.version + 1 }, { transaction })
@@ -2504,6 +2510,7 @@ async function recordTuitionBillPayment({ billId, billVersion, amount, selectedI
         paidAmount: updatedPaidAmount,
         remainingAmount: updatedRemainingAmount,
         ...(paidItems.length > 0 ? { allocatedItemCount: paidItems.length } : {}),
+        paidOn: receivedOn,
         recordedAt: now.toISOString()
       },
       reason: '登記帳單收款'
@@ -2515,6 +2522,7 @@ async function recordTuitionBillPayment({ billId, billVersion, amount, selectedI
       billId: bill.id,
       paymentId: payment.id,
       receivedAmount,
+      paidOn: receivedOn,
       paidAmount: updatedPaidAmount,
       remainingAmount: updatedRemainingAmount
     }

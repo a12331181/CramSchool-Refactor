@@ -51,6 +51,10 @@ function parseTaipeiDateTime(value) {
   return date
 }
 
+function isTaipeiDateKey(value) {
+  return typeof value === 'string' && parseTaipeiDateTime(`${value}T00:00`) !== null
+}
+
 function getTaipeiMonthRange(monthKey) {
   if (typeof monthKey !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(monthKey)) {
     return null
@@ -73,5 +77,6 @@ module.exports = {
   getTaipeiDate,
   formatTaipeiDateTime,
   parseTaipeiDateTime,
+  isTaipeiDateKey,
   getTaipeiMonthRange
 }
