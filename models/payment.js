@@ -11,6 +11,11 @@ module.exports = (sequelize, DataTypes) => {
         onDelete: 'RESTRICT',
         onUpdate: 'RESTRICT'
       })
+      Payment.belongsTo(models.TuitionPaymentGroup, {
+        foreignKey: { name: 'TuitionPaymentGroupId', allowNull: true },
+        onDelete: 'RESTRICT',
+        onUpdate: 'RESTRICT'
+      })
     }
   };
   Payment.init({

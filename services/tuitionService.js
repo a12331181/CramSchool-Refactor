@@ -11,8 +11,9 @@ const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
-const { parseTaipeiDateTime, isTaipeiDateKey, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
+const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
 const paymentAllocationService = require('./tuitionPaymentAllocationService')
+const { recordTuitionBillPayment, canReceiveBillPayment } = require('./tuitionPaymentService')
 const { getIssuedCourseFees, excludeIssuedCourseFees } = require('./tuitionCourseChargeService')
 const { getIssuedCoursePaymentStatuses } = require('./tuitionCoursePaymentService')
 const {
@@ -522,7 +523,7 @@ async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) 
 
   return readTuitionSnapshot(async transaction => {
     const bills = await TuitionBill.findAll({
-      attributes: ['id', 'studentNameSnapshot', 'SupplementCourseId', 'status', 'totalAmount', 'issuedAt'],
+      attributes: ['id', 'studentNameSnapshot', 'SupplementCourseId', 'status', 'totalAmount', 'issuedAt', 'version', 'currency'],
       where: { StudentId: studentId, billingMonth },
       order: [['id', 'DESC']],
       raw: true,
@@ -535,6 +536,7 @@ async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) 
       return {
         ...bill,
         paymentStatus: financial?.paymentStatus ?? null,
+        canReceiveGroupedPayment: bill.currency === 'TWD' && canReceiveBillPayment(bill, financial),
         refunds: financial ? getBillRefundAmounts(financial.refundLedger) : null,
         courseNames: [...new Set((financial?.items ?? [])
           .filter(item => item.kind === TUITION_BILL_ITEM_KIND.COURSE_FEE)
@@ -2546,132 +2548,6 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
     }, { transaction })
 
     return { ok: true, changed: true, billId: bill.id, issuedAt, version }
-  })
-}
-
-async function recordTuitionBillPayment({ billId, billVersion, amount, selectedItemIds, paidOn, actorId } = {}) {
-  const itemized = selectedItemIds !== undefined
-  const validVersion = Number.isSafeInteger(billVersion) && billVersion >= 0 && billVersion < 2_147_483_647
-  if (
-    ![billId, actorId].every(id => Number.isSafeInteger(id) && id > 0) ||
-    ((itemized || billVersion !== undefined) && !validVersion) ||
-    (!itemized && (!Number.isSafeInteger(amount) || amount < 1 || amount > 2_147_483_647))
-  ) {
-    return { ok: false, code: 'INVALID_INPUT' }
-  }
-
-  if (itemized) {
-    if (
-      !Array.isArray(selectedItemIds) || selectedItemIds.length > paymentAllocationService.MAX_PAYMENT_ITEMS ||
-      !selectedItemIds.every(id => Number.isSafeInteger(id) && id > 0) ||
-      new Set(selectedItemIds).size !== selectedItemIds.length
-    ) return { ok: false, code: 'INVALID_INPUT' }
-    if (selectedItemIds.length === 0) return { ok: false, code: 'PAYMENT_ITEMS_REQUIRED' }
-  }
-
-  const today = getTaipeiDate()
-  const receivedOn = paidOn === undefined ? today : paidOn
-  if (!isTaipeiDateKey(receivedOn) || receivedOn > today) {
-    return { ok: false, code: 'INVALID_PAYMENT_DATE' }
-  }
-
-  return sequelize.transaction(async transaction => {
-    const bill = await TuitionBill.findByPk(billId, {
-      attributes: ['id', 'status', 'totalAmount', 'version'],
-      transaction,
-      lock: transaction.LOCK.UPDATE
-    })
-
-    if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-    if (bill.status !== TUITION_BILL_STATUS.ISSUED) {
-      return { ok: false, code: 'BILL_NOT_ISSUED' }
-    }
-    if (
-      !Number.isSafeInteger(bill.version) || bill.version < 0 || bill.version >= 2_147_483_647 ||
-      (billVersion !== undefined && bill.version !== billVersion)
-    ) {
-      return { ok: false, code: 'BILL_VERSION_CONFLICT' }
-    }
-
-    const payments = await getPaidTuitionBillPayments([bill.id], transaction)
-    const paymentStatus = summarizeTuitionBillPayments(bill, payments)
-    if (!paymentStatus.ok) return paymentStatus
-
-    const { paidAmount, remainingAmount, isFullyPaid } = paymentStatus
-
-    if (isFullyPaid) {
-      return { ok: true, changed: false, billId: bill.id, paidAmount, remainingAmount }
-    }
-
-    if (remainingAmount === 0) {
-      return { ok: false, code: 'BILL_NO_PAYMENT_REQUIRED' }
-    }
-
-    if (!itemized && amount !== remainingAmount) {
-      return { ok: false, code: 'PAYMENT_AMOUNT_MISMATCH', remainingAmount }
-    }
-
-    const items = await TuitionBillItem.findAll({
-      attributes: ['id', 'kind', 'descriptionSnapshot', 'amount'],
-      where: { TuitionBillId: bill.id },
-      raw: true,
-      transaction
-    })
-    const allocation = await paymentAllocationService.getAllocationState({ items, payments, paymentStatus }, transaction)
-    if (!allocation.ok) return allocation
-    if (itemized && !allocation.itemized) return { ok: false, code: 'PAYMENT_ITEMS_UNAVAILABLE' }
-
-    const outstanding = (allocation.items ?? []).filter(item => item.amount > 0 && item.paymentId === null)
-    const selected = itemized ? new Set(selectedItemIds) : null
-    const paidItems = selected ? outstanding.filter(item => selected.has(item.itemId)) : outstanding
-    if (selected && paidItems.length !== selected.size) return { ok: false, code: 'PAYMENT_ITEMS_CHANGED' }
-    const receivedAmount = itemized ? paidItems.reduce((sum, item) => sum + item.amount, 0) : amount
-    if (receivedAmount < 1 || receivedAmount > 2_147_483_647 || receivedAmount > remainingAmount) {
-      return { ok: false, code: 'PAYMENT_AMOUNT_OUT_OF_RANGE' }
-    }
-
-    const now = new Date()
-    const payment = await Payment.create({
-      TuitionBillId: bill.id,
-      TuitionId: null,
-      amount: receivedAmount,
-      isPaid: true,
-      time: receivedOn
-    }, { transaction })
-    await paymentAllocationService.createAllocations(payment.id, paidItems, transaction)
-    await bill.update({ version: bill.version + 1 }, { transaction })
-
-    const updatedPaidAmount = paidAmount + receivedAmount
-    const updatedRemainingAmount = remainingAmount - receivedAmount
-
-    await AuditLog.create({
-      actorId,
-      entityType: 'TuitionBill',
-      entityId: bill.id,
-      action: 'update',
-      before: { paidAmount, remainingAmount },
-      after: {
-        paymentId: payment.id,
-        receivedAmount,
-        paidAmount: updatedPaidAmount,
-        remainingAmount: updatedRemainingAmount,
-        ...(paidItems.length > 0 ? { allocatedItemCount: paidItems.length } : {}),
-        paidOn: receivedOn,
-        recordedAt: now.toISOString()
-      },
-      reason: '登記帳單收款'
-    }, { transaction })
-
-    return {
-      ok: true,
-      changed: true,
-      billId: bill.id,
-      paymentId: payment.id,
-      receivedAmount,
-      paidOn: receivedOn,
-      paidAmount: updatedPaidAmount,
-      remainingAmount: updatedRemainingAmount
-    }
   })
 }
 

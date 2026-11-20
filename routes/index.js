@@ -70,6 +70,9 @@ module.exports = (app, passport) => {
   app.post('/cramschool/tuition/bills/:billId/refresh', authenticatedAdmin, tuitionController.refreshTuitionBillDraft)
   app.post('/cramschool/tuition/bills/:billId/discard', authenticatedAdmin, tuitionController.discardTuitionBillDraft)
   app.post('/cramschool/tuition/bills/:billId/issue', authenticatedAdmin, tuitionController.issueTuitionBill)
+  app.get('/cramschool/tuition/students/:studentId/payment-groups/new', authenticatedAdmin, paymentController.getTuitionPaymentGroupForm)
+  app.post('/cramschool/tuition/students/:studentId/payment-groups', authenticatedAdmin, paymentController.recordTuitionPaymentGroup)
+  app.get('/cramschool/tuition/payment-groups/:paymentGroupId', authenticatedAdmin, paymentController.getTuitionPaymentGroupDetails)
   app.post('/cramschool/tuition/bills/:billId/payments', authenticatedAdmin, paymentController.recordTuitionBillPayment)
   app.post('/cramschool/tuition/bills/:billId/refunds', authenticatedAdmin, paymentController.recordTuitionBillRefund)
   //繳費紀錄相關路由

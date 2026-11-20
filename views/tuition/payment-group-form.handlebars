@@ -1,0 +1,59 @@
+<h1 class="h4 mt-3">合併收款</h1>
+<p><strong>{{studentName}}</strong>｜{{billingMonth}}</p>
+{{#if canSubmit}}
+<p>一筆匯款可登記到同月多張帳單。請勾選本次會結清的帳單，並輸入實際收到的金額。</p>
+<p class="small text-muted">如果這筆匯款只付其中一張帳單的部分課程，請從該張帳單的「分項收款」登記。</p>
+
+<form method="POST" action="{{action}}" id="tuition-payment-group-form">
+  <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
+  <input type="hidden" name="billingMonth" value="{{billingMonth}}">
+  <input type="hidden" name="requestKey" value="{{requestKey}}">
+
+  <fieldset>
+    <legend class="h6">本次收款的帳單</legend>
+    <p class="small text-muted" id="payment-group-selection-help">請勾選 {{minBills}} 至 {{maxBills}} 張待繳帳單。</p>
+    <ul class="list-group mb-3" aria-describedby="payment-group-selection-help">
+    {{#each bills}}
+      <li class="list-group-item">
+        <label class="mb-0">
+          <input type="checkbox" name="billSelections" value="{{id}}:{{version}}" data-amount="{{remainingAmount}}">
+          {{#if isSupplement}}補單{{else}}主帳單{{/if}} #{{id}}{{#if courseNames}}｜{{courseNames}}{{/if}}
+          <strong>｜待繳 NT$ {{remainingText}}</strong>
+        </label>
+      </li>
+    {{/each}}
+    </ul>
+  </fieldset>
+  <p>勾選金額合計：NT$ <output id="payment-group-selected-total" aria-live="polite">0</output></p>
+
+  <div class="form-group">
+    <label for="payment-group-paid-on">實際收款日</label>
+    <input id="payment-group-paid-on" type="date" name="paidOn" value="{{today}}" max="{{today}}" class="form-control" required>
+  </div>
+  <div class="form-group">
+    <label for="payment-group-amount">實際收到的匯款金額（NT$）</label>
+    <input id="payment-group-amount" type="number" name="amount" min="1" max="{{maxAmount}}" step="1"
+      inputmode="numeric" class="form-control" required>
+  </div>
+  <div class="form-group">
+    <label for="payment-group-note">匯款備註（選填，例如末五碼）</label>
+    <input id="payment-group-note" type="text" name="note" maxlength="{{maxNoteLength}}" class="form-control">
+  </div>
+  <button type="submit" class="btn btn-primary">登記合併收款</button>
+</form>
+<script>
+  (() => {
+    const form = document.getElementById('tuition-payment-group-form')
+    const output = document.getElementById('payment-group-selected-total')
+    form.addEventListener('change', () => {
+      const total = [...form.querySelectorAll('input[name="billSelections"]:checked')]
+        .reduce((sum, input) => sum + Number(input.dataset.amount), 0)
+      output.textContent = total.toLocaleString('zh-TW')
+    })
+  })()
+</script>
+{{else}}
+<p class="text-muted">目前沒有至少兩張可一起收款的帳單。只有一張待繳時，請從該張帳單登記收款。</p>
+{{/if}}
+
+<a class="d-inline-block mt-3" href="{{previewUrl}}">回到本月繳費總覽</a>

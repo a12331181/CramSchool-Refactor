@@ -30,7 +30,7 @@ async function getTuitionBillPaymentStatus(billId, transaction) {
 
 function getPaidTuitionBillPayments(billIds, transaction) {
   return Payment.findAll({
-    attributes: ['id', 'TuitionBillId', 'TuitionId', 'amount', 'time'],
+    attributes: ['id', 'TuitionBillId', 'TuitionId', 'TuitionPaymentGroupId', 'amount', 'time'],
     where: { TuitionBillId: { [Op.in]: billIds }, isPaid: true },
     raw: true,
     transaction

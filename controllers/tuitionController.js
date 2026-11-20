@@ -1,3 +1,4 @@
+const { MIN_GROUP_BILLS } = require('../constants/tuitionPayment')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const tuitionService = require('../services/tuitionService')
@@ -360,6 +361,9 @@ const tuitionController = {
     }))
     const activeBills = billRows.filter(bill => bill.status !== TUITION_BILL_STATUS.VOID)
     const voidedBills = billRows.filter(bill => bill.status === TUITION_BILL_STATUS.VOID)
+    const paymentGroupFormUrl = activeBills.filter(bill => bill.canReceiveGroupedPayment).length >= MIN_GROUP_BILLS
+      ? `/cramschool/tuition/students/${studentId}/payment-groups/new?` + new URLSearchParams({ billingMonth })
+      : null
     const summary = billsResult.summary
     const monthSummary = summary && {
       issuedCount: summary.issuedCount,
@@ -476,6 +480,7 @@ const tuitionController = {
       activeBills,
       monthSummary,
       monthlyPaymentNotice: buildMonthlyPaymentNotice({ billingMonth, bills: billsResult.rows, summary }),
+      paymentGroupFormUrl,
       supplementPanel,
       voidedBills,
       draftFormToken,
@@ -740,8 +745,12 @@ const tuitionController = {
         const statusText = getTuitionBillPaymentStatusText(paymentStatus)
 
         const today = getTaipeiDate()
-        const paymentRows = result.payments.map(({ id, time, amount }) => ({
-          id, amount, paidOn: isTaipeiDateKey(time) ? time : null
+        const paymentRows = result.payments.map(({ id, time, amount, TuitionPaymentGroupId }) => ({
+          id, amount, paidOn: isTaipeiDateKey(time) ? time : null,
+          paymentGroupId: TuitionPaymentGroupId,
+          paymentGroupUrl: TuitionPaymentGroupId
+            ? `/cramschool/tuition/payment-groups/${TuitionPaymentGroupId}`
+            : null
         })).sort((a, b) => (b.paidOn ?? '').localeCompare(a.paidOn ?? '') || b.id - a.id)
         paymentSummary = { totalAmount, paidAmount, remainingAmount, statusText, paymentRows }
         const allocation = result.paymentAllocation

@@ -1,6 +1,33 @@
+const { randomUUID } = require('node:crypto')
 const tuitionService = require('../services/tuitionService')
-const { isValidSessionFormToken } = require('../utils/sessionFormToken')
+const tuitionPaymentGroupService = require('../services/tuitionPaymentGroupService')
+const { MAX_PAYMENT_AMOUNT, MIN_GROUP_BILLS, MAX_GROUP_BILLS, MAX_GROUP_NOTE_LENGTH } = require('../constants/tuitionPayment')
+const { getTaipeiDate } = require('../utils/date')
+const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
 const REFUND_MESSAGES = require('../constants/tuitionRefundMessages')
+
+const amountFormat = new Intl.NumberFormat('zh-TW')
+const paymentGroupBase = '/cramschool/tuition/payment-groups'
+
+function readInt(value) {
+  return typeof value === 'string' && value !== '' && !/\D/.test(value) ? Number(value) : NaN
+}
+
+function studentTuitionUrl(studentId, billingMonth, subpath) {
+  return `/cramschool/tuition/students/${studentId}/${subpath}?` + new URLSearchParams({ billingMonth })
+}
+
+function readBillSelections(value) {
+  const fields = Array.isArray(value) ? value : value === undefined ? [] : [value]
+  if (fields.length > MAX_GROUP_BILLS) return null
+  const bills = []
+  for (const field of fields) {
+    if (typeof field !== 'string' || !/^[1-9]\d*:(?:0|[1-9]\d*)$/.test(field) || /\s/.test(field)) return null
+    const [id, version] = field.split(':').map(readInt)
+    bills.push({ id, version })
+  }
+  return bills
+}
 
 const paymentController = {
   recordTuitionBillPayment: async (req, res) => {
@@ -10,11 +37,6 @@ const paymentController = {
     if (!isValidSessionFormToken(token, expected)) {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
-
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value)
-        ? Number(value)
-        : NaN
 
     const billId = readInt(req.params.billId)
     const invalidInput = '帳單或收款資料不正確，請重新開啟帳單再試。'
@@ -71,8 +93,6 @@ const paymentController = {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value) ? Number(value) : NaN
     const billId = readInt(req.params.billId)
     const invalidInput = '帳單 ID、版本或退費金額不正確；金額須為大於零的台幣整數。'
     const itemized = body.refundMode === 'items'
@@ -112,6 +132,102 @@ const paymentController = {
     )
     return res.redirect(303, `/cramschool/tuition/bills/${billId}#refund-heading`)
   },
+
+  getTuitionPaymentGroupForm: async (req, res) => {
+    const studentId = readInt(req.params.studentId)
+    const billingMonth = req.query.billingMonth
+    const result = await tuitionService.getStudentTuitionBillsForMonth({ studentId, billingMonth })
+    if (!result.ok) return res.status(400).send('請選擇有效的學生及計費月份。')
+
+    const bills = result.rows.filter(bill => bill.canReceiveGroupedPayment).map(bill => ({
+      id: bill.id,
+      version: bill.version,
+      isSupplement: bill.SupplementCourseId != null,
+      courseNames: bill.courseNames.join('、'),
+      remainingAmount: bill.paymentStatus.remainingAmount,
+      remainingText: amountFormat.format(bill.paymentStatus.remainingAmount)
+    }))
+    const canSubmit = bills.length >= MIN_GROUP_BILLS
+    if (canSubmit) req.session.tuitionFormToken ??= createSessionFormToken()
+    const actionsBase = `/cramschool/tuition/students/${studentId}/payment-groups`
+
+    res.set('Cache-Control', 'no-store')
+    return res.render('tuition/payment-group-form', {
+      studentName: result.rows[0]?.studentNameSnapshot || `學生 #${studentId}`,
+      billingMonth,
+      bills,
+      canSubmit,
+      action: actionsBase,
+      formToken: canSubmit ? req.session.tuitionFormToken : null,
+      requestKey: canSubmit ? randomUUID() : null,
+      today: getTaipeiDate(),
+      minBills: MIN_GROUP_BILLS,
+      maxBills: MAX_GROUP_BILLS,
+      maxAmount: MAX_PAYMENT_AMOUNT,
+      maxNoteLength: MAX_GROUP_NOTE_LENGTH,
+      previewUrl: studentTuitionUrl(studentId, billingMonth, 'preview') + '#saved-month-bill-heading'
+    })
+  },
+
+  recordTuitionPaymentGroup: async (req, res) => {
+    const body = req.body ?? {}
+    if (!isValidSessionFormToken(body.tuitionFormToken, req.session?.tuitionFormToken)) {
+      return res.status(403).send('表單已失效，請重新開啟合併收款頁再試。')
+    }
+    const bills = readBillSelections(body.billSelections)
+    const studentId = readInt(req.params.studentId)
+    const { billingMonth, paidOn, note, requestKey } = body
+    const result = await tuitionPaymentGroupService.recordTuitionPaymentGroup({
+      studentId, billingMonth, bills, amount: readInt(body.amount), paidOn, note, requestKey, actorId: req.user.id
+    })
+    if (result.ok) {
+      req.flash('success_messages', result.created ? '已登記一筆合併收款。' : '這筆合併收款已登記，未重複新增。')
+      return res.redirect(303, `${paymentGroupBase}/${result.paymentGroupId}`)
+    }
+    if (result.code === 'INVALID_INPUT') return res.status(400).send('收款資料不正確，請重新開啟收款頁再試。')
+    if (result.code === 'STUDENT_NOT_FOUND') return res.status(404).send('找不到這位學生。')
+
+    const messages = {
+      GROUP_BILLS_REQUIRED: `請勾選至少 ${MIN_GROUP_BILLS} 張待繳帳單。只有一張時請由該帳單收款。`,
+      GROUP_BILLS_UNAVAILABLE: '有帳單已無法收款，或不屬於此學生及月份。請重新核對。',
+      GROUP_REQUEST_CONFLICT: '表單編號已用於另一筆登記，請重新核對。',
+      BILL_NOT_ISSUED: '有帳單尚未正式出帳或已作廢，請重新核對。',
+      BILL_NO_PAYMENT_REQUIRED: '有帳單已無須收款，請重新核對。',
+      BILL_VERSION_CONFLICT: '有帳單已更新。這筆匯款尚未登記，請重新核對所有帳單。',
+      INVALID_PAYMENT_DATE: '請輸入有效的實際收款日，不可晚於今天。',
+      INVALID_GROUP_NOTE: `備註須為 ${MAX_GROUP_NOTE_LENGTH} 字元以內的文字。`,
+      PAYMENT_ALLOCATIONS_REQUIRE_REVIEW: '有帳單的分項收款紀錄需要核對。',
+      PAYMENT_AMOUNT_OUT_OF_RANGE: '收款金額超出可登記範圍。'
+    }
+    const message = result.code === 'GROUP_AMOUNT_MISMATCH'
+      ? `所勾選的帳單待繳合計 NT$ ${amountFormat.format(result.expectedAmount)}。匯款金額不符，尚未登記。`
+      : messages[result.code] ?? '暫時無法登記這筆收款，請先核對帳單。'
+    req.flash('error_messages', message)
+    return res.redirect(303, studentTuitionUrl(studentId, billingMonth, 'payment-groups/new'))
+  },
+
+  getTuitionPaymentGroupDetails: async (req, res) => {
+    const id = readInt(req.params.paymentGroupId)
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).send('合併收款編號不正確。')
+
+    const result = await tuitionPaymentGroupService.getTuitionPaymentGroup(id)
+    if (!result) return res.status(404).send('找不到這筆合併收款。')
+    const { group, allocations, requiresReview } = result
+    res.set('Cache-Control', 'no-store')
+    return res.render('tuition/payment-group-detail', {
+      group,
+      amountText: Number.isSafeInteger(group.amount) && group.amount > 0 ? amountFormat.format(group.amount) : null,
+      requiresReview,
+      allocations: allocations.map(row => ({
+        billId: row.TuitionBillId,
+        paymentId: row.id,
+        isSupplement: row.TuitionBill.SupplementCourseId != null,
+        amountText: amountFormat.format(row.amount),
+        detailUrl: `/cramschool/tuition/bills/${row.TuitionBillId}#payment-summary-heading`
+      })),
+      previewUrl: studentTuitionUrl(group.StudentId, group.billingMonth, 'preview') + '#saved-month-bill-heading'
+    })
+  }
 }
 
 module.exports = paymentController

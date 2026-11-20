@@ -1,0 +1,31 @@
+<h1 class="h4 mt-3">合併收款 #{{group.id}}</h1>
+<p><strong>{{group.studentNameSnapshot}}</strong>｜帳單月份 {{group.billingMonth}}</p>
+
+{{#if requiresReview}}
+<p class="alert alert-warning" role="alert">這筆匯款與帳單分配不一致。請先核對紀錄。</p>
+{{else}}
+<dl class="row">
+  <dt class="col-sm-3">實際收款日</dt><dd class="col-sm-9">{{group.paidOn}}</dd>
+  <dt class="col-sm-3">匯款金額</dt><dd class="col-sm-9"><strong>NT$ {{amountText}}</strong></dd>
+  {{#if group.note}}<dt class="col-sm-3">匯款備註</dt><dd class="col-sm-9">{{group.note}}</dd>{{/if}}
+</dl>
+
+<h2 class="h6">這筆匯款分配到的帳單</h2>
+<div class="table-responsive">
+  <table class="table table-sm table-bordered">
+    <thead class="table-secondary">
+      <tr><th scope="col">帳單</th><th scope="col">帳單內的收款紀錄</th><th scope="col">分配金額</th></tr>
+    </thead>
+    <tbody>
+    {{#each allocations}}
+      <tr>
+        <th scope="row"><a href="{{detailUrl}}">{{#if isSupplement}}補單{{else}}主帳單{{/if}} #{{billId}}</a></th>
+        <td>收款 #{{paymentId}}</td><td>NT$ {{amountText}}</td>
+      </tr>
+    {{/each}}
+    </tbody>
+  </table>
+</div>
+{{/if}}
+
+<a href="{{previewUrl}}">回到本月繳費總覽</a>

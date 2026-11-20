@@ -24,7 +24,10 @@
   <h3 class="h6 mt-3">收款明細</h3>
   <ul class="mb-3">
     {{#each paymentRows}}
-    <li>收款 #{{id}}｜{{#if paidOn}}{{paidOn}}{{else}}日期待核對{{/if}}｜NT$ {{amount}}</li>
+    <li>
+      收款 #{{id}}｜{{#if paidOn}}{{paidOn}}{{else}}日期待核對{{/if}}｜NT$ {{amount}}
+      {{#if paymentGroupUrl}}｜<a href="{{paymentGroupUrl}}">合併收款 #{{paymentGroupId}}</a>{{/if}}
+    </li>
     {{/each}}
   </ul>
   {{/if}}
