@@ -641,7 +641,12 @@ async function getStudentTuitionHistory({ courseId, studentId } = {}) {
 
     const savedBills = await TuitionBill.findAll({
       attributes: ['id', 'billingMonth', 'status', 'issuedAt', 'totalAmount'],
-      where: { StudentId: studentId, status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] } },
+      where: {
+        StudentId: studentId,
+        status: {
+          [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED, TUITION_BILL_STATUS.VOID]
+        }
+      },
       include: byCourse ? [{
         model: TuitionBillItem,
         as: 'items',
@@ -660,9 +665,10 @@ async function getStudentTuitionHistory({ courseId, studentId } = {}) {
     const rows = bills.map(({ items, ...bill }) => {
       const isIssued = bill.status === TUITION_BILL_STATUS.ISSUED
       const paymentStatus = byCourse ? paymentStatuses.get(bill.id)?.get(courseId) : paymentStatuses.get(bill.id)
-      const amount = !byCourse
-        ? bill.totalAmount
-        : isIssued ? paymentStatus?.totalAmount ?? null : sumCourseFeeAmounts(items.map(item => item.amount))
+      const amount = bill.status === TUITION_BILL_STATUS.VOID
+        ? null
+        : !byCourse ? bill.totalAmount
+          : isIssued ? paymentStatus?.totalAmount ?? null : sumCourseFeeAmounts(items.map(item => item.amount))
 
       return { bill, amount, paymentStatus: paymentStatus ?? null }
     })

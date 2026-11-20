@@ -11,7 +11,7 @@
   {{else}}
   帳單總額包含該學生當月所有課程、額外費用和折抵。
   {{/if}}
-  若有多筆付款，顯示最近一次付款日期。
+  若有多筆付款，顯示最近一次可確認的付款日期。作廢帳單或廢棄草稿只保留紀錄，不列為應收。
 </p>
 
 <div class="table-responsive">
@@ -33,7 +33,7 @@
         <th scope="row">#{{billId}}</th>
         <td class="text-nowrap">{{billingMonth}}</td>
         <td class="text-nowrap">{{issuedOnText}}</td>
-        <td class="text-nowrap">{{#if hasAmount}}NT$ {{amount}}{{else}}待核對{{/if}}</td>
+        <td class="text-nowrap">{{#if hasAmount}}NT$ {{amount}}{{else}}{{amountUnavailableText}}{{/if}}</td>
         <td class="text-nowrap">{{statusText}}</td>
         <td class="text-nowrap">{{paidOnText}}</td>
         <td><a href="{{detailUrl}}" class="btn btn-sm btn-outline-primary text-nowrap">{{detailText}}</a></td>

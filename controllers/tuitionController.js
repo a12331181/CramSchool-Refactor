@@ -253,22 +253,28 @@ const tuitionController = {
       : '/cramschool/tuition/students'
     const rows = result.rows.map(({ bill, amount, paymentStatus }) => {
       const isIssued = bill.status === TUITION_BILL_STATUS.ISSUED
+      const isVoid = bill.status === TUITION_BILL_STATUS.VOID
+      const wasIssued = isIssued || (isVoid && bill.issuedAt != null)
       const paidOnText = isIssued && (!paymentStatus?.ok || paymentStatus.paidAmount > 0)
         ? paymentStatus?.lastPaidOn ?? '待核對'
         : '—'
+      let statusText = '未出帳'
+      if (isVoid) statusText = wasIssued ? '已作廢' : '草稿已廢棄'
+      else if (isIssued) statusText = course
+        ? getCoursePaymentStatusText(paymentStatus)
+        : getTuitionBillPaymentStatusText(paymentStatus)
 
       return {
         billId: bill.id,
         billingMonth: bill.billingMonth,
-        issuedOnText: isIssued ? (formatTaipeiDateTime(bill.issuedAt)?.slice(0, 10) ?? '待核對') : '—',
+        issuedOnText: wasIssued ? (formatTaipeiDateTime(bill.issuedAt)?.slice(0, 10) ?? '待核對') : '—',
         amount,
         hasAmount: Number.isSafeInteger(amount) && amount >= 0,
-        statusText: !isIssued ? '未出帳' : course
-          ? getCoursePaymentStatusText(paymentStatus)
-          : getTuitionBillPaymentStatusText(paymentStatus),
+        amountUnavailableText: isVoid ? '—' : '待核對',
+        statusText,
         paidOnText,
         detailUrl: `/cramschool/tuition/bills/${bill.id}${isIssued ? '#payment-summary-heading' : ''}`,
-        detailText: isIssued ? '查看收款資訊' : '查看草稿'
+        detailText: isVoid ? '查看作廢紀錄' : isIssued ? '查看收款資訊' : '查看草稿'
       }
     })
 
