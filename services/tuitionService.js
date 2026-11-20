@@ -11,7 +11,7 @@ const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
-const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
+const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
 const paymentAllocationService = require('./tuitionPaymentAllocationService')
 const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
 const MAX_UNSIGNED_INT = 4_294_967_295
@@ -29,24 +29,6 @@ const DRAFT_NON_BLOCKING_REVIEW_CODES = new Set([
   'ATTENDANCE_SUMMARY_UNAVAILABLE',
   'ATTENDANCE_REQUIRES_REVIEW'
 ])
-
-function getTuitionMonthRange(billingMonth) {
-  if (typeof billingMonth !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)) {
-    return null
-  }
-
-  const [year, month] = billingMonth.split('-').map(Number)
-  const monthStart = `${billingMonth}-01`
-  const nextMonthStart = month === 12
-    ? `${year + 1}-01-01`
-    : `${year}-${String(month + 1).padStart(2, '0')}-01`
-
-  const monthStartAt = parseTaipeiDateTime(`${monthStart}T00:00`)
-  const nextMonthStartAt = parseTaipeiDateTime(`${nextMonthStart}T00:00`)
-  if (!monthStartAt || !nextMonthStartAt) return null
-
-  return { monthStart, nextMonthStart, monthStartAt, nextMonthStartAt }
-}
 
 function getTuitionEnrollmentStateForMonth(row, { monthStart, nextMonthStart }) {
   const isKnownDate = value =>
@@ -87,7 +69,7 @@ async function getTuitionEnrollmentsForMonth({ courseId, studentId, billingMonth
     return { ok: false, code: 'INVALID_INPUT' }
   }
 
-  const range = getTuitionMonthRange(billingMonth)
+  const range = getTaipeiMonthRange(billingMonth)
   if (!range) return { ok: false, code: 'INVALID_BILLING_MONTH' }
 
   const rows = await Enrollment.findAll({
@@ -701,7 +683,7 @@ function getMonthlyCourseTuitionSources({ courseIds, billingMonth }, transaction
 }
 
 async function getCoursePaymentOverview({ billingMonth } = {}) {
-  const range = getTuitionMonthRange(billingMonth)
+  const range = getTaipeiMonthRange(billingMonth)
   if (!range) return { ok: false, code: 'INVALID_BILLING_MONTH' }
 
   return sequelize.transaction({
@@ -779,7 +761,7 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
     return { ok: false, code: 'INVALID_COURSE_ID' }
   }
 
-  const range = getTuitionMonthRange(billingMonth)
+  const range = getTaipeiMonthRange(billingMonth)
   if (!range) return { ok: false, code: 'INVALID_BILLING_MONTH' }
 
   if (
