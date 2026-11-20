@@ -1,15 +1,19 @@
 const { Teacher, User } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 
+function getTeacherAccountInclude() {
+  return { model: User, attributes: ['userNo'], required: false }
+}
+
 async function getActiveTeachers() {
   const teachers = await Teacher.findAll({
-    attributes: ['id', 'name', 'image', 'phone', 'UserId'],
+    attributes: ['name', 'phone', 'UserId'],
     where: {
       status: TEACHER_STATUS.ACTIVE
     },
     include: [{
       model: User,
-      attributes: ['email']
+      attributes: ['email', 'userNo']
     }],
     order: [['id', 'ASC']]
   })
@@ -29,13 +33,15 @@ async function getTeachersPage({ page, pageSize, status }) {
       'id', 'name', 'sex', 'education', 'school', 'status'
     ],
     where,
+    include: [getTeacherAccountInclude()],
     order: [
       ['status', 'ASC'],
       ['id', 'ASC']
     ],
     limit: pageSize,
     offset: (page - 1) * pageSize,
-    raw: true
+    raw: true,
+    nest: true
   })
 }
 
@@ -56,7 +62,7 @@ async function getTeacherDetails(teacherId) {
     ],
     include: [{
       model: User,
-      attributes: ['email']
+      attributes: ['email', 'userNo']
     }]
   })
 
@@ -105,6 +111,7 @@ async function updateTeacher(teacherId, teacherData) {
 }
 
 module.exports = {
+  getTeacherAccountInclude,
   getActiveTeachers,
   getTeachersPage,
   getTeacherDetails,

@@ -1,3 +1,4 @@
+const { getTeacherAccountInclude } = require('./teacherService')
 const { Meeting, Teacher } = require('../models')
 
 function getRecentMeetings(limit) {
@@ -20,11 +21,11 @@ function getMeetingsPage({ offset, limit }) {
 }
 
 function getMeetingDetails(meetingId) {
-  return Meeting.findByPk(meetingId, { raw: true, nest: true, include: [Teacher] })
+  return Meeting.findByPk(meetingId, { raw: true, nest: true, include: [{ model: Teacher, attributes: ['name'], include: [getTeacherAccountInclude()] }] })
 }
 
 function getMeetingAuthor(userId) {
-  return Teacher.findOne({ raw: true, where: { UserId: userId } })
+  return Teacher.findOne({ attributes: ['id', 'name'], raw: true, nest: true, where: { UserId: userId }, include: [getTeacherAccountInclude()] })
 }
 
 async function createMeeting({ userId, date, subject, content }) {

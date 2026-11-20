@@ -18,7 +18,7 @@
         <tr class="table-light">
           <th scope="row">{{this.id}}</th>
           <td style="color:#3f3937f5;">
-            {{this.name}}
+            {{referenceLabel this.courseNo this.name}}
             {{#unless this.isActive}}（已關閉）{{/unless}}
           </td>
           <td>

@@ -22,11 +22,11 @@
     {{#if this.isActive}}
     <tr class="table-light">
       <th scope="row">{{this.id}}</th>
-      <td>{{this.name}}</td>
+      <td>{{referenceLabel this.courseNo this.name}}</td>
       <td>{{this.time}} 分鐘</td>
       <td>{{this.type}}</td>
       <td>{{this.price}}</td>
-      <td>{{this.Teacher.name}}</td>
+      <td>{{referenceLabel this.Teacher.User.userNo this.Teacher.name}}</td>
       <td>
         <button type="button" class="btn btn-link">
           <a href="/admin/courses/{{this.id}}/calendar">
@@ -51,11 +51,11 @@
     {{else}}
     <tr class="table-secondary">
       <th scope="row">{{this.id}}</th>
-      <td>{{this.name}}</td>
+      <td>{{referenceLabel this.courseNo this.name}}</td>
       <td>{{this.time}} 分鐘</td>
       <td>{{this.type}}</td>
       <td>{{this.price}}</td>
-      <td>{{this.Teacher.name}}</td>
+      <td>{{referenceLabel this.Teacher.User.userNo this.Teacher.name}}</td>
       <td>
         <button type="button" class="btn btn-link disabled">
           <a href="/admin/courses/{{this.id}}/calendar">

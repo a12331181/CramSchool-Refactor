@@ -1,3 +1,4 @@
+const { getTeacherAccountInclude } = require('./teacherService')
 const { Op, col, fn, literal, where } = require('sequelize')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
@@ -11,7 +12,7 @@ const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
 
 async function getAdminCourseCalendarPage({ courseId, page, pageSize }) {
   const course = await Course.findByPk(courseId, {
-    attributes: ['id', 'name', 'isActive']
+    attributes: ['id', 'courseNo', 'name', 'isActive']
   })
 
   if (!course) {
@@ -47,7 +48,7 @@ async function getAdminCourseCalendarPage({ courseId, page, pageSize }) {
 
 async function getCreateCourseSessionFormData(courseId) {
   const course = await Course.findByPk(courseId, {
-    attributes: ['id', 'name', 'TeacherId', 'isActive']
+    attributes: ['id', 'courseNo', 'name', 'TeacherId', 'isActive']
   })
 
   if (!course) {
@@ -60,9 +61,11 @@ async function getCreateCourseSessionFormData(courseId) {
 
   const teachers = await Teacher.findAll({
     attributes: ['id', 'name'],
+    include: [getTeacherAccountInclude()],
     where: { status: TEACHER_STATUS.ACTIVE },
     order: [['id', 'ASC']],
-    raw: true
+    raw: true,
+    nest: true
   })
 
   return {
@@ -472,7 +475,7 @@ async function checkCourseSessionAttendance({ calendar, transaction }) {
 
 async function getCourseCalendarData(courseId) {
   const course = await Course.findOne({
-    attributes: ['id', 'name'],
+    attributes: ['id', 'courseNo', 'name'],
     where: { id: courseId, isActive: true },
     raw: true
   })
@@ -533,7 +536,7 @@ async function getLegacyCalendarEditData(courseId, calendarId) {
     },
     include: [{
       model: Course,
-      attributes: ['id', 'name'],
+      attributes: ['id', 'courseNo', 'name'],
       where: { isActive: true },
       required: true
     }]

@@ -1,5 +1,5 @@
 <br>
-<h1>{{course.name}}</h1>
+<h1>{{referenceLabel course.courseNo course.name}}</h1>
 <h5>本堂學生名單</h5>
 <p>台北時間：{{startAtText}} ～ {{endAtText}}</p>
 <p>課堂內容：{{calendar.content}}</p>
@@ -25,7 +25,7 @@
     {{#each students}}
     <tr>
       <td>{{this.id}}</td>
-      <td>{{this.name}}</td>
+      <td>{{referenceLabel this.studentNo this.name}}</td>
       <td>{{this.attendText}}</td>
       <td>
         {{#if this.attendReason}}

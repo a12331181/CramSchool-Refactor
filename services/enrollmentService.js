@@ -138,7 +138,7 @@ async function removeEnrollment({ studentId, courseId, enrollmentId }) {
 
 async function getEnrollmentPage(studentId) {
   const student = await Student.findByPk(studentId, {
-    attributes: ['id', 'name', 'status'],
+    attributes: ['id', 'studentNo', 'name', 'status'],
     include: [{
       model: Course,
       as: 'EnrolledCourses',
@@ -165,13 +165,13 @@ async function getEnrollmentPage(studentId) {
         { id: { [Op.in]: [...enrollmentIds.keys()] } }
       ]
     },
-    attributes: ['id', 'name', 'isActive'],
+    attributes: ['id', 'courseNo', 'name', 'isActive'],
     order: [['id', 'ASC']],
     raw: true
   })
 
   return {
-    student: student.toJSON(),
+    student: { id: student.id, name: student.name, studentNo: student.studentNo },
     courses: courses.map(course => ({
       ...course,
       isEnrolled: enrollmentIds.has(course.id),

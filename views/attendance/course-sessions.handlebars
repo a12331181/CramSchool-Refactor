@@ -2,7 +2,7 @@
 {{> staff-nav activeTab="attendance" showBilling=isAdmin}}
 <br>
 
-<h1 class="h4">{{course.name}}｜課堂點名</h1>
+<h1 class="h4">{{referenceLabel course.courseNo course.name}}｜課堂點名</h1>
 <form action="{{listUrl}}" method="GET" class="form-inline mb-3">
   <label for="attendance-month" class="mr-2">月份（台北）</label>
   <input type="month" class="form-control mr-3 mb-1" id="attendance-month" name="month" value="{{month}}">

@@ -1,4 +1,4 @@
-<h1>{{course.name}}</h1>
+<h1>{{referenceLabel course.courseNo course.name}}</h1>
 <h2>新增課堂</h2>
 
 <p class="text-muted">
@@ -28,7 +28,7 @@
       <option value="">請選擇授課教師</option>
       {{#each teachers}}
       <option value="{{this.id}}" {{#if this.isSelected}}selected{{/if}}>
-        {{this.name}}
+        {{referenceLabel this.User.userNo this.name}}
       </option>
       {{/each}}
     </select>

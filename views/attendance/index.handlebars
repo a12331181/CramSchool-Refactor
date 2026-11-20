@@ -12,7 +12,7 @@
   <tbody>
     {{#each courses}}
     <tr>
-      <th scope="row">{{this.name}}</th>
+      <th scope="row">{{referenceLabel this.courseNo this.name}}</th>
       <td><a href="/cramschool/attend/courses/{{this.id}}/sessions" class="btn btn-sm btn-outline-primary">查看課堂</a></td>
     </tr>
     {{else}}

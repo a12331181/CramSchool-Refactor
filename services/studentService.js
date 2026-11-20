@@ -5,6 +5,10 @@ const STUDENT_STATUS = require('../constants/studentStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const { getTaipeiDate } = require('../utils/date')
 
+function getStudentReference(studentId) {
+  return Student.findByPk(studentId, { attributes: ['id', 'studentNo', 'name'], raw: true })
+}
+
 async function getStudentDetails(studentId) {
   const student = await Student.findOne({
     include: [{ model: Course, as: 'EnrolledCourses' }],
@@ -18,12 +22,8 @@ async function getStudentDetails(studentId) {
     return null
   }
 
-  const data = student.toJSON()
-
-  return {
-    student: data,
-    enrolledCourses: data.EnrolledCourses
-  }
+  const { EnrolledCourses: enrolledCourses, ...studentData } = student.toJSON()
+  return { student: studentData, enrolledCourses }
 }
 
 async function getStudentsPage({ page, courseId, pageSize }) {
@@ -63,7 +63,7 @@ async function getStudentsPage({ page, courseId, pageSize }) {
 
 async function getAdminStudentsPage({ page, pageSize, courseId }) {
   const query = {
-    attributes: ['id', 'name', 'sex', 'school', 'grade', 'status'],
+    attributes: ['id', 'studentNo', 'name', 'sex', 'school', 'grade', 'status'],
     order: [
       ['status', 'ASC'],
       ['id', 'ASC']
@@ -342,6 +342,7 @@ async function getStudentAttendanceHistory({ courseId, studentId }) {
 }
 
 module.exports = {
+  getStudentReference,
   getStudentAttendanceHistory,
   getStudentDetails,
   getStudentsPage,

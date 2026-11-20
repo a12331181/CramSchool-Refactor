@@ -1,7 +1,8 @@
+const { getTeacherAccountInclude } = require('./teacherService')
 const { Course, Diary, Teacher, User } = require('../models')
 
 function activeCourseWithTeacher() {
-  return { model: Course, where: { isActive: true }, include: [{ model: Teacher }] }
+  return { model: Course, where: { isActive: true }, include: [{ model: Teacher, attributes: ['name'], include: [getTeacherAccountInclude()] }] }
 }
 
 function getRecentDiaries(limit) {
@@ -42,7 +43,7 @@ async function getCourseDiariesPage({ courseId, offset, limit }) {
 }
 
 function getDiaryDetails({ courseId, diaryId }) {
-  return Diary.findOne({ raw: true, nest: true, where: { id: diaryId, CourseId: courseId }, include: [Teacher] })
+  return Diary.findOne({ raw: true, nest: true, where: { id: diaryId, CourseId: courseId }, include: [{ model: Teacher, attributes: ['name'], include: [getTeacherAccountInclude()] }] })
 }
 
 async function getCreateDiaryFormData({ courseId, userId }) {

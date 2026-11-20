@@ -19,7 +19,7 @@
           <ul class="list-group list-group-flush">
             {{#each diaries}}
             <li class="list-group-item">
-              <h6><strong>{{this.Course.name}}</strong></h6>
+              <h6><strong>{{referenceLabel this.Course.courseNo this.Course.name}}</strong></h6>
               <h6>日期 : {{this.date}}</h6>
               <a href="/cramschool/courses/{{this.Course.id}}/diaries/{{this.id}}">{{this.subject}}</a>
             </li>

@@ -12,7 +12,7 @@
     <select name="courseId" id="courseId" class="form-control-sm col-8" onchange="this.form.submit()">
       <option value="" {{#ifCond '' courseId}} selected{{/ifCond}}>全部學生</option>
       {{#each courses}}
-      <option value="{{this.id}}" {{#ifCond this.id ../courseId}} selected{{/ifCond}}>{{this.name}}</option>
+      <option value="{{this.id}}" {{#ifCond this.id ../courseId}} selected{{/ifCond}}>{{referenceLabel this.courseNo this.name}}</option>
       {{/each}}
     </select>
   </div>
@@ -35,7 +35,7 @@
     {{#ifCond this.status 1}}
     <tr class="table-light">
       <th scope="row">{{this.id}}</th>
-      <td>{{this.name}}</td>
+      <td>{{referenceLabel this.studentNo this.name}}</td>
       <td>{{this.sex}}</td>
       <td>{{this.school}}</td>
       <td>{{this.grade}}</td>
@@ -65,7 +65,7 @@
     {{#ifCond this.status 2}}
     <tr class="table-secondary">
       <th scope="row">{{this.id}}</th>
-      <td>{{this.name}}</td>
+      <td>{{referenceLabel this.studentNo this.name}}</td>
       <td>{{this.sex}}</td>
       <td>{{this.school}}</td>
       <td>{{this.grade}}</td>

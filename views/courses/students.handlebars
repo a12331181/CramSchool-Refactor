@@ -1,6 +1,6 @@
 <br>
 
-<h1>{{course.name}}</h1>
+<h1>{{referenceLabel course.courseNo course.name}}</h1>
 
 <h3 class="ml-2" style="color: rgb(171, 174, 175);">學生名單</h3>
 
@@ -9,7 +9,7 @@
   <div class="col-md-3 mt-3">
     <div class="card" style="width: 16rem;">
       <div class="card-body" style="background-color: rgb(110, 181, 238);">
-        <h5 class="card-title" style="color: rgb(250, 253, 255);"><strong>{{this.name}}</strong></h5>
+        <h5 class="card-title" style="color: rgb(250, 253, 255);"><strong>{{referenceLabel this.studentNo this.name}}</strong></h5>
       </div>
       <ul class="list-group list-group-flush">
         <li class="list-group-item"><strong>就讀學校: </strong>{{this.school}}</li>

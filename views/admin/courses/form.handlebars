@@ -71,7 +71,7 @@
       <option value="{{this.id}}" 
         {{#ifCond this.id ../course.TeacherId}} 
           selected
-        {{/ifCond}}>{{this.name}}
+        {{/ifCond}}>{{referenceLabel this.User.userNo this.name}}
       </option>
       {{/each}}
     </select>

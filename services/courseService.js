@@ -1,3 +1,4 @@
+const { getTeacherAccountInclude } = require('./teacherService')
 const { allocateCourseNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
 const {Course, Teacher, Student, Calendar, Enrollment, Tuition, TuitionBillItem, Diary, Attend, sequelize} = require('../models')
 const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
@@ -7,9 +8,9 @@ const STUDENT_STATUS = require('../constants/studentStatus')
 async function getCourseDirectory(userId) {
   const [courses, teacher] = await Promise.all([
     Course.findAll({
-      attributes: ['id', 'name', 'time'],
+      attributes: ['id', 'courseNo', 'name', 'time'],
       where: { isActive: true },
-      include: [{ model: Teacher, attributes: ['id', 'name'] }],
+      include: [{ model: Teacher, attributes: ['id', 'name'], include: [getTeacherAccountInclude()] }],
       raw: true,
       nest: true
     }),
@@ -24,12 +25,12 @@ async function getCourseDirectory(userId) {
 
 async function getCourseEnrolledStudents(courseId) {
   const course = await Course.findOne({
-    attributes: ['id', 'name'],
+    attributes: ['id', 'courseNo', 'name'],
     where: { id: courseId, isActive: true },
     include: [{
       model: Student,
       as: 'EnrolledStudents',
-      attributes: ['id', 'name', 'school', 'grade'],
+      attributes: ['id', 'studentNo', 'name', 'school', 'grade'],
       where: { status: STUDENT_STATUS.ACTIVE },
       through: { attributes: [] },
       required: false
@@ -45,6 +46,7 @@ async function getAdminCoursesPage({ page, pageSize }) {
   const result = await Course.findAndCountAll({
     attributes: [
       'id',
+      'courseNo',
       'name',
       'time',
       'type',
@@ -55,6 +57,7 @@ async function getAdminCoursesPage({ page, pageSize }) {
     include: [{
       model: Teacher,
       attributes: ['id', 'name'],
+      include: [getTeacherAccountInclude()],
       required: false
     }],
     order: [
@@ -74,8 +77,10 @@ async function getAdminCoursesPage({ page, pageSize }) {
 async function getCourseFormData() {
   const teachers = await Teacher.findAll({
     attributes: ['id', 'name'],
+    include: [getTeacherAccountInclude()],
     order: [['id', 'ASC']],
-    raw: true
+    raw: true,
+    nest: true
   })
 
   return {

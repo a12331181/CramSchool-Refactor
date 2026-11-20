@@ -1,3 +1,4 @@
+const { getTeacherAccountInclude } = require('./teacherService')
 const { User, Course, Teacher, Calendar, Enrollment, Student, Attend, AuditLog, sequelize } = require('../models')
 const { Op, col, UniqueConstraintError } = require('sequelize')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
@@ -14,6 +15,7 @@ function getVisibleTeacherJoin({ userId, isAdmin }, attributes = []) {
   return {
     model: Teacher,
     attributes,
+    ...(attributes.includes('name') ? { include: [getTeacherAccountInclude()] } : {}),
     ...(isAdmin ? {} : { where: { UserId: userId } }),
     required: true
   }
@@ -42,10 +44,10 @@ async function getAttendanceHome({ userId }) {
   if (!viewer) return { courses: [], isAdmin: false }
 
   const courses = await Course.findAll({
-    attributes: ['id', 'name'],
+    attributes: ['id', 'courseNo', 'name'],
     ...(viewer.isAdmin ? {} : { where: { isActive: true } }),
     include: [getVisibleSessionJoin(viewer)],
-    group: [col('Course.id'), col('Course.name')],
+    group: [col('Course.id'), col('Course.courseNo'), col('Course.name')],
     order: [['name', 'ASC'], ['id', 'ASC']],
     raw: true
   })
@@ -64,7 +66,7 @@ async function getCourseAttendanceSessions({ courseId, userId, month, status, pa
 
   // Course visibility does not depend on a filter matching any rows.
   const course = await Course.findOne({
-    attributes: ['id', 'name'],
+    attributes: ['id', 'courseNo', 'name'],
     where: { id: courseId, ...(viewer.isAdmin ? {} : { isActive: true }) },
     ...(viewer.isAdmin ? {} : { include: [getVisibleSessionJoin(viewer)] }),
     subQuery: false,
@@ -121,7 +123,7 @@ async function getAttendanceRoster({ courseId, calendarId, userId }) {
       },
       {
         model: Course,
-        attributes: ['id', 'name', 'isActive'],
+        attributes: ['id', 'courseNo', 'name', 'isActive'],
         required: true
       }
     ],
@@ -195,7 +197,7 @@ async function getAttendanceRoster({ courseId, calendarId, userId }) {
   const students = studentIds.size === 0
     ? []
     : await Student.findAll({
-        attributes: ['id', 'name'],
+        attributes: ['id', 'studentNo', 'name'],
         where: {
           id: { [Op.in]: [...studentIds] }
         },
@@ -635,7 +637,7 @@ async function getAttendanceHistory({
       },
       {
         model: Course,
-        attributes: ['id', 'name'],
+        attributes: ['id', 'courseNo', 'name'],
         required: true
       }
     ],
@@ -653,7 +655,7 @@ async function getAttendanceHistory({
     },
     include: [{
       model: Student,
-      attributes: ['id', 'name'],
+      attributes: ['id', 'studentNo', 'name'],
       required: true
     }],
     raw: true,

@@ -13,7 +13,7 @@
     </div>
     <div class="col-md-8">
       <div class="card-body">
-        <h4 class="card-title"><strong>{{teacher.name}}</strong></h4>
+        <h4 class="card-title"><strong>{{referenceLabel teacher.User.userNo teacher.name}}</strong></h4>
         <p class="card-text"><strong>性別 : </strong>{{teacher.sex}}</p>
         <p class="card-text"><strong>生日 : </strong>{{teacher.birth}}</p>
         <p class="card-text"><strong>電話 : </strong>{{teacher.phone}}</p>
@@ -45,7 +45,7 @@
 {{#if this.isActive}}
 <div class="card col-md-3">
   <div class="card-body">
-    <h5 class="card-title">{{this.name}}</h5>
+    <h5 class="card-title">{{referenceLabel this.courseNo this.name}}</h5>
     <a href="/cramschool/courses/{{this.id}}/calendar" class="card-link">課程行事曆</a>
     <a href="/cramschool/courses/{{this.id}}/enrolledstudents" class="card-link">學生名單</a>
   </div>

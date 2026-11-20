@@ -39,7 +39,7 @@
     {{#ifCond this.status 1}}
     <tr class="table-light">
       <th scope="row">{{this.id}}</th>
-      <td>{{this.name}}</td>
+      <td>{{referenceLabel this.User.userNo this.name}}</td>
       <td>{{this.sex}}</td>
       <td>{{this.education}}</td>
       <td>{{this.school}}</td>
@@ -61,7 +61,7 @@
     {{#ifCond this.status 2}}
     <tr class="table-warning">
       <th scope="row">{{this.id}}</th>
-      <td>{{this.name}}</td>
+      <td>{{referenceLabel this.User.userNo this.name}}</td>
       <td>{{this.sex}}</td>
       <td>{{this.education}}</td>
       <td>{{this.school}}</td>
@@ -83,7 +83,7 @@
     {{#ifCond this.status 3}}
     <tr class="table-secondary">
       <th scope="row">{{this.id}}</th>
-      <td>{{this.name}}</td>
+      <td>{{referenceLabel this.User.userNo this.name}}</td>
       <td>{{this.sex}}</td>
       <td>{{this.education}}</td>
       <td>{{this.school}}</td>

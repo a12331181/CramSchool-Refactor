@@ -1,29 +1,34 @@
 <br>
-
 {{> staff-nav activeTab="courses" showBilling=isAdmin}}
 
-<br>
-
-<div class="row">
-  {{#each courses}}
-  <div class="col-md-4 ">
-    <div class="card mt-3">
-      <div class="card-header">
-        <h5><strong>{{this.name}}</strong></h5>
-      </div>
-      <div class="card-body" style="color: rgb(28, 36, 49)">
-        <h5 class="card-title" style="color: rgb(35, 95, 192)"><strong style="color: rgb(18, 25, 36)">授課老師: </strong>
-          {{this.Teacher.name}}</h5>
-        <h6 style="color: rgb(154, 166, 184)"><strong>上課時長: {{this.time}}</strong>分鐘</h6>
-        <a href="/cramschool/courses/{{this.id}}/calendar" class="btn btn-dark">課程行事曆</a>
-        <a href="/cramschool/courses/{{this.id}}/enrolledstudents" class="btn btn-secondary">學生名單</a>
-        {{#if this.canViewDiaries}}
-        <a href="/cramschool/courses/{{this.id}}/diaries" class="btn btn-warning">教師日誌</a>
-        {{else}}
-        <a href="/cramschool/courses/{{this.id}}/diaries" class="btn btn-warning disabled">教師日誌</a>
-        {{/if}}
-      </div>
-    </div>
-  </div>
-  {{/each}}
+<h1 class="h4 mt-3">課程列表</h1>
+<div class="table-responsive">
+  <table class="table table-bordered table-hover">
+    <thead class="table-secondary">
+      <tr>
+        <th scope="col">課程編號</th>
+        <th scope="col">課程名稱</th>
+        <th scope="col">授課老師</th>
+        <th scope="col">上課時長</th>
+        <th scope="col">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each courses}}
+      <tr>
+        <td>{{#if courseNo}}{{courseNo}}{{else}}—{{/if}}</td>
+        <th scope="row">{{name}}</th>
+        <td>{{referenceLabel Teacher.User.userNo Teacher.name}}</td>
+        <td>{{time}} 分鐘</td>
+        <td>
+          <a href="/cramschool/courses/{{id}}/calendar" class="btn btn-sm btn-outline-dark">課程行事曆</a>
+          <a href="/cramschool/courses/{{id}}/enrolledstudents" class="btn btn-sm btn-outline-secondary">學生名單</a>
+          {{#if canViewDiaries}}<a href="/cramschool/courses/{{id}}/diaries" class="btn btn-sm btn-outline-warning">教師日誌</a>{{/if}}
+        </td>
+      </tr>
+      {{else}}
+      <tr><td colspan="5" class="text-center text-muted">目前沒有可顯示的課程。</td></tr>
+      {{/each}}
+    </tbody>
+  </table>
 </div>

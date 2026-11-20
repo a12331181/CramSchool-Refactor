@@ -1,3 +1,4 @@
+const { formatReferenceLabel } = require('../utils/referenceLabel')
 const attendanceService = require('../services/attendanceService')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
@@ -54,7 +55,7 @@ const attendanceController = {
 
     const sessions = result.rows.map(session => ({
       id: session.id,
-      teacherName: session.Teacher?.name ?? '待核對',
+      teacherName: formatReferenceLabel(session.Teacher?.User?.userNo, session.Teacher?.name ?? '待核對'),
       startAtText: formatTaipeiDateTime(session.startAt) ?? '待核對',
       endAtText: formatTaipeiDateTime(session.endAt) ?? '待核對',
       statusText: COURSE_SESSION_STATUS_LABELS[session.status] ?? '待核對',

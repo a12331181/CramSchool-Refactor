@@ -21,8 +21,8 @@
       <th scope="row">{{this.id}}</th>
       <td>{{this.date}}</td>
       <td><a href="/cramschool/courses/{{this.Course.id}}/diaries/{{this.id}}">{{this.subject}}</a></td>
-      <td style="color: rgb(211, 146, 60);">{{this.Course.name}}</td>
-      <td style="color: rgb(124, 150, 199);">{{this.Course.Teacher.name}}</td>
+      <td style="color: rgb(211, 146, 60);">{{referenceLabel this.Course.courseNo this.Course.name}}</td>
+      <td style="color: rgb(124, 150, 199);">{{referenceLabel this.Course.Teacher.User.userNo this.Course.Teacher.name}}</td>
       {{#if ../isAdmin}}
       <td>
         <form action="/cramschool/diaries/{{this.id}}?_method=DELETE" method="POST" style="display: inline;">
