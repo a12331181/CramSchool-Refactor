@@ -4,28 +4,69 @@ const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLa
 const ATTEND_STATUS = require('../constants/attendStatus')
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
 const { formatTaipeiDateTime } = require('../utils/date')
+const { getPagination, getPaginationLinks } = require('../utils/pagination')
+
+const SESSION_PAGE_SIZE = 20
 
 const attendController = {
-  getAttendIndexpage: async (req, res) => {
-    const { calendars, isAdmin } =
-      await attendService.getAttendIndexData({
-        userId: req.user.id
-      })
+  getAttendanceHome: async (req, res) => {
+    const data = await attendService.getAttendanceHomeData({ userId: req.user.id })
+    res.set('Cache-Control', 'no-store')
+    return res.render('attendance/index', data)
+  },
 
-    return res.render('attendance/index', {
-      calendars: calendars.map(calendar => ({
-        id: calendar.id,
-        courseId: calendar.CourseId,
-        courseName: calendar.Course.name,
-        canViewStudents:
-          calendar.status === COURSE_SESSION_STATUS.SCHEDULED ||
-          calendar.status === COURSE_SESSION_STATUS.COMPLETED,
-        startAtText: formatTaipeiDateTime(calendar.startAt) ?? '待核對',
-        endAtText: formatTaipeiDateTime(calendar.endAt) ?? '待核對',
-        statusText: COURSE_SESSION_STATUS_LABELS[calendar.status] ?? '待核對',
-        content: calendar.content
-      })),
-      isAdmin
+  getCourseAttendanceSessions: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數。')
+    }
+
+    const pageText = req.query.page ?? '1'
+    const page = Number(pageText)
+    if (
+      typeof pageText !== 'string' || !/^[1-9][0-9]*$/.test(pageText) ||
+      !Number.isSafeInteger(page) || !Number.isSafeInteger((page - 1) * SESSION_PAGE_SIZE)
+    ) {
+      return res.status(400).send('頁碼必須是有效的正整數。')
+    }
+
+    const { month = '', status = '' } = req.query
+    const result = await attendService.getCourseAttendanceSessions({
+      courseId, userId: req.user.id, month, status, page, pageSize: SESSION_PAGE_SIZE
+    })
+    res.set('Cache-Control', 'no-store')
+    if (!result.ok) {
+      if (result.code === 'INVALID_MONTH') return res.status(400).send('月份格式必須為 YYYY-MM。')
+      if (result.code === 'INVALID_STATUS') return res.status(400).send('請選擇有效的課堂狀態。')
+      return res.status(404).send('找不到可查看的課程。')
+    }
+
+    const pagination = getPagination({ page, pageSize: SESSION_PAGE_SIZE, totalCount: result.count })
+    const listUrl = `/cramschool/attend/courses/${courseId}/sessions`
+    const pageUrl = targetPage => {
+      const query = new URLSearchParams()
+      if (month) query.set('month', month)
+      if (status) query.set('status', status)
+      query.set('page', String(targetPage))
+      return `${listUrl}?${query}`
+    }
+    if (page > pagination.totalPages) return res.redirect(pageUrl(pagination.totalPages))
+
+    const sessions = result.rows.map(session => ({
+      id: session.id,
+      teacherName: session.Teacher?.name ?? '待核對',
+      startAtText: formatTaipeiDateTime(session.startAt) ?? '待核對',
+      endAtText: formatTaipeiDateTime(session.endAt) ?? '待核對',
+      statusText: COURSE_SESSION_STATUS_LABELS[session.status] ?? '待核對',
+      content: session.content,
+      canViewStudents: [COURSE_SESSION_STATUS.SCHEDULED, COURSE_SESSION_STATUS.COMPLETED].includes(session.status)
+    }))
+    const statusOptions = Object.entries(COURSE_SESSION_STATUS_LABELS).map(([value, label]) => ({
+      value, label, selected: value === status
+    }))
+    return res.render('attendance/course-sessions', {
+      course: result.course, isAdmin: result.isAdmin, listUrl, sessions, statusOptions, month, totalCount: result.count,
+      ...getPaginationLinks(pagination, pageUrl)
     })
   },
 

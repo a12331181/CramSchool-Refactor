@@ -1,55 +1,93 @@
 const { User, Course, Teacher, Calendar, Enrollment, Student, Attend, AuditLog, sequelize } = require('../models')
-const { Op, UniqueConstraintError } = require('sequelize')
+const { Op, col, UniqueConstraintError } = require('sequelize')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
-const { getTaipeiDate } = require('../utils/date')
+const { getTaipeiDate, getTaipeiMonthRange } = require('../utils/date')
 
-async function getAttendIndexData({ userId }) {
-  const user = await User.findByPk(userId, {
-    attributes: ['id', 'isAdmin'],
+async function getAttendanceViewer(userId) {
+  const user = await User.findByPk(userId, { attributes: ['id', 'isAdmin'], raw: true })
+  return user ? { userId: user.id, isAdmin: Number(user.isAdmin) === 1 } : null
+}
+
+function getVisibleTeacherJoin({ userId, isAdmin }, attributes = []) {
+  return {
+    model: Teacher,
+    attributes,
+    ...(isAdmin ? {} : { where: { UserId: userId } }),
+    required: true
+  }
+}
+
+function getFormalSessionWhere() {
+  return {
+    status: { [Op.in]: Object.values(COURSE_SESSION_STATUS) },
+    startAt: { [Op.ne]: null },
+    endAt: { [Op.ne]: null }
+  }
+}
+
+function getVisibleSessionJoin(viewer) {
+  return {
+    model: Calendar,
+    attributes: [],
+    where: getFormalSessionWhere(),
+    include: [getVisibleTeacherJoin(viewer)],
+    required: true
+  }
+}
+
+async function getAttendanceHomeData({ userId }) {
+  const viewer = await getAttendanceViewer(userId)
+  if (!viewer) return { courses: [], isAdmin: false }
+
+  const courses = await Course.findAll({
+    attributes: ['id', 'name'],
+    ...(viewer.isAdmin ? {} : { where: { isActive: true } }),
+    include: [getVisibleSessionJoin(viewer)],
+    group: [col('Course.id'), col('Course.name')],
+    order: [['name', 'ASC'], ['id', 'ASC']],
     raw: true
   })
+  return { courses, isAdmin: viewer.isAdmin }
+}
 
-  if (!user) {
-    return { calendars: [], isAdmin: false }
+async function getCourseAttendanceSessions({ courseId, userId, month, status, page, pageSize }) {
+  const range = month === '' ? null : getTaipeiMonthRange(month)
+  if (month !== '' && !range) return { ok: false, code: 'INVALID_MONTH' }
+  if (status !== '' && !Object.values(COURSE_SESSION_STATUS).includes(status)) {
+    return { ok: false, code: 'INVALID_STATUS' }
   }
 
-  const isAdmin = Number(user.isAdmin) === 1
+  const viewer = await getAttendanceViewer(userId)
+  if (!viewer) return { ok: false, code: 'COURSE_NOT_AVAILABLE' }
 
-  const calendars = await Calendar.findAll({
-    attributes: ['id', 'CourseId', 'startAt', 'endAt', 'status', 'content'],
-    where: {
-      status: {
-        [Op.in]: [
-          COURSE_SESSION_STATUS.SCHEDULED,
-          COURSE_SESSION_STATUS.COMPLETED,
-          COURSE_SESSION_STATUS.CANCELLED
-        ]
-      },
-      startAt: { [Op.ne]: null },
-      endAt: { [Op.ne]: null }
-    },
-    include: [
-      {
-        model: Teacher,
-        attributes: [],
-        ...(isAdmin ? {} : { where: { UserId: userId } }),
-        required: true
-      },
-      {
-        model: Course,
-        attributes: ['name'],
-        ...(isAdmin ? {} : { where: { isActive: true } }),
-        required: true
-      }
-    ],
-    order: [['startAt', 'ASC'], ['id', 'ASC']],
+  // Course visibility does not depend on a filter matching any rows.
+  const course = await Course.findOne({
+    attributes: ['id', 'name'],
+    where: { id: courseId, ...(viewer.isAdmin ? {} : { isActive: true }) },
+    ...(viewer.isAdmin ? {} : { include: [getVisibleSessionJoin(viewer)] }),
+    subQuery: false,
+    raw: true
+  })
+  if (!course) return { ok: false, code: 'COURSE_NOT_AVAILABLE' }
+
+  const where = { ...getFormalSessionWhere(), CourseId: courseId }
+  if (status) where.status = status
+  if (range) where.startAt = { [Op.gte]: range.monthStartAt, [Op.lt]: range.nextMonthStartAt }
+
+  const { rows, count } = await Calendar.findAndCountAll({
+    attributes: ['id', 'startAt', 'endAt', 'status', 'content'],
+    where,
+    include: [getVisibleTeacherJoin(viewer, ['name'])],
+    order: [['startAt', 'DESC'], ['id', 'DESC']],
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
     raw: true,
     nest: true
   })
 
-  return { calendars, isAdmin }
+  return { ok: true, course, rows, count, isAdmin: viewer.isAdmin }
 }
 
 async function getAttendStudentsData({ courseId, calendarId, userId }) {
@@ -656,7 +694,8 @@ async function getAttendHistoryData({
 }
 
 module.exports = { 
-  getAttendIndexData,
+  getAttendanceHomeData,
+  getCourseAttendanceSessions,
   getAttendStudentsData,
   createAttend,
   updateAttend,

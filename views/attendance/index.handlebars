@@ -1,51 +1,22 @@
 <br>
-
 {{> staff-nav activeTab="attendance" showBilling=isAdmin}}
-
 <br>
 
-<h5>
-  {{#if isAdmin}}
-  全部課堂時段（台北時間）
-  {{else}}
-  我的課堂時段（台北時間）
-  {{/if}}
-</h5>
+<h1 class="h4">{{#if isAdmin}}課程點名{{else}}我的授課課程{{/if}}</h1>
+<p class="text-muted">先選課程，再查看課堂和點名名單。</p>
 
 <table class="table table-bordered">
-  <thead>
-    <tr>
-      <th scope="col">課程</th>
-      <th scope="col">開始時間</th>
-      <th scope="col">結束時間</th>
-      <th scope="col">狀態</th>
-      <th scope="col">課堂內容</th>
-      <th scope="col">學生名單</th>
-    </tr>
+  <thead class="table-secondary">
+    <tr><th scope="col">課程名稱</th><th scope="col">操作</th></tr>
   </thead>
   <tbody>
-    {{#each calendars}}
+    {{#each courses}}
     <tr>
-      <td>{{this.courseName}}</td>
-      <td>{{this.startAtText}}</td>
-      <td>{{this.endAtText}}</td>
-      <td>{{this.statusText}}</td>
-      <td>{{this.content}}</td>
-      <td>
-        {{#if this.canViewStudents}}
-        <a href="/cramschool/attend/courses/{{this.courseId}}/calendar/{{this.id}}/students"
-          class="btn btn-sm btn-outline-primary">查看名單</a>
-        {{else}}
-        —
-        {{/if}}
-      </td>
+      <th scope="row">{{this.name}}</th>
+      <td><a href="/cramschool/attend/courses/{{this.id}}/sessions" class="btn btn-sm btn-outline-primary">查看課堂</a></td>
     </tr>
     {{else}}
-    <tr>
-      <td colspan="6" class="text-center text-muted">
-        目前沒有安排的課堂。
-      </td>
-    </tr>
+    <tr><td colspan="2" class="text-center text-muted">目前沒有可查看的課程。</td></tr>
     {{/each}}
   </tbody>
 </table>
