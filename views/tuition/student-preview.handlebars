@@ -1,6 +1,10 @@
 <h1 class="mt-3">基本月費試算(草稿)</h1>
 
-{{> tuition/billing-month-filter formAction=previewUrl monthLabel="計費月份" submitText="查看試算"}}
+{{#> tuition/billing-month-filter formAction=previewUrl monthLabel="計費月份" submitText="查看試算"}}
+  {{#if listStatus}}
+  <input type="hidden" name="status" value="{{listStatus}}">
+  {{/if}}
+{{/tuition/billing-month-filter}}
 
 
 {{> tuition/month-bills-panel}}
@@ -70,4 +74,4 @@
 {{/if}}
 {{/if}}
 
-<a href="/cramschool/tuition/students">回到學生繳費紀錄</a>
+<a href="{{backUrl}}">回到學生繳費紀錄</a>

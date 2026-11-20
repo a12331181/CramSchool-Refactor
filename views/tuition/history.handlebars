@@ -1,6 +1,10 @@
 <h1 class="mt-3">歷期學費列表</h1>
 <h2 class="h5">{{student.name}}{{#if course}}｜{{course.name}}{{/if}}</h2>
 
+<a href="{{previewUrl}}" class="btn btn-sm btn-outline-primary mb-3">
+  {{#if course}}查看課程學費試算{{else}}查看學生月費試算{{/if}}
+</a>
+
 <p class="text-muted">
   {{#if course}}
   本課學費取自帳單明細；付款狀態和日期以整張月帳單為準。

@@ -13,6 +13,29 @@ const { randomBytes, timingSafeEqual } = require('node:crypto')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 
+function getTuitionNavigationParams({ billingMonth, page, status }) {
+  const params = new URLSearchParams()
+
+  if (typeof billingMonth === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)) {
+    params.set('billingMonth', billingMonth)
+  }
+
+  const pageNumber = Number(page)
+  if (Number.isSafeInteger(pageNumber) && pageNumber > 1) {
+    params.set('page', String(pageNumber))
+  }
+
+  if (typeof status === 'string' && status !== 'all' && Object.hasOwn(STUDENT_TUITION_STATUS, status)) {
+    params.set('status', status)
+  }
+
+  return params
+}
+
+function withQuery(path, params) {
+  return params.size ? `${path}?${params}` : path
+}
+
 function getTuitionBillPaymentStatusText(paymentStatus) {
   return STUDENT_TUITION_STATUS[tuitionService.getTuitionBillPaymentState(paymentStatus)]
 }
@@ -177,22 +200,18 @@ const tuitionController = {
     }
 
     const { course, student } = result
-    const { billingMonth } = req.query
-    const navigation = new URLSearchParams()
-    if (typeof billingMonth === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)) {
-      navigation.set('billingMonth', billingMonth)
-    }
-    const monthQuery = navigation.size ? `?${navigation}` : ''
-
-    const page = Number(req.query.page)
-    if (!course && Number.isSafeInteger(page) && page > 1) {
-      navigation.set('page', String(page))
-    }
-    const { status } = req.query
-    if (!course && typeof status === 'string' && status !== 'all' && Object.hasOwn(STUDENT_TUITION_STATUS, status)) {
-      navigation.set('status', status)
-    }
-    const backQuery = navigation.size ? `?${navigation}` : ''
+    const { billingMonth, page, status } = req.query
+    const navigation = getTuitionNavigationParams({
+      billingMonth,
+      page,
+      status: course ? undefined : status
+    })
+    const previewPath = course
+      ? `/cramschool/tuition/courses/${courseId}/students/${studentId}/preview`
+      : `/cramschool/tuition/students/${studentId}/preview`
+    const backPath = course
+      ? `/cramschool/tuition/courses/${courseId}/monthly`
+      : '/cramschool/tuition/students'
     const rows = result.rows.map(({ bill, amount, paymentStatus }) => {
       const isIssued = bill.status === 'issued'
       const paidOnText = isIssued && (!paymentStatus?.ok || paymentStatus.paidAmount > 0)
@@ -216,13 +235,8 @@ const tuitionController = {
       course,
       student,
       rows,
-      coursePreviewUrl: course
-        ? `/cramschool/tuition/courses/${courseId}/students/${studentId}/preview${monthQuery}`
-        : null,
-      studentPreviewUrl: `/cramschool/tuition/students/${studentId}/preview${monthQuery}`,
-      backUrl: course
-        ? `/cramschool/tuition/courses/${courseId}/monthly${backQuery}`
-        : `/cramschool/tuition/students${backQuery}`
+      previewUrl: withQuery(previewPath, navigation),
+      backUrl: withQuery(backPath, navigation)
     })
   },
   
@@ -235,7 +249,8 @@ const tuitionController = {
     }
 
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
-    const listUrl = `/cramschool/tuition/courses/${courseId}/students/${studentId}`
+    const historyPath = `/cramschool/tuition/courses/${courseId}/students/${studentId}`
+    const navigation = getTuitionNavigationParams({ billingMonth, page: req.query.page })
     const result = await tuitionService.getTuitionPreview({
       courseId,
       studentId,
@@ -273,8 +288,8 @@ const tuitionController = {
       : []
 
     return res.render('tuition/course-preview', {
-      listUrl,
-      previewUrl: `${listUrl}/preview`,
+      backUrl: withQuery(historyPath, navigation),
+      previewUrl: `${historyPath}/preview`,
       billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
       preview: result.ok ? result : null,
       attendanceItems,
@@ -292,6 +307,11 @@ const tuitionController = {
     }
 
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
+    const navigation = getTuitionNavigationParams({
+      billingMonth,
+      page: req.query.page,
+      status: req.query.status
+    })
     const input = { studentId, billingMonth }
     const [result, billsResult] = await Promise.all([
       tuitionService.getStudentTuitionPreview(input),
@@ -384,6 +404,8 @@ const tuitionController = {
     res.set('Cache-Control', 'no-store')
     return res.render('tuition/student-preview', {
       previewUrl: `/cramschool/tuition/students/${studentId}/preview`,
+      backUrl: withQuery('/cramschool/tuition/students', navigation),
+      listStatus: navigation.get('status'),
       billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
       preview: result.ok ? result : null,
       hasSubtotal,
@@ -954,7 +976,7 @@ const tuitionController = {
       return res.redirect(pageUrl(pagination.totalPages))
     }
 
-    const historyQuery = listQuery(page)
+    const detailQuery = listQuery(page)
     const rows = result.rows.map(row => {
       const { bill, paymentStatus } = row
       const isIssued = bill?.status === 'issued'
@@ -984,10 +1006,8 @@ const tuitionController = {
         hasRemainingAmount,
         remainingAmount: hasRemainingAmount ? paymentStatus.remainingAmount : null,
         billUrl: bill ? `/cramschool/tuition/bills/${bill.id}` : null,
-        historyUrl: `${listUrl}/${row.student.id}/history?${historyQuery}`,
-        previewUrl: `${listUrl}/${row.student.id}/preview?${new URLSearchParams({
-          billingMonth
-        })}`
+        historyUrl: withQuery(`${listUrl}/${row.student.id}/history`, detailQuery),
+        previewUrl: withQuery(`${listUrl}/${row.student.id}/preview`, detailQuery)
       }
     })
 
@@ -1030,6 +1050,7 @@ const tuitionController = {
     if (page > pagination.totalPages) return res.redirect(pageUrl(pagination.totalPages))
 
     const monthQuery = new URLSearchParams({ billingMonth })
+    const historyQuery = getTuitionNavigationParams({ billingMonth, page })
     const rows = result.rows.map(({ studentId, student, bill, enrollmentNeedsReview, hasCourseFee, courseAmount, paymentStatus }) => {
       const hasCourseAmount = Number.isSafeInteger(courseAmount)
       const hasRemainingAmount = hasCourseAmount && bill?.status === 'issued' && paymentStatus?.ok === true
@@ -1055,7 +1076,9 @@ const tuitionController = {
         hasRemainingAmount,
         remainingAmount: hasRemainingAmount ? paymentStatus.remainingAmount : null,
         billUrl: bill ? `/cramschool/tuition/bills/${bill.id}` : null,
-        historyUrl: student ? `/cramschool/tuition/courses/${courseId}/students/${studentId}?${monthQuery}` : null,
+        historyUrl: student
+          ? withQuery(`/cramschool/tuition/courses/${courseId}/students/${studentId}`, historyQuery)
+          : null,
         previewUrl: student ? `/cramschool/tuition/students/${studentId}/preview?${monthQuery}` : null
       }
     })
