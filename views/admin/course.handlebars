@@ -90,27 +90,6 @@
   </tbody>
 </table>
 
-<nav aria-label="Page navigation example">
-  <ul class="pagination justify-content-center">
-    <li class="page-item">
-      <a class="page-link" href="/admin/courses/{{course.id}}/calendar?page={{prev}}" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-      </a>
-    </li>
-    {{#each totalPage}}
-    {{#ifCond this ../page}}
-    <li class="page-item active"><a class="page-link" href="#">{{this}}</a></li>
-    {{else}}
-    <li class="page-item"><a class="page-link"
-      href="/admin/courses/{{../course.id}}/calendar?page={{this}}">{{this}}</a></li>
-    {{/ifCond}}
-    {{/each}}
-    <li class="page-item"><a class="page-link" href="/admin/courses/{{course.id}}/calendar?page={{next}}"
-        aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-      </a>
-    </li>
-  </ul>
-</nav>
+{{> pagination ariaLabel="課程行事曆分頁"}}
 
 <a href="/admin/courses">回到後台課程頁面</a>

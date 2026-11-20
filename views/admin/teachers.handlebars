@@ -107,24 +107,4 @@
 </table>
 
 <br />
-<nav aria-label="Page navigation example">
-  <ul class="pagination justify-content-center">
-    <li class="page-item">
-      <a class="page-link" href="/admin/teachers?page={{prev}}&status={{status}}" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-      </a>
-    </li>
-    {{#each totalPage}}
-    {{#ifCond this ../page}}
-    <li class="page-item active"><a class="page-link" href="#">{{this}}</a></li>
-    {{else}}
-    <li class="page-item"><a class="page-link"
-        href="/admin/teachers?page={{this}}&status={{../status}}">{{this}}</a></li>
-    {{/ifCond}}
-    {{/each}}
-    <a class="page-link" href="/admin/teachers?page={{next}}&status={{status}}" aria-label="Next">
-      <span aria-hidden="true">&raquo;</span>
-    </a>
-    </li>
-  </ul>
-</nav>
+{{> pagination ariaLabel="後台教師列表分頁"}}

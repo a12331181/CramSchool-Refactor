@@ -1,6 +1,6 @@
 const teacherService = require('../services/teacherService')
 const TEACHER_STATUS = require('../constants/teacherStatus')
-const { getPagination } = require('../utils/pagination')
+const { getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const pageLimit = 12
 
@@ -34,16 +34,16 @@ const adminTeacherController = {
       totalCount: result.count
     })
 
-    if (page > pagination.totalPages) {
-      const queryParams = new URLSearchParams({
-        page: String(pagination.totalPages)
-      })
-
+    const pageUrl = targetPage => {
+      const queryParams = new URLSearchParams({ page: String(targetPage) })
       if (status !== undefined) {
         queryParams.set('status', String(status))
       }
+      return `/admin/teachers?${queryParams.toString()}`
+    }
 
-      return res.redirect(`/admin/teachers?${queryParams.toString()}`)
+    if (page > pagination.totalPages) {
+      return res.redirect(pageUrl(pagination.totalPages))
     }
 
     return res.render('admin/teachers', {
@@ -54,7 +54,7 @@ const adminTeacherController = {
         { id: TEACHER_STATUS.ON_LEAVE, status: '留職停薪' },
         { id: TEACHER_STATUS.LEFT, status: '離職' }
       ],
-      ...pagination
+      ...getPaginationLinks(pagination, pageUrl)
     })
   },
 

@@ -1,5 +1,5 @@
 const courseService = require('../services/courseService')
-const { getPagination } = require('../utils/pagination')
+const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const {COURSE_TIMES, COURSE_TYPES} = require('../constants/courseOptions')
 const pageLimit = 12
 
@@ -27,15 +27,15 @@ const adminCourseController = {
       totalCount: result.count
     })
 
+    const pageUrl = targetPage => `/admin/courses?page=${targetPage}`
+
     if (page > pagination.totalPages) {
-      return res.redirect(
-        `/admin/courses?page=${pagination.totalPages}`
-      )
+      return res.redirect(pageUrl(pagination.totalPages))
     }
 
     return res.render('admin/courses', {
       courses: result.rows,
-      ...pagination
+      ...getPaginationLinks(pagination, pageUrl)
     })
   },
 

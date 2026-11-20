@@ -6,7 +6,7 @@ const ExtraFee = db.ExtraFee
 const moment = require('moment')
 const pageLimit = 12
 const calendarService = require('../services/calendarService')
-const { getPagination } = require('../utils/pagination')
+const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const { formatTaipeiDateTime } = require('../utils/date')
 const CALENDAR_STATUS = require('../constants/calendarStatus')
 const CALENDAR_STATUS_LABELS = Object.freeze({
@@ -64,11 +64,12 @@ const adminController = {
       totalCount: result.count
     })
 
+    const pageUrl = targetPage => `/admin/courses/${courseId}/calendar?page=${targetPage}`
+
     if (page > pagination.totalPages) {
-      return res.redirect(
-        `/admin/courses/${courseId}/calendar?page=${pagination.totalPages}`
-      )
+      return res.redirect(pageUrl(pagination.totalPages))
     }
+
     const calendars = result.rows.map(calendar => ({
       ...calendar,
       rowClass: calendar.isLegacy && !calendar.isActive
@@ -97,7 +98,8 @@ const adminController = {
       course: result.course,
       calendars,
       isPeriodNotEqualOne: result.latestPeriod > 1,
-      ...pagination
+      page,
+      ...getPaginationLinks(pagination, pageUrl)
     })
   },
 
