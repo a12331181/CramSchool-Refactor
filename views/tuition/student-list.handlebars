@@ -42,7 +42,7 @@
       <tbody>
         {{#each rows}}
           <tr>
-            <th scope="row">{{this.student.name}}</th>
+            <th scope="row">{{referenceLabel this.student.studentNo this.student.name}}</th>
             <td>
               {{#if this.hasAmount}}
               NT$ {{this.amount}}
@@ -64,7 +64,7 @@
               {{else}}
               <a href="{{this.previewUrl}}">試算與開單</a>
               {{/if}}
-              {{#if this.billUrl}}<span>/</span> <a href="{{this.billUrl}}">查看帳單</a>{{/if}}
+              {{#if this.billUrl}}<span>/</span> <a href="{{this.billUrl}}">查看帳單 {{this.documentNo}}</a>{{/if}}
             </td>
 
             <td><a href="{{this.historyUrl}}">歷期學費列表</a></td>

@@ -1,3 +1,5 @@
+const { getStudentReference } = require('./studentService')
+const { formatReferenceLabel } = require('../utils/referenceLabel')
 const { Op, Transaction } = require('sequelize')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
@@ -27,14 +29,27 @@ async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) 
 
   return readTuitionSnapshot(async transaction => {
     const bills = await TuitionBill.findAll({
-      attributes: ['id', 'studentNameSnapshot', 'SupplementCourseId', 'status', 'totalAmount', 'issuedAt', 'version', 'currency'],
+      attributes: ['id', 'draftNo', 'billNo', 'studentNameSnapshot', 'SupplementCourseId', 'status', 'totalAmount', 'issuedAt', 'version', 'currency'],
       where: { StudentId: studentId, billingMonth },
       order: [['id', 'DESC']],
       raw: true,
       transaction
     })
 
-    const financialData = await getIssuedTuitionBillFinancialData(bills, transaction)
+    const [financialData, student] = await Promise.all([
+      getIssuedTuitionBillFinancialData(bills, transaction),
+      getStudentReference(studentId, transaction)
+    ])
+    const courseIds = [...new Set([...financialData.values()]
+      .flatMap(entry => entry.items)
+      .filter(item => item.kind === TUITION_BILL_ITEM_KIND.COURSE_FEE && item.CourseId != null)
+      .map(item => item.CourseId))]
+    const courses = courseIds.length ? await Course.findAll({
+      attributes: ['id', 'courseNo'],
+      where: { id: { [Op.in]: courseIds } },
+      transaction, raw: true
+    }) : []
+    const courseNumbers = new Map(courses.map(course => [course.id, course.courseNo]))
     const rows = bills.map(bill => {
       const financial = financialData.get(bill.id)
       return {
@@ -44,11 +59,11 @@ async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) 
         refunds: financial ? getBillRefundAmounts(financial.refundLedger) : null,
         courseNames: [...new Set((financial?.items ?? [])
           .filter(item => item.kind === TUITION_BILL_ITEM_KIND.COURSE_FEE)
-          .map(item => item.descriptionSnapshot))]
+          .map(item => formatReferenceLabel(courseNumbers.get(item.CourseId), item.descriptionSnapshot)))]
       }
     })
 
-    return { ok: true, rows, summary: summarizeStudentBillGroup(bills, financialData) }
+    return { ok: true, student, rows, summary: summarizeStudentBillGroup(bills, financialData) }
   })
 }
 
@@ -66,7 +81,7 @@ async function getActiveTuitionBillsForStudents(studentIds, billingMonth, transa
   if (studentIds.length === 0) return []
 
   return TuitionBill.findAll({
-    attributes: ['id', 'StudentId', 'studentNameSnapshot', 'status', 'totalAmount'],
+    attributes: ['id', 'draftNo', 'billNo', 'StudentId', 'studentNameSnapshot', 'status', 'totalAmount'],
     where: {
       StudentId: { [Op.in]: studentIds },
       billingMonth,
@@ -102,7 +117,7 @@ async function getStudentTuitionList({ billingMonth, statusFilter = 'all', page,
   const allStatuses = statusFilter === 'all'
   const offset = (page - 1) * pageSize
   const studentQuery = {
-    attributes: ['id', 'name'],
+    attributes: ['id', 'studentNo', 'name'],
     where: { status: STUDENT_STATUS.ACTIVE },
     order: [['id', 'ASC']],
     raw: true
@@ -189,14 +204,14 @@ async function getStudentTuitionHistory({ courseId, studentId } = {}) {
 
   return readTuitionSnapshot(async transaction => {
     const [course, student] = await Promise.all([
-      byCourse ? Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true, transaction }) : null,
-      Student.findByPk(studentId, { attributes: ['id', 'name'], raw: true, transaction })
+      byCourse ? Course.findByPk(courseId, { attributes: ['id', 'courseNo', 'name'], raw: true, transaction }) : null,
+      getStudentReference(studentId, transaction)
     ])
     if (byCourse && !course) return { ok: false, code: 'COURSE_NOT_FOUND' }
     if (!student) return { ok: false, code: 'STUDENT_NOT_FOUND' }
 
     const savedBills = await TuitionBill.findAll({
-      attributes: ['id', 'billingMonth', 'status', 'issuedAt', 'totalAmount'],
+      attributes: ['id', 'draftNo', 'billNo', 'billingMonth', 'status', 'issuedAt', 'totalAmount'],
       where: {
         StudentId: studentId,
         status: {
@@ -285,7 +300,7 @@ async function getCoursePaymentOverview({ billingMonth } = {}) {
       .map(item => item.CourseId)
       .filter(id => Number.isSafeInteger(id) && id > 0))]
     const courses = await Course.findAll({
-      attributes: ['id', 'name', 'isActive'],
+      attributes: ['id', 'courseNo', 'name', 'isActive'],
       where: billedCourseIds.length > 0
         ? { [Op.or]: [{ isActive: true }, { id: { [Op.in]: billedCourseIds } }] }
         : { isActive: true },
@@ -376,7 +391,7 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
   }
 
   return readTuitionSnapshot(async transaction => {
-    const course = await Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true, transaction })
+    const course = await Course.findByPk(courseId, { attributes: ['id', 'courseNo', 'name'], raw: true, transaction })
     if (!course) return { ok: false, code: 'COURSE_NOT_FOUND' }
 
     const [enrollments, courseFeeItems] = await Promise.all([
@@ -413,7 +428,7 @@ async function getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageS
 
     const [students, bills] = await Promise.all([
       Student.findAll({
-        attributes: ['id', 'name'],
+        attributes: ['id', 'studentNo', 'name'],
         where: { id: { [Op.in]: pageStudentIds } },
         raw: true,
         transaction

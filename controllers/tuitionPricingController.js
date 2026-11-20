@@ -1,3 +1,6 @@
+const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
+const { formatReferenceLabel } = require('../utils/referenceLabel')
+const { getStudentReference } = require('../services/studentService')
 const { MIN_GROUP_BILLS } = require('../constants/tuitionPayment')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { getTaipeiDate } = require('../utils/date')
@@ -54,7 +57,10 @@ const tuitionPricingController = {
         }))
       : []
 
+    const student = result.ok ? await getStudentReference(studentId) : null
+
     return res.render('tuition/course-preview', {
+      student,
       backUrl: withQuery(historyPath, navigation),
       previewUrl: `${historyPath}/preview`,
       billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
@@ -90,6 +96,7 @@ const tuitionPricingController = {
       : '待核對'
     const billRows = (billsResult.rows ?? []).map(bill => ({
       ...bill,
+      documentNo: getTuitionDocumentNo(bill),
       statusText: bill.status === TUITION_BILL_STATUS.VOID
         ? (bill.issuedAt == null ? '已捨棄草稿' : '已作廢')
         : (bill.status === TUITION_BILL_STATUS.DRAFT ? '草稿' : getTuitionBillPaymentStatusText(bill.paymentStatus)),
@@ -138,15 +145,8 @@ const tuitionPricingController = {
 
     const courses = result.ok ? result.courses : []
     const courseNames = new Map(
-      courses.map(item => [item.course.id, item.course.name])
+      courses.map(({ course }) => [course.id, formatReferenceLabel(course.courseNo, course.name)])
     )
-
-    const courseRows = courses.map(item => ({
-      ...item,
-      detailUrl:
-        `/cramschool/tuition/courses/${item.course.id}/students/${studentId}/preview` +
-        `?billingMonth=${encodeURIComponent(result.billingMonth)}`
-    }))
 
     const reviewRows = result.ok
       ? result.reviewItems.map(item => ({
@@ -183,7 +183,7 @@ const tuitionPricingController = {
     const supplementOptions = (supplement?.options ?? [])
       .filter(entry => !draftCourses.has(entry.course.id))
       .map(entry => ({
-        id: entry.course.id, name: entry.course.name, type: entry.course.type,
+        id: entry.course.id, name: entry.course.name, courseNo: entry.course.courseNo, type: entry.course.type,
         quantity: entry.quantity, totalText: money(entry.baseAmount)
       }))
 
@@ -226,7 +226,7 @@ const tuitionPricingController = {
       voidedBills,
       draftFormToken,
       draftAction: `/cramschool/tuition/students/${studentId}/bills/draft`,
-      courseRows,
+      courseRows: courses,
       reviewRows,
       leaveReviewPanel,
       errorMessage: result.ok ? null : (messages[result.code] ?? '目前無法試算。')

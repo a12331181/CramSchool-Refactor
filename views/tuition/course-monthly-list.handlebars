@@ -1,4 +1,4 @@
-{{#if course}}<h2 class="h2">{{course.name}} 學生收費清單</h2>{{/if}} 
+{{#if course}}<h2 class="h2">{{referenceLabel course.courseNo course.name}} 學生收費清單</h2>{{/if}}
 
 {{> tuition/billing-month-filter formAction=listUrl monthLabel="計費月份:" submitText="查看該月學費"}}
 

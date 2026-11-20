@@ -1,3 +1,5 @@
+const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
+const { formatReferenceLabel } = require('../utils/referenceLabel')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
@@ -40,8 +42,7 @@ const tuitionReportController = {
     const courses = result.courses.map(course => {
       const [collectionText, collectionClass] = COURSE_COLLECTION_LABELS[course.collectionStatus]
       return {
-        id: course.id,
-        name: course.name,
+        courseLabel: formatReferenceLabel(course.courseNo, course.name),
         isClosed: Number(course.isActive) === 0,
         receivableText: formatAmount(course.receivableAmount),
         receivedText: formatAmount(course.receivedAmount),
@@ -98,7 +99,7 @@ const tuitionReportController = {
       else if (isIssued) statusText = getRefundStatusText(refunds) ?? getTuitionBillPaymentStatusText(paymentStatus)
 
       return {
-        billId: bill.id,
+        documentNo: getTuitionDocumentNo(bill),
         billingMonth: bill.billingMonth,
         issuedOnText: wasIssued ? (formatTaipeiDateTime(bill.issuedAt)?.slice(0, 10) ?? '待核對') : '—',
         amount,
@@ -214,6 +215,7 @@ const tuitionReportController = {
         hasRemainingAmount,
         remainingAmount: hasRemainingAmount ? paymentStatus.remainingAmount : null,
         billUrl: bill ? `/cramschool/tuition/bills/${bill.id}` : null,
+        documentNo: bill ? getTuitionDocumentNo(bill) : null,
         historyUrl: withQuery(`${listUrl}/${row.student.id}/history`, detailQuery),
         previewUrl: withQuery(`${listUrl}/${row.student.id}/preview`, detailQuery)
       }
@@ -284,7 +286,7 @@ const tuitionReportController = {
       }
 
       return {
-        studentName: student?.name ?? bill?.studentNameSnapshot ?? `學生 #${studentId}`,
+        studentName: formatReferenceLabel(student?.studentNo, student?.name ?? bill?.studentNameSnapshot ?? `學生 #${studentId}`),
         statusText,
         amountText: hasAmount ? amountText(courseAmount) : hasCourseFee ? '待核對' : '—',
         receivedText: issuedAmountText('paidAmount'),

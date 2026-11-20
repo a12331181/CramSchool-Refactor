@@ -5,8 +5,8 @@ const STUDENT_STATUS = require('../constants/studentStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const { getTaipeiDate } = require('../utils/date')
 
-function getStudentReference(studentId) {
-  return Student.findByPk(studentId, { attributes: ['id', 'studentNo', 'name'], raw: true })
+function getStudentReference(studentId, transaction) {
+  return Student.findByPk(studentId, { attributes: ['id', 'studentNo', 'name'], raw: true, transaction })
 }
 
 async function getStudentDetails(studentId) {

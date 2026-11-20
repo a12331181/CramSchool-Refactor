@@ -11,7 +11,7 @@
   <ul class="list-group mb-3">
     {{#each options}}
     <li class="list-group-item">
-      <div><strong>{{courseName}}</strong>｜{{classAtText}}</div>
+      <div><strong>{{referenceLabel courseNo courseName}}</strong>｜{{classAtText}}</div>
       <div>可折抵 NT$ {{amount}}（原帳單 #{{sourceBillId}}）</div>
       {{#if leaveReason}}<div class="text-muted">請假原因：{{leaveReason}}</div>{{/if}}
 
@@ -34,7 +34,7 @@
   <h3 class="h6">其餘已核准請假</h3>
   <ul class="mb-0">
     {{#each blocked}}
-    <li>{{courseName}}｜{{classAtText}}：{{statusText}}</li>
+    <li>{{referenceLabel courseNo courseName}}｜{{classAtText}}：{{statusText}}</li>
     {{/each}}
   </ul>
   {{/if}}

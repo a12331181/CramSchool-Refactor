@@ -1,3 +1,4 @@
+const { formatReferenceLabel } = require('../utils/referenceLabel')
 const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
 const { MAX_PAYMENT_AMOUNT, MAX_REFUND_AMOUNT } = require('../constants/tuitionPayment')
 const { readUnsignedInteger } = require('../utils/formNumbers')
@@ -321,6 +322,7 @@ const tuitionBillController = {
         if (allocation?.ok && allocation.itemized) {
           const canRecord = remainingAmount > 0
           if (canRecord) req.session.tuitionFormToken ??= createSessionFormToken()
+          const courseNumbersByItem = new Map(items.map(item => [item.id, item.Course?.courseNo]))
           paymentSummary.itemizedPayment = {
             canRecord,
             action: `/cramschool/tuition/bills/${bill.id}/payments`,
@@ -331,6 +333,7 @@ const tuitionBillController = {
             hasAdjustments: allocation.hasAdjustments,
             items: allocation.items.map(item => ({
               ...item,
+              description: formatReferenceLabel(courseNumbersByItem.get(item.itemId), item.description),
               canSelect: canRecord && item.amount > 0 && item.paymentId === null,
               statusText: item.paymentId !== null ? `已收款（#${item.paymentId}）`
                 : item.amount === 0 ? '已折抵' : '未收款'

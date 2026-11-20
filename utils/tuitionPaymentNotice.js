@@ -1,3 +1,5 @@
+const { getTuitionDocumentNo } = require('./tuitionBillReference')
+const { formatReferenceLabel } = require('./referenceLabel')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 
 const numbers = new Intl.NumberFormat('zh-TW')
@@ -20,7 +22,7 @@ function buildTuitionPaymentNotice(bill, paymentStatus, refundSummary) {
   const itemLines = []
   let itemTotal = 0
 
-  for (const { descriptionSnapshot, quantity, unitPrice, amount } of bill.items) {
+  for (const { descriptionSnapshot, quantity, unitPrice, amount, Course } of bill.items) {
     const description = singleLine(descriptionSnapshot)
     if (!description || !Number.isSafeInteger(amount)) return null
 
@@ -29,7 +31,7 @@ function buildTuitionPaymentNotice(bill, paymentStatus, refundSummary) {
       Number.isSafeInteger(unitPrice) && unitPrice >= 0 && quantity * unitPrice === amount
         ? `（${quantity} × ${money(unitPrice)}）`
         : ''
-    itemLines.push(`・${description}${calculation}：${money(amount)}`)
+    itemLines.push(`・${formatReferenceLabel(Course?.courseNo, description)}${calculation}：${money(amount)}`)
     itemTotal += amount
   }
 
@@ -54,6 +56,7 @@ function buildTuitionPaymentNotice(bill, paymentStatus, refundSummary) {
   const text = [
     `家長您好，以下是 ${studentName} ${bill.billingMonth} 的${hasRefund ? '退費摘要' : '學費明細'}：`,
     '',
+    `帳單編號：${getTuitionDocumentNo(bill)}`,
     ...itemLines,
     '',
     ...totals,
@@ -83,7 +86,7 @@ function buildMonthlyPaymentNotice({ billingMonth, bills = [], summary }) {
     const names = (bill.courseNames ?? []).map(singleLine).filter(Boolean).join('、')
     const label = bill.SupplementCourseId == null ? '主帳單' : '補單'
     const refund = bill.refunds.refundedAmount > 0 ? `｜已退 ${money(bill.refunds.refundedAmount)}` : ''
-    return `・${label} #${bill.id}${names ? '（' + names + '）' : ''}：應收 ${money(state.totalAmount)}｜已收 ${money(state.paidAmount)}${refund}｜待繳 ${money(state.remainingAmount)}`
+    return `・${label} ${getTuitionDocumentNo(bill)}${names ? '（' + names + '）' : ''}：應收 ${money(state.totalAmount)}｜已收 ${money(state.paidAmount)}${refund}｜待繳 ${money(state.remainingAmount)}`
   })
   if (lines.some(line => line === null)) return null
 

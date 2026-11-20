@@ -19,7 +19,7 @@
       <tbody>
         {{#each activeBills}}
         <tr>
-          <th scope="row"><a href="{{detailUrl}}">{{#if isSupplement}}補單{{else}}主帳單{{/if}} #{{id}}</a></th>
+          <th scope="row"><a href="{{detailUrl}}">{{#if isSupplement}}補單{{else}}主帳單{{/if}} {{documentNo}}</a></th>
           <td>{{statusText}}</td><td>{{totalText}}</td><td>{{remainingText}}</td>
         </tr>
         {{/each}}
@@ -38,7 +38,7 @@
   <ul class="mt-2">
     {{#each voidedBills}}
     <li>
-      <a href="{{detailUrl}}">帳單 #{{id}}</a>｜{{studentNameSnapshot}}｜{{statusText}}｜原金額 NT$ {{totalAmount}}
+      <a href="{{detailUrl}}">帳單 {{documentNo}}</a>｜{{studentNameSnapshot}}｜{{statusText}}｜原金額 NT$ {{totalAmount}}
     </li>
     {{/each}}
   </ul>

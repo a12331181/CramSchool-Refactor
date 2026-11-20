@@ -26,7 +26,7 @@
 {{/if}}
 
 {{#if preview}}
-<h2 class="h5">{{preview.student.name}}｜{{preview.billingMonth}}</h2>
+<h2 class="h5">{{referenceLabel preview.student.studentNo preview.student.name}}｜{{preview.billingMonth}}</h2>
 <p class="text-muted">依現行課程價格試算。小計只包含已試算的基本學費。</p>
 
 {{#if reviewRows.length}}
@@ -57,7 +57,7 @@
   <tbody>
     {{#each courseRows}}
     <tr>
-      <th scope="row">{{this.course.name}}</th>
+      <th scope="row">{{referenceLabel this.course.courseNo this.course.name}}</th>
       <td>{{this.course.type}}</td>
       <td>{{this.billableCount}}</td>
       <td>{{this.quantity}} × NT$ {{this.unitPrice}} ＝ NT$ {{this.baseAmount}}</td>

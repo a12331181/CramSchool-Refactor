@@ -132,7 +132,7 @@ function getGroupPaymentRows(groupIds, transaction) {
     where: { TuitionPaymentGroupId: { [Op.in]: groupIds } },
     include: [{
       model: TuitionBill,
-      attributes: ['id', 'StudentId', 'billingMonth', 'status', 'totalAmount', 'currency', 'SupplementCourseId'],
+      attributes: ['id', 'billNo', 'StudentId', 'billingMonth', 'status', 'totalAmount', 'currency', 'SupplementCourseId'],
       required: false
     }],
     order: [['TuitionBillId', 'ASC'], ['id', 'ASC']],
@@ -172,7 +172,9 @@ async function getTuitionPaymentGroup(paymentGroupId) {
   }, async transaction => {
     const group = await TuitionPaymentGroup.findByPk(paymentGroupId, {
       attributes: ['id', 'StudentId', 'billingMonth', 'studentNameSnapshot', 'paidOn', 'amount', 'note'],
+      include: [{ model: Student, attributes: ['studentNo'], required: false }],
       raw: true,
+      nest: true,
       transaction
     })
     if (!group) return null

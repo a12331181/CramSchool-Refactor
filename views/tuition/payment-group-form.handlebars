@@ -17,7 +17,7 @@
       <li class="list-group-item">
         <label class="mb-0">
           <input type="checkbox" name="billSelections" value="{{id}}:{{version}}" data-amount="{{remainingAmount}}">
-          {{#if isSupplement}}補單{{else}}主帳單{{/if}} #{{id}}{{#if courseNames}}｜{{courseNames}}{{/if}}
+          {{#if isSupplement}}補單{{else}}主帳單{{/if}} {{documentNo}}{{#if courseNames}}｜{{courseNames}}{{/if}}
           <strong>｜待繳 NT$ {{remainingText}}</strong>
         </label>
       </li>

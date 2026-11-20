@@ -59,8 +59,8 @@
           {{#if paymentGroupUrl}}
           <a href="{{paymentGroupUrl}}">查看帳單分配{{#if groupBillCount}}（{{groupBillCount}} 張）{{/if}}</a>
           {{else}}
-            {{#if billUrl}}<a href="{{billUrl}}">帳單 #{{billId}}</a>
-            {{else}}{{#if billId}}帳單 #{{billId}}{{else}}—{{/if}}{{/if}}
+            {{#if billUrl}}<a href="{{billUrl}}">帳單 {{documentNo}}</a>
+            {{else}}{{#if documentNo}}帳單 {{documentNo}}{{else}}—{{/if}}{{/if}}
           {{/if}}
         </td>
         {{#if ../showReview}}<td>{{reviewText}}</td>{{/if}}

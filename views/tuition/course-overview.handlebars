@@ -34,7 +34,7 @@
       {{#each courses}}
       <tr class="table-light">
         <th scope="row">{{this.id}}</th>
-        <td>{{this.name}}{{#if this.isClosed}} <small class="text-muted">（已關閉）</small>{{/if}}</td>
+        <td>{{this.courseLabel}}{{#if this.isClosed}} <small class="text-muted">（已關閉）</small>{{/if}}</td>
         <td>{{this.receivableText}}</td>
         <td>{{this.receivedText}}</td>
         <td>{{this.refundedText}}</td>

@@ -681,11 +681,12 @@ async function getTuitionBillDetails(billId) {
       include: [{
         model: TuitionBillItem,
         as: 'items',
+        include: [{ model: Course, attributes: ['courseNo'], required: false }],
         attributes: [
           'id', 'kind', 'descriptionSnapshot', 'quantity', 'unitPrice',
           'amount', 'reason', 'sourceSnapshot', 'ExtraFeeId'
         ]
-      }],
+      }, { model: Student, attributes: ['studentNo'], required: false }],
       order: [[{ model: TuitionBillItem, as: 'items' }, 'id', 'ASC']],
       transaction
     })
@@ -854,7 +855,7 @@ async function getPreviousMonthLeaveReviews({ studentId, billingMonth, courseId 
         startAt: { [Op.gte]: range.from, [Op.lt]: range.until },
         endAt: { [Op.lte]: new Date() }
       },
-      include: [{ model: Course, required: true, attributes: ['name'] }]
+      include: [{ model: Course, required: true, attributes: ['name', 'courseNo'] }]
     }],
     order: [[Calendar, 'startAt', 'ASC'], ['id', 'ASC']],
     transaction,
@@ -906,6 +907,7 @@ async function getPreviousMonthLeaveReviews({ studentId, billingMonth, courseId 
         reviewId: latest?.id ?? 0,
         classAtText: formatTaipeiDateTime(attend.Calendar.startAt),
         courseName: attend.Calendar.Course.name,
+        courseNo: attend.Calendar.Course.courseNo,
         leaveReason: attend.reason,
         decisionText,
         reviewDecision: current?.decision ?? null,
@@ -1335,6 +1337,7 @@ async function getDraftLeaveCreditOptions(bill, { leaveData, transaction } = {})
     const display = {
       attendId: row.attendId,
       courseName: row.courseName,
+      courseNo: row.courseNo,
       classAtText: row.classAtText,
       leaveReason: row.leaveReason
     }

@@ -207,7 +207,7 @@ async function getTuitionPreview({ courseId, studentId, billingMonth } = {}, tra
   if (!result.ok) return result
 
   const course = await Course.findByPk(courseId, {
-    attributes: ['id', 'name', 'type', 'price'],
+    attributes: ['id', 'courseNo', 'name', 'type', 'price'],
     raw: true,
     transaction
   })
@@ -245,6 +245,7 @@ async function getTuitionPreview({ courseId, studentId, billingMonth } = {}, tra
     studentId,
     course: {
       id: course.id,
+      courseNo: course.courseNo,
       name: course.name,
       type: course.type
     },
@@ -352,7 +353,7 @@ async function getStudentTuitionPreview({ studentId, billingMonth, courseId } = 
   }
 
   const student = await Student.findByPk(studentId, {
-    attributes: ['id', 'name'],
+    attributes: ['id', 'studentNo', 'name'],
     raw: true,
     transaction
   })

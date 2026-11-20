@@ -1,5 +1,5 @@
 const { Op, Transaction } = require('sequelize')
-const { Payment, TuitionBill, TuitionBillRefund, TuitionPaymentGroup, sequelize } = require('../models')
+const { Payment, Student, TuitionBill, TuitionBillRefund, TuitionPaymentGroup, sequelize } = require('../models')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { getTaipeiDate, getTaipeiMonthRange, isTaipeiDateKey } = require('../utils/date')
 
@@ -26,6 +26,8 @@ function cashRow(record, kind, today) {
     kind,
     id: record.id,
     billId: record.TuitionBillId ?? null,
+    billNo: bill?.billNo ?? null,
+    studentNo: bill?.Student?.studentNo ?? null,
     billAvailable: Number.isSafeInteger(bill?.id),
     billingMonth: bill?.billingMonth ?? null,
     studentName: bill?.studentNameSnapshot ?? null,
@@ -39,7 +41,9 @@ async function getGroupedCashRows(period, today, transaction) {
   const groups = await TuitionPaymentGroup.findAll({
     attributes: ['id', 'StudentId', 'billingMonth', 'studentNameSnapshot', 'paidOn', 'amount'],
     where: { paidOn: period },
+    include: [{ model: Student, attributes: ['studentNo'], required: false }],
     raw: true,
+    nest: true,
     transaction
   })
   const byGroupId = new Map(groups.map(group => [group.id, []]))
@@ -66,6 +70,7 @@ async function getGroupedCashRows(period, today, transaction) {
       paymentGroupId: group.id,
       billIds: review === null ? allocations.map(payment => payment.TuitionBillId) : [],
       billingMonth: group.billingMonth,
+      studentNo: group.Student?.studentNo ?? null,
       studentName: group.studentNameSnapshot,
       date: group.paidOn,
       amount: group.amount,
@@ -88,7 +93,8 @@ async function getTuitionCashflow(cashMonth) {
   const period = { [Op.gte]: range.monthStart, [Op.lt]: range.nextMonthStart }
   const billJoin = {
     model: TuitionBill,
-    attributes: ['id', 'billingMonth', 'studentNameSnapshot', 'status'],
+    attributes: ['id', 'billNo', 'billingMonth', 'studentNameSnapshot', 'status'],
+    include: [{ model: Student, attributes: ['studentNo'], required: false }],
     required: false
   }
   return sequelize.transaction({

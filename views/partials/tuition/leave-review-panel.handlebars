@@ -21,7 +21,7 @@
         {{#each rows}}
         <tr>
           <td>{{classAtText}}</td>
-          <td>{{courseName}}</td>
+          <td>{{referenceLabel courseNo courseName}}</td>
           <td>{{#if leaveReason}}{{leaveReason}}{{else}}未填寫{{/if}}</td>
           <td>
             {{decisionText}}

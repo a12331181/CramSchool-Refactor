@@ -1,5 +1,5 @@
 <h1 class="mt-3">歷期學費列表</h1>
-<h2 class="h5">{{student.name}}{{#if course}}｜{{course.name}}{{/if}}</h2>
+<h2 class="h5">{{referenceLabel student.studentNo student.name}}{{#if course}}｜{{referenceLabel course.courseNo course.name}}{{/if}}</h2>
 
 <a href="{{previewUrl}}" class="btn btn-sm btn-outline-primary mb-3">
   {{#if course}}查看課程學費試算{{else}}查看學生月費試算{{/if}}
@@ -32,7 +32,7 @@
     <tbody>
       {{#each rows}}
       <tr>
-        <th scope="row">#{{billId}}</th>
+        <th scope="row">{{documentNo}}</th>
         <td class="text-nowrap">{{billingMonth}}</td>
         <td class="text-nowrap">{{issuedOnText}}</td>
         <td class="text-nowrap">{{#if hasAmount}}NT$ {{amount}}{{else}}{{amountUnavailableText}}{{/if}}</td>

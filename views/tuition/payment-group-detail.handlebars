@@ -1,5 +1,5 @@
 <h1 class="h4 mt-3">合併收款 #{{group.id}}</h1>
-<p><strong>{{group.studentNameSnapshot}}</strong>｜帳單月份 {{group.billingMonth}}</p>
+<p><strong>{{referenceLabel group.Student.studentNo group.studentNameSnapshot}}</strong>｜帳單月份 {{group.billingMonth}}</p>
 
 {{#if requiresReview}}
 <p class="alert alert-warning" role="alert">這筆匯款與帳單分配不一致。請先核對紀錄。</p>
@@ -19,7 +19,7 @@
     <tbody>
     {{#each allocations}}
       <tr>
-        <th scope="row"><a href="{{detailUrl}}">{{#if isSupplement}}補單{{else}}主帳單{{/if}} #{{billId}}</a></th>
+        <th scope="row"><a href="{{detailUrl}}">{{#if isSupplement}}補單{{else}}主帳單{{/if}} {{documentNo}}</a></th>
         <td>收款 #{{paymentId}}</td><td>NT$ {{amountText}}</td>
       </tr>
     {{/each}}

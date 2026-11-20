@@ -1,3 +1,5 @@
+const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
+const { formatReferenceLabel } = require('../utils/referenceLabel')
 const { readUnsignedInteger } = require('../utils/formNumbers')
 const { randomUUID } = require('node:crypto')
 const { recordTuitionBillPayment } = require('../services/tuitionPaymentService')
@@ -140,6 +142,7 @@ const tuitionPaymentController = {
 
     const bills = result.rows.filter(bill => bill.canReceiveGroupedPayment).map(bill => ({
       id: bill.id,
+      documentNo: getTuitionDocumentNo(bill),
       version: bill.version,
       isSupplement: bill.SupplementCourseId != null,
       courseNames: bill.courseNames.join('、'),
@@ -152,7 +155,7 @@ const tuitionPaymentController = {
 
     res.set('Cache-Control', 'no-store')
     return res.render('tuition/payment-group-form', {
-      studentName: result.rows[0]?.studentNameSnapshot || `學生 #${studentId}`,
+      studentName: formatReferenceLabel(result.student?.studentNo, result.student?.name ?? result.rows[0]?.studentNameSnapshot ?? `學生 #${studentId}`),
       billingMonth,
       bills,
       canSubmit,
@@ -218,7 +221,7 @@ const tuitionPaymentController = {
       amountText: Number.isSafeInteger(group.amount) && group.amount > 0 ? amountFormat.format(group.amount) : null,
       requiresReview,
       allocations: allocations.map(row => ({
-        billId: row.TuitionBillId,
+        documentNo: getTuitionDocumentNo(row.TuitionBill),
         paymentId: row.id,
         isSupplement: row.TuitionBill.SupplementCourseId != null,
         amountText: amountFormat.format(row.amount),

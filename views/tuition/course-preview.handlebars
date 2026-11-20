@@ -12,7 +12,7 @@
 {{/if}}
 
 {{#if preview}}
-<h2 class="h5">{{preview.course.name}}｜學生 #{{preview.studentId}}</h2>
+<h2 class="h5">{{referenceLabel preview.course.courseNo preview.course.name}}｜{{#if student}}{{referenceLabel student.studentNo student.name}}{{else}}學生 #{{preview.studentId}}{{/if}}</h2>
 
 {{#if preview.calendarReviewCount}}
 <p class="alert alert-warning">

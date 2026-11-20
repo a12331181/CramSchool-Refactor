@@ -1,3 +1,4 @@
+const { formatReferenceLabel } = require('../utils/referenceLabel')
 const { getTuitionCashflow } = require('../services/tuitionCashflowService')
 const { CASH_KIND, CASH_REVIEW } = require('../constants/tuitionCashflow')
 const { buildCashflowCsv } = require('../utils/tuitionCashflowCsv')
@@ -25,14 +26,14 @@ function toDisplayRow(row) {
   return {
     kindText: isRefund ? '退費' : row.paymentGroupId ? '合併收款' : '收款',
     id: row.id,
-    billId: row.billId,
+    documentNo: row.billId ? (row.billNo || `#${row.billId}`) : null,
     paymentGroupUrl: row.paymentGroupId ? `/cramschool/tuition/payment-groups/${row.paymentGroupId}` : null,
     groupBillCount: row.billIds?.length,
     billUrl: row.billAvailable
       ? `/cramschool/tuition/bills/${row.billId}#${isRefund ? 'refund-heading' : 'payment-summary-heading'}`
       : null,
     billingMonth: row.billingMonth ?? '—',
-    studentName: row.studentName || '—',
+    studentName: formatReferenceLabel(row.studentNo, row.studentName),
     date: row.date || '未記錄',
     amountText: formatAmount(row.amount),
     reviewText: REVIEW_LABELS[row.review]
