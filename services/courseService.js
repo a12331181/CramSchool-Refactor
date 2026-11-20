@@ -88,7 +88,15 @@ async function getCourseFormData() {
   }
 }
 
-async function createCourse(courseData) {
+function getCourseSettingsError({ time, type, price, teacherId }) {
+  if (!Object.values(COURSE_TIMES).includes(time)) return 'INVALID_TIME'
+  if (!Object.values(COURSE_TYPES).includes(type)) return 'INVALID_TYPE'
+  if (!Number.isSafeInteger(price) || price < 0 || price > MAX_COURSE_PRICE) return 'INVALID_PRICE'
+  if (!Number.isSafeInteger(teacherId) || teacherId < 1) return 'INVALID_TEACHER_ID'
+  return null
+}
+
+async function createCourse(courseData = {}) {
   const {
     name,
     time,
@@ -110,25 +118,8 @@ async function createCourse(courseData) {
     return { created: false, reason: 'INVALID_COURSE_PREFIX' }
   }
 
-  if (!Object.values(COURSE_TIMES).includes(time)) {
-    return { created: false, reason: 'INVALID_TIME' }
-  }
-
-  if (!Object.values(COURSE_TYPES).includes(type)) {
-    return { created: false, reason: 'INVALID_TYPE' }
-  }
-
-  if (
-    !Number.isSafeInteger(price) ||
-    price < 0 ||
-    price > MAX_COURSE_PRICE
-  ) {
-    return { created: false, reason: 'INVALID_PRICE' }
-  }
-
-  if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
-    return { created: false, reason: 'INVALID_TEACHER_ID' }
-  }
+  const reason = getCourseSettingsError(courseData)
+  if (reason) return { created: false, reason }
 
   return sequelize.transaction(async transaction => {
     const teacher = await Teacher.findByPk(teacherId, {
@@ -184,7 +175,12 @@ async function getCourseEditData(courseId) {
   }
 }
 
-async function updateCourse(courseId, courseData) {
+async function updateCourse(courseId, courseData = {}) {
+  if (!Number.isSafeInteger(courseId) || courseId < 1) return { ok: false, code: 'INVALID_COURSE_ID' }
+
+  const code = getCourseSettingsError(courseData)
+  if (code) return { ok: false, code }
+
   return sequelize.transaction(async transaction => {
     const course = await Course.findByPk(courseId, {
       transaction,

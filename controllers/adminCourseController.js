@@ -1,8 +1,25 @@
+const { readUnsignedInteger } = require('../utils/formNumbers')
 const { COURSE_PREFIX_LETTERS } = require('../constants/referenceNumbers')
 const courseService = require('../services/courseService')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
 const pageLimit = 12
+
+const COURSE_SETTINGS_MESSAGES = Object.freeze({
+  INVALID_TIME: '上課時長只能是 60、90 或 120 分鐘',
+  INVALID_TYPE: '計費方式不正確',
+  INVALID_PRICE: '價格必須是有效的非負整數',
+  INVALID_TEACHER_ID: '教師 ID 不正確'
+})
+
+function readCourseSettings(body) {
+  return {
+    time: body.time,
+    type: body.type,
+    price: readUnsignedInteger(body.price),
+    teacherId: readUnsignedInteger(body.teacherId)
+  }
+}
 
 const adminCourseController = {
 // 課程相關程式碼
@@ -54,21 +71,13 @@ const adminCourseController = {
       teachers: formData.teachers,
       prefixLetters: COURSE_PREFIX_LETTERS,
       typeList,
-      timeList
+      timeList,
+      maxPrice: MAX_COURSE_PRICE
     })
   },
 
   createCourse: async (req, res) => {
     const body = req.body ?? {}
-    const numericFields = ['price', 'teacherId']
-
-    if (numericFields.some(field =>
-      typeof body[field] !== 'string' ||
-      body[field].trim() === ''
-    )) {
-      return res.status(400).send('價格與教師 ID 必須填寫數字')
-    }
-
     const { coursePrefixFirst, coursePrefixSecond } = body
     const coursePrefix = [coursePrefixFirst, coursePrefixSecond].every(letter => COURSE_PREFIX_LETTERS.includes(letter))
       ? coursePrefixFirst + coursePrefixSecond
@@ -77,10 +86,7 @@ const adminCourseController = {
     const result = await courseService.createCourse({
       name: body.name,
       coursePrefix,
-      time: body.time,
-      type: body.type,
-      price: Number(body.price),
-      teacherId: Number(body.teacherId)
+      ...readCourseSettings(body)
     })
 
     if (!result.created) {
@@ -88,10 +94,7 @@ const adminCourseController = {
         INVALID_NAME: '課程名稱必填，且不可超過 255 字',
         INVALID_COURSE_PREFIX: '請選擇兩個大寫英文字母作為課程編號開頭',
         COURSE_NUMBER_EXHAUSTED: '這個課程前綴的編號已用完，請改用其他前綴',
-        INVALID_TIME: '上課時長只能是 60、90 或 120 分鐘',
-        INVALID_TYPE: '計費方式不正確',
-        INVALID_PRICE: '價格必須是有效的非負整數',
-        INVALID_TEACHER_ID: '教師 ID 不正確',
+        ...COURSE_SETTINGS_MESSAGES,
         TEACHER_NOT_FOUND: '找不到所選教師，請重新選擇'
       }
 
@@ -130,7 +133,8 @@ const adminCourseController = {
       course: result.course,
       teachers: result.teachers,
       typeList,
-      timeList
+      timeList,
+      maxPrice: MAX_COURSE_PRICE
     })
   },
 
@@ -143,42 +147,13 @@ const adminCourseController = {
 
     const body = req.body ?? {}
 
-    if (!Object.values(COURSE_TIMES).includes(body.time)) {
-      return res.status(400).send('上課時長不正確')
-    }
-
-    if (!Object.values(COURSE_TYPES).includes(body.type)) {
-      return res.status(400).send('計費方式不正確')
-    }
-
-    if (
-      typeof body.price !== 'string' ||
-      body.price.trim() === '' ||
-      typeof body.teacherId !== 'string' ||
-      body.teacherId.trim() === ''
-    ) {
-      return res.status(400).send('請填寫有效的價格與教師資料')
-    }
-
-    const price = Number(body.price)
-    const teacherId = Number(body.teacherId)
-
-    if (!Number.isSafeInteger(price) || price < 0 || price > MAX_COURSE_PRICE) {
-      return res.status(400).send('價格必須是有效的台幣整數元')
-    }
-
-    if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
-      return res.status(400).send('教師 ID 必須是正整數')
-    }
-
-    const result = await courseService.updateCourse(courseId, {
-      time: body.time,
-      type: body.type,
-      price,
-      teacherId
-    })
+    const result = await courseService.updateCourse(courseId, readCourseSettings(body))
 
     if (!result.ok) {
+      if (Object.hasOwn(COURSE_SETTINGS_MESSAGES, result.code)) {
+        return res.status(400).send(COURSE_SETTINGS_MESSAGES[result.code])
+      }
+
       const errorMessages = {
         COURSE_NOT_FOUND: '找不到課程資料',
         COURSE_CLOSED: '課程已關閉，無法修改',

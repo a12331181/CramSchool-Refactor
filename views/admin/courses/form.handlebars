@@ -60,7 +60,7 @@
   
   <div class="form-group">
     <label for="price">價格（NT$）</label>
-    <input type="number" class="form-control" name="price" id="price" min="0" value="{{course.price}}" placeholder="輸入價格" required>
+    <input type="number" class="form-control" name="price" id="price" min="0" max="{{maxPrice}}" step="1" value="{{course.price}}" placeholder="輸入價格" required>
     <small class="form-text text-muted">月費制填整月金額；堂數制填每堂單價，堂數依該月的正式排課計算。</small>
   </div>
 
