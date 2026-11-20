@@ -14,6 +14,18 @@ const { getPagination, getPaginationLinks } = require('../utils/pagination')
 const { randomBytes, timingSafeEqual } = require('node:crypto')
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
+const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
+const REFUND_MESSAGES = require('../constants/tuitionRefundMessages')
+
+const COURSE_COLLECTION_LABELS = {
+  [COURSE_COLLECTION_STATUS.PAID]: ['已收齊', 'text-success'],
+  [COURSE_COLLECTION_STATUS.UNPAID]: ['未收齊', 'text-danger'],
+  [COURSE_COLLECTION_STATUS.UNISSUED]: ['部分未出帳', 'alert-warning px-1 rounded'],
+  [COURSE_COLLECTION_STATUS.EMPTY]: ['本月無收費資料', 'text-muted'],
+  [COURSE_COLLECTION_STATUS.REVIEW]: ['待核對', 'text-muted']
+}
+
+const amountFormat = new Intl.NumberFormat('zh-TW')
 
 function getTuitionNavigationParams({ billingMonth, page, status }) {
   const params = new URLSearchParams()
@@ -40,18 +52,6 @@ function withQuery(path, params) {
 
 function getTuitionBillPaymentStatusText(paymentStatus) {
   return STUDENT_TUITION_STATUS[tuitionService.getTuitionBillPaymentState(paymentStatus)]
-}
-
-const REFUND_MESSAGES = {
-  BILL_NOT_ISSUED: '只有已出帳的帳單可以登記退費。',
-  BILL_NOT_FULLY_PAID: '只有已收清的帳單可以登記退費。',
-  BILL_VERSION_CONFLICT: '帳單已更新，請核對目前的退費紀錄與可退金額。',
-  INVALID_REFUND_REASON: '請填寫退費原因，最多 255 字元。',
-  INVALID_REFUND_DATE: '退費日期必須介於最後收款日與今天之間。',
-  REFUND_TOTAL_REQUIRES_REVIEW: '累計退費金額需要核對。',
-  REFUND_PAYMENT_DATE_UNCONFIRMED: '原收款日期需要核對，暫時無法登記退費。',
-  REFUND_HAS_LEAVE_CREDIT: '這張帳單已作為請假折抵的來源，暫時無法登記退費。',
-  REFUND_EXCEEDS_PAID_AMOUNT: '退費金額超過目前可退的餘額，請核對後再試。'
 }
 
 function buildTuitionPaymentNotice(bill, paymentStatus) {
@@ -187,6 +187,29 @@ function buildTuitionBillHistory({ logs, actors, limit }) {
 }
 
 const tuitionController = {
+  getCoursePaymentOverview: async (req, res) => {
+    const billingMonth = getTaipeiDate().slice(0, 7)
+    res.set('Cache-Control', 'no-store')
+    const result = await tuitionService.getCoursePaymentOverview({ billingMonth })
+    if (!result.ok) return res.status(500).send('無法取得本月課程收費資料。')
+
+    const courses = result.courses.map(course => {
+      const [collectionText, collectionClass] = COURSE_COLLECTION_LABELS[course.collectionStatus]
+      return {
+        id: course.id,
+        name: course.name,
+        receivableText: course.receivableAmount === null
+          ? '待核對'
+          : `NT$ ${amountFormat.format(course.receivableAmount)}`,
+        collectionText,
+        collectionClass,
+        detailUrl: `/cramschool/tuition/courses/${course.id}/monthly?billingMonth=${billingMonth}`
+      }
+    })
+
+    return res.render('tuition/course-overview', { billingMonth, courses })
+  },
+
   getStudentTuitionHistory: async (req, res) => {
     const courseId = req.params.courseId === undefined ? undefined : Number(req.params.courseId)
     const studentId = Number(req.params.studentId)
@@ -1403,107 +1426,6 @@ const tuitionController = {
 
     req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
-  },
-
-  recordTuitionBillPayment: async (req, res) => {
-    const body = req.body ?? {}
-    const token = body.tuitionFormToken
-    const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
-    }
-
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value)
-        ? Number(value)
-        : NaN
-
-    const billId = readInt(req.params.billId)
-    const invalidInput = '帳單或收款資料不正確，請重新開啟帳單再試。'
-    if (body.paymentMode !== undefined && body.paymentMode !== 'items') {
-      return res.status(400).send(invalidInput)
-    }
-    const rawItems = body.paymentItems ?? []
-    const selectedItemIds = body.paymentMode === 'items'
-      ? (Array.isArray(rawItems) ? rawItems : [rawItems]).map(readInt)
-      : undefined
-
-    const result = await tuitionService.recordTuitionBillPayment({
-      billId,
-      billVersion: body.billVersion === undefined ? undefined : readInt(body.billVersion),
-      amount: readInt(body.amount),
-      selectedItemIds,
-      actorId: req.user.id
-    })
-
-    if (result.code === 'INVALID_INPUT') return res.status(400).send(invalidInput)
-    if (result.code === 'BILL_NOT_FOUND') return res.status(404).send('找不到這張帳單。')
-
-    const errors = {
-      BILL_NOT_ISSUED: '只有已出帳的帳單可以登記收款。',
-      BILL_NO_PAYMENT_REQUIRED: '這張帳單無須收款。',
-      BILL_VERSION_CONFLICT: '帳單已更新，請核對最新的未付項目後再登記。',
-      PAYMENT_ITEMS_REQUIRED: '請至少勾選一項未付明細。',
-      PAYMENT_ITEMS_UNAVAILABLE: '這張帳單目前只能整筆登記剩餘金額。',
-      PAYMENT_ITEMS_CHANGED: '勾選的項目已付款或不在這張帳單，請重新確認。',
-      PAYMENT_ALLOCATIONS_REQUIRE_REVIEW: '分項收款紀錄需要核對，暫時不能再登記收款。',
-      PAYMENT_AMOUNT_OUT_OF_RANGE: '本次收款金額超出可登記範圍，請核對勾選項目。'
-    }
-    let message = errors[result.code] ?? '暫時無法登記收款，請核對帳單。'
-
-    if (result.ok) {
-      message = result.changed
-        ? `已登記收款 NT$ ${result.receivedAmount}，剩餘未收 NT$ ${result.remainingAmount}。`
-        : '這張帳單已結清，本次未新增收款。'
-    } else if (result.code === 'PAYMENT_AMOUNT_MISMATCH') {
-      message = `目前未收金額為 NT$ ${result.remainingAmount}，請核對後再登記。`
-    }
-
-    req.flash(result.ok ? 'success_messages' : 'error_messages', message)
-    return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
-  },
-
-  recordTuitionBillRefund: async (req, res) => {
-    const body = req.body ?? {}
-    const token = body.tuitionFormToken
-    const expected = req.session?.tuitionFormToken
-    const isToken = value =>
-      typeof value === 'string' && value.length === 64 && !/[^a-f0-9]/.test(value)
-    if (
-      !isToken(token) || !isToken(expected) ||
-      !timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))
-    ) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
-    }
-
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value) ? Number(value) : NaN
-    const billId = readInt(req.params.billId)
-    const result = await tuitionService.recordTuitionBillRefund({
-      billId,
-      billVersion: readInt(body.billVersion),
-      actorId: req.user.id,
-      amount: readInt(body.amount),
-      refundedOn: body.refundedOn,
-      reason: body.reason
-    })
-
-    if (result.code === 'INVALID_INPUT') {
-      return res.status(400).send('帳單 ID、版本或退費金額不正確；金額須為大於零的台幣整數。')
-    }
-    if (result.code === 'BILL_NOT_FOUND') return res.status(404).send('找不到這張帳單。')
-
-    req.flash(
-      result.ok ? 'success_messages' : 'error_messages',
-      result.ok ? '已登記退費。' : REFUND_MESSAGES[result.code] ?? '暫時無法登記退費，請核對帳單。'
-    )
-    return res.redirect(303, `/cramschool/tuition/bills/${billId}#refund-heading`)
   },
 
   editTuition: (req, res) => {

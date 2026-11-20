@@ -67,15 +67,15 @@ module.exports = (app, passport) => {
   app.post('/cramschool/tuition/bills/:billId/refresh', authenticatedAdmin, tuitionController.refreshTuitionBillDraft)
   app.post('/cramschool/tuition/bills/:billId/discard', authenticatedAdmin, tuitionController.discardTuitionBillDraft)
   app.post('/cramschool/tuition/bills/:billId/issue', authenticatedAdmin, tuitionController.issueTuitionBill)
-  app.post('/cramschool/tuition/bills/:billId/payments', authenticatedAdmin, tuitionController.recordTuitionBillPayment)
-  app.post('/cramschool/tuition/bills/:billId/refunds', authenticatedAdmin, tuitionController.recordTuitionBillRefund)
+  app.post('/cramschool/tuition/bills/:billId/payments', authenticatedAdmin, paymentController.recordTuitionBillPayment)
+  app.post('/cramschool/tuition/bills/:billId/refunds', authenticatedAdmin, paymentController.recordTuitionBillRefund)
   app.get('/cramschool/tuition/:id/edit', authenticatedAdmin, tuitionController.editTuition)
   app.post('/cramschool/tuition/:tuitionId/extrafee/:extrafeeId', authenticatedAdmin, tuitionController.addFeeList)
   app.delete('/cramschool/tuition/:tuitionId/extrafee/:extrafeeId', authenticatedAdmin, tuitionController.removeFeeList)
   app.post('/cramschool/tuition/:id', authenticatedAdmin, tuitionController.confirmTuitionAndCreatePayment)
   app.delete('/cramschool/tuition/:id', authenticatedAdmin, tuitionController.deleteTuition)
   //繳費紀錄相關路由
-  app.get('/cramschool/payment', authenticatedAdmin, paymentController.getPaymentIndexPage)
+  app.get('/cramschool/payment', authenticatedAdmin, tuitionController.getCoursePaymentOverview)
   app.put('/cramschool/payment/:id/paid', authenticatedAdmin, paymentController.paymentPaid)
   app.delete('/cramschool/payment/:id', authenticatedAdmin, paymentController.deletePayment)
   //後台相關路由

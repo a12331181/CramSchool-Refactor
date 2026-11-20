@@ -10,6 +10,7 @@ const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
+const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
 const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 const paymentAllocationService = require('./tuitionPaymentAllocationService')
 const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
@@ -755,15 +756,15 @@ async function getCoursePaymentOverview({ billingMonth } = {}) {
       const receivableAmount = issuedAmounts.length ? sumCourseFeeAmounts(issuedAmounts) : 0
       const statuses = [...payableBillIds].map(id => paymentStatuses.get(id))
 
-      let collectionStatus = 'paid'
+      let collectionStatus = COURSE_COLLECTION_STATUS.PAID
       if (studentIds.size === 0) {
-        collectionStatus = 'empty'
+        collectionStatus = COURSE_COLLECTION_STATUS.EMPTY
       } else if (issuedStudentIds.size < studentIds.size) {
-        collectionStatus = 'unissued'
+        collectionStatus = COURSE_COLLECTION_STATUS.UNISSUED
       } else if (receivableAmount === null || statuses.some(status => !status?.ok)) {
-        collectionStatus = 'review'
+        collectionStatus = COURSE_COLLECTION_STATUS.REVIEW
       } else if (statuses.some(status => status.remainingAmount > 0)) {
-        collectionStatus = 'unpaid'
+        collectionStatus = COURSE_COLLECTION_STATUS.UNPAID
       }
 
       return { ...course, receivableAmount, collectionStatus }
