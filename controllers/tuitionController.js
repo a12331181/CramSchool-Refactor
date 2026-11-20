@@ -13,6 +13,8 @@ const REFUND_MESSAGES = require('../constants/tuitionRefundMessages')
 const COURSE_COLLECTION_LABELS = {
   [COURSE_COLLECTION_STATUS.PAID]: ['已收齊', 'text-success'],
   [COURSE_COLLECTION_STATUS.UNPAID]: ['未收齊', 'text-danger'],
+  [COURSE_COLLECTION_STATUS.REFUNDED]: ['已全額退費', 'text-info'],
+  [COURSE_COLLECTION_STATUS.PARTIALLY_REFUNDED]: ['已部分退費', 'text-info'],
   [COURSE_COLLECTION_STATUS.UNISSUED]: ['部分未出帳', 'alert-warning px-1 rounded'],
   [COURSE_COLLECTION_STATUS.EMPTY]: ['本月無收費資料', 'text-muted'],
   [COURSE_COLLECTION_STATUS.NO_PAYMENT]: ['無須收款', 'text-muted'],
@@ -49,6 +51,10 @@ function getTuitionBillPaymentStatusText(paymentStatus) {
 }
 
 function getCoursePaymentStatusText(coursePayment) {
+  if (coursePayment?.code === COURSE_PAYMENT_REVIEW.REFUND_INVALID) return '退費紀錄待核對'
+  if (coursePayment?.ok && coursePayment.refundedAmount > 0 && coursePayment.remainingAmount === 0) {
+    return coursePayment.netReceivedAmount === 0 ? '已全額退費' : '已部分退費'
+  }
   if (coursePayment?.code === COURSE_PAYMENT_REVIEW.REFUND_UNASSIGNED) return '整單退費待核對'
   if (coursePayment?.code === COURSE_PAYMENT_REVIEW.PAYMENT_UNASSIGNED) return '分項收款待核對'
   return getTuitionBillPaymentStatusText(coursePayment)
@@ -214,6 +220,8 @@ const tuitionController = {
         isClosed: Number(course.isActive) === 0,
         receivableText: formatAmount(course.receivableAmount),
         receivedText: formatAmount(course.receivedAmount),
+        refundedText: formatAmount(course.refundedAmount),
+        netReceivedText: formatAmount(course.netReceivedAmount),
         remainingText: formatAmount(course.remainingAmount),
         collectionText,
         collectionClass,
@@ -1076,6 +1084,8 @@ const tuitionController = {
       const isIssuedForCourse = hasCourseFee && bill?.status === TUITION_BILL_STATUS.ISSUED
       const hasAmount = Number.isSafeInteger(courseAmount) && courseAmount >= 0
       const amountText = amount => `NT$ ${amountFormat.format(amount)}`
+      const issuedAmountText = field =>
+        !isIssuedForCourse ? '—' : coursePayment?.ok ? amountText(coursePayment[field]) : '待核對'
       let statusText = '未開單'
 
       if (hasCourseFee) {
@@ -1094,8 +1104,10 @@ const tuitionController = {
         studentName: student?.name ?? bill?.studentNameSnapshot ?? `學生 #${studentId}`,
         statusText,
         amountText: hasAmount ? amountText(courseAmount) : hasCourseFee ? '待核對' : '—',
-        receivedText: !isIssuedForCourse ? '—' : coursePayment?.ok ? amountText(coursePayment.paidAmount) : '待核對',
-        remainingText: !isIssuedForCourse ? '—' : coursePayment?.ok ? amountText(coursePayment.remainingAmount) : '待核對',
+        receivedText: issuedAmountText('paidAmount'),
+        refundedText: issuedAmountText('refundedAmount'),
+        netReceivedText: issuedAmountText('netReceivedAmount'),
+        remainingText: issuedAmountText('remainingAmount'),
         billUrl: bill ? `/cramschool/tuition/bills/${bill.id}` : null,
         historyUrl: student
           ? withQuery(`/cramschool/tuition/courses/${courseId}/students/${studentId}`, historyQuery)

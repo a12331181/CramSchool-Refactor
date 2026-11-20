@@ -12,7 +12,7 @@
 {{else}}
 <p class="text-muted">
   金額以所選計費月份的正式帳單為準。應收是分攤折扣與折抵後的本課金額，不含其他課程或額外費用。
-  無法分配到本課的舊收款或整單退費會標示待核對。
+  已收記錄原付款，實收扣除本課已退費；退費不列為欠款。無法分配的舊收款或整單退費會標示待核對。
 </p>
 
 <div class="table-responsive">
@@ -23,6 +23,8 @@
         <th scope="col">課程名稱</th>
         <th scope="col">本月應收學費總額</th>
         <th scope="col">本課已收</th>
+        <th scope="col">本課已退</th>
+        <th scope="col">本課實收</th>
         <th scope="col">本課未收</th>
         <th scope="col">收費狀況</th>
         <th scope="col">明細</th>
@@ -35,6 +37,8 @@
         <td>{{this.name}}{{#if this.isClosed}} <small class="text-muted">（已關閉）</small>{{/if}}</td>
         <td>{{this.receivableText}}</td>
         <td>{{this.receivedText}}</td>
+        <td>{{this.refundedText}}</td>
+        <td>{{this.netReceivedText}}</td>
         <td>{{this.remainingText}}</td>
         <td><span class="font-weight-bold {{this.collectionClass}}">{{this.collectionText}}</span></td>
         <td>
@@ -44,7 +48,7 @@
         </td>
       </tr>
       {{else}}
-      <tr><td colspan="7" class="text-center text-muted">本月沒有課程收費資料。</td></tr>
+      <tr><td colspan="9" class="text-center text-muted">本月沒有課程收費資料。</td></tr>
       {{/each}}
     </tbody>
   </table>

@@ -768,6 +768,8 @@ async function getCoursePaymentOverview({ billingMonth } = {}) {
       const totalOf = field => statuses.length === 0 ? 0 : sumCourseFeeAmounts(statuses.map(status => status?.[field]))
       const receivableAmount = totalOf('totalAmount')
       const receivedAmount = totalOf('paidAmount')
+      const refundedAmount = totalOf('refundedAmount')
+      const netReceivedAmount = totalOf('netReceivedAmount')
       const remainingAmount = totalOf('remainingAmount')
 
       let collectionStatus = COURSE_COLLECTION_STATUS.PAID
@@ -777,16 +779,20 @@ async function getCoursePaymentOverview({ billingMonth } = {}) {
         collectionStatus = COURSE_COLLECTION_STATUS.UNISSUED
       } else if (
         statuses.some(status => !status?.ok) ||
-        [receivableAmount, receivedAmount, remainingAmount].some(amount => amount === null)
+        [receivableAmount, receivedAmount, refundedAmount, netReceivedAmount, remainingAmount].some(amount => amount === null)
       ) {
         collectionStatus = COURSE_COLLECTION_STATUS.REVIEW
       } else if (receivableAmount === 0) {
         collectionStatus = COURSE_COLLECTION_STATUS.NO_PAYMENT
       } else if (remainingAmount > 0) {
         collectionStatus = COURSE_COLLECTION_STATUS.UNPAID
+      } else if (refundedAmount > 0) {
+        collectionStatus = netReceivedAmount === 0
+          ? COURSE_COLLECTION_STATUS.REFUNDED
+          : COURSE_COLLECTION_STATUS.PARTIALLY_REFUNDED
       }
 
-      return { ...course, receivableAmount, receivedAmount, remainingAmount, collectionStatus }
+      return { ...course, receivableAmount, receivedAmount, refundedAmount, netReceivedAmount, remainingAmount, collectionStatus }
     })
 
     return { ok: true, courses: rows }

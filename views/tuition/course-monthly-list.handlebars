@@ -8,7 +8,7 @@
 <p class="alert alert-warning">{{errorMessage}}</p>
 {{else}}
 <p class="text-muted">
-  正式帳單顯示分攤折扣與折抵後的本課金額。草稿顯示本課原價，尚未形成應收。
+  正式帳單顯示分攤折扣與折抵後的本課金額。草稿顯示本課原價，尚未形成應收。實收是本課已收扣除已退費；退費不列為欠款。
 </p>
 <p>共 {{totalCount}} 位學生</p>
 
@@ -19,6 +19,8 @@
         <th scope="col">學生姓名</th>
         <th scope="col">本課金額</th>
         <th scope="col">本課已收</th>
+        <th scope="col">本課已退</th>
+        <th scope="col">本課實收</th>
         <th scope="col">本課未收</th>
         <th scope="col">帳單／收款狀態</th>
         <th scope="col">明細</th>
@@ -30,6 +32,8 @@
         <th scope="row">{{studentName}}</th>
         <td>{{amountText}}</td>
         <td>{{receivedText}}</td>
+        <td>{{refundedText}}</td>
+        <td>{{netReceivedText}}</td>
         <td>{{remainingText}}</td>
         <td>{{statusText}}</td>
         <td>
@@ -39,7 +43,7 @@
         </td>
       </tr>
       {{else}}
-      <tr><td colspan="6">本月沒有選課或有效帳單紀錄。</td></tr>
+      <tr><td colspan="8">本月沒有選課或有效帳單紀錄。</td></tr>
       {{/each}}
     </tbody>
   </table>
