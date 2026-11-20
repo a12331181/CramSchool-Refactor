@@ -250,7 +250,9 @@ const tuitionController = {
         issuedOnText: isIssued ? (formatTaipeiDateTime(bill.issuedAt)?.slice(0, 10) ?? '待核對') : '—',
         amount,
         hasAmount: Number.isSafeInteger(amount) && amount >= 0,
-        statusText: isIssued ? getTuitionBillPaymentStatusText(paymentStatus) : '未出帳',
+        statusText: !isIssued ? '未出帳' : course
+          ? getCoursePaymentStatusText(paymentStatus)
+          : getTuitionBillPaymentStatusText(paymentStatus),
         paidOnText,
         detailUrl: `/cramschool/tuition/bills/${bill.id}${isIssued ? '#payment-summary-heading' : ''}`,
         detailText: isIssued ? '查看收款資訊' : '查看草稿'

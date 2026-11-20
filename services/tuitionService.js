@@ -631,35 +631,44 @@ async function getStudentTuitionHistory({ courseId, studentId } = {}) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
 
-  const [course, student] = await Promise.all([
-    byCourse ? Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true }) : null,
-    Student.findByPk(studentId, { attributes: ['id', 'name'], raw: true })
-  ])
-  if (byCourse && !course) return { ok: false, code: 'COURSE_NOT_FOUND' }
-  if (!student) return { ok: false, code: 'STUDENT_NOT_FOUND' }
+  return readTuitionReport(async transaction => {
+    const [course, student] = await Promise.all([
+      byCourse ? Course.findByPk(courseId, { attributes: ['id', 'name'], raw: true, transaction }) : null,
+      Student.findByPk(studentId, { attributes: ['id', 'name'], raw: true, transaction })
+    ])
+    if (byCourse && !course) return { ok: false, code: 'COURSE_NOT_FOUND' }
+    if (!student) return { ok: false, code: 'STUDENT_NOT_FOUND' }
 
-  const savedBills = await TuitionBill.findAll({
-    attributes: ['id', 'billingMonth', 'status', 'issuedAt', 'totalAmount'],
-    where: { StudentId: studentId, status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] } },
-    include: byCourse ? [{
-      model: TuitionBillItem,
-      as: 'items',
-      attributes: ['id', 'amount'],
-      where: { CourseId: courseId, kind: TUITION_BILL_ITEM_KIND.COURSE_FEE },
-      required: true
-    }] : [],
-    order: [['billingMonth', 'DESC'], ['id', 'DESC']]
+    const savedBills = await TuitionBill.findAll({
+      attributes: ['id', 'billingMonth', 'status', 'issuedAt', 'totalAmount'],
+      where: { StudentId: studentId, status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] } },
+      include: byCourse ? [{
+        model: TuitionBillItem,
+        as: 'items',
+        attributes: ['id', 'amount'],
+        where: { CourseId: courseId, kind: TUITION_BILL_ITEM_KIND.COURSE_FEE },
+        required: true
+      }] : [],
+      order: [['billingMonth', 'DESC'], ['id', 'DESC']],
+      transaction
+    })
+
+    const bills = savedBills.map(bill => bill.toJSON())
+    const paymentStatuses = byCourse
+      ? await getIssuedCoursePaymentStatuses(bills, transaction)
+      : await getIssuedTuitionBillPaymentStatuses(bills, transaction)
+    const rows = bills.map(({ items, ...bill }) => {
+      const isIssued = bill.status === TUITION_BILL_STATUS.ISSUED
+      const paymentStatus = byCourse ? paymentStatuses.get(bill.id)?.get(courseId) : paymentStatuses.get(bill.id)
+      const amount = !byCourse
+        ? bill.totalAmount
+        : isIssued ? paymentStatus?.totalAmount ?? null : sumCourseFeeAmounts(items.map(item => item.amount))
+
+      return { bill, amount, paymentStatus: paymentStatus ?? null }
+    })
+
+    return { ok: true, course, student, rows }
   })
-
-  const bills = savedBills.map(bill => bill.toJSON())
-  const paymentStatuses = await getIssuedTuitionBillPaymentStatuses(bills)
-  const rows = bills.map(({ items, ...bill }) => ({
-    bill,
-    amount: byCourse ? sumCourseFeeAmounts(items.map(item => item.amount)) : bill.totalAmount,
-    paymentStatus: paymentStatuses.get(bill.id) ?? null
-  }))
-
-  return { ok: true, course, student, rows }
 }
 
 function getMonthlyCourseTuitionSources({ courseIds, billingMonth }, transaction) {
