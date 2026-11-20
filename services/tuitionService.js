@@ -1861,6 +1861,13 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
     return { ok: false, code: 'LEAVE_NOT_APPROVED' }
   }
 
+  const calendar = await Calendar.findByPk(attend.CalendarId, {
+    attributes: ['CourseId'],
+    raw: true,
+    transaction
+  })
+  if (!isId(calendar?.CourseId)) return { ok: false, code: 'LEAVE_UNAVAILABLE' }
+
   const bills = await TuitionBill.findAll({
     attributes: ['id', 'status'],
     where: {
@@ -1868,31 +1875,33 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
       billingMonth: range.reviewMonth,
       status: { [Op.in]: [TUITION_BILL_STATUS.DRAFT, TUITION_BILL_STATUS.ISSUED] }
     },
-    limit: 2,
     raw: true,
     transaction
   })
-
   if (bills.length === 0) return { ok: false, code: 'SOURCE_BILL_NOT_FOUND' }
-  if (bills.length > 1) return { ok: false, code: 'SOURCE_BILL_AMBIGUOUS' }
 
-  const [bill] = bills
+  const billsById = new Map(bills.map(bill => [bill.id, bill]))
   const items = await TuitionBillItem.findAll({
-    attributes: ['id', 'CourseId', 'quantity', 'unitPrice', 'sourceSnapshot'],
-    where: { TuitionBillId: bill.id, kind: TUITION_BILL_ITEM_KIND.COURSE_FEE },
+    attributes: ['id', 'TuitionBillId', 'CourseId', 'quantity', 'unitPrice', 'sourceSnapshot'],
+    where: {
+      TuitionBillId: { [Op.in]: [...billsById.keys()] },
+      CourseId: calendar.CourseId,
+      kind: TUITION_BILL_ITEM_KIND.COURSE_FEE
+    },
     raw: true,
     transaction
   })
 
-  const matches = []
-  let needsReview = false
-
+  const issuedMatches = []
+  const draftMatches = []
+  let issuedNeedsReview = false
+  let draftNeedsReview = false
   for (const item of items) {
+    const issued = billsById.get(item.TuitionBillId).status === TUITION_BILL_STATUS.ISSUED
     const snapshot = item.sourceSnapshot
     if (snapshot?.billingType === COURSE_TYPES.MONTHLY) continue
-
     const ids = Array.isArray(snapshot?.calendars)
-      ? snapshot.calendars.map(calendar => calendar?.calendarId)
+      ? snapshot.calendars.map(lesson => lesson?.calendarId)
       : null
 
     if (
@@ -1901,18 +1910,22 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
       !ids.every(isId) || new Set(ids).size !== ids.length ||
       !Number.isSafeInteger(item.unitPrice) || item.unitPrice < 0
     ) {
-      needsReview = true
-      continue
+      if (issued) issuedNeedsReview = true
+      else draftNeedsReview = true
+    } else if (ids.includes(attend.CalendarId)) {
+      (issued ? issuedMatches : draftMatches).push(item)
     }
-
-    if (ids.includes(attend.CalendarId)) matches.push(item)
   }
 
+  const matches = issuedMatches.length > 0 ? issuedMatches : draftMatches
   if (matches.length > 1) return { ok: false, code: 'SOURCE_ITEM_AMBIGUOUS' }
-  if (needsReview) return { ok: false, code: 'SOURCE_SNAPSHOT_UNCONFIRMED' }
+  if (issuedNeedsReview || (issuedMatches.length === 0 && draftNeedsReview)) {
+    return { ok: false, code: 'SOURCE_SNAPSHOT_UNCONFIRMED' }
+  }
   if (matches.length === 0) return { ok: false, code: 'SOURCE_ITEM_NOT_FOUND' }
 
   const [item] = matches
+  const bill = billsById.get(item.TuitionBillId)
   return {
     ok: true,
     source: {
@@ -2239,9 +2252,10 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
     // 和加入折抵相同，先鎖來源帳單，再鎖本張帳單。
     const sourceMonth = previousMonthWindow(owner.billingMonth)?.reviewMonth
     if (student && sourceMonth) {
-      await TuitionBill.findOne({
+      await TuitionBill.findAll({
         ...locked,
         attributes: ['id'],
+        order: [['id', 'ASC']],
         where: {
           StudentId: owner.StudentId,
           billingMonth: sourceMonth,
