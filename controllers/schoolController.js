@@ -1,8 +1,4 @@
-const db = require('../models')
-const Course = db.Course
-const Teacher = db.Teacher
-const Student = db.Student
-const User = db.User
+const courseService = require('../services/courseService')
 const calendarService = require('../services/calendarService')
 const meetingService = require('../services/meetingService')
 const diaryService = require('../services/diaryService')
@@ -32,24 +28,9 @@ const schoolController = {
     return res.render('school/introduction')
   },
 
-  getCourses: (req, res) => {
-    Promise.all([
-      Course.findAll({ 
-        raw: true,
-        nest: true, 
-        include: [ 
-          { model: Teacher }
-        ],
-        where: { isActive : true }
-      }),
-      User.findByPk(req.user.id, {
-        raw: true,
-        nest: true,
-        include: [Teacher]
-      })
-    ]).then(([courses, user]) => {
-      return res.render('courses/index', { courses: courses, isAdmin: req.user.isAdmin, user: user })
-    })
+  getCourses: async (req, res) => {
+    const courses = await courseService.getCourseDirectory(req.user.id)
+    return res.render('courses/index', { courses, isAdmin: req.user.isAdmin })
   },
 
   getCourse: async (req, res) => {
@@ -82,24 +63,16 @@ const schoolController = {
     })
   },
   
-  getCourseEnrolledStudents: (req, res) => {
-    Course.findOne({
-      where: { id: req.params.id, isActive: true },
-      include: [{ model: Student, as: 'EnrolledStudents', where: { status: 1 }}]
-    }).then(course => {
-      if (course === null) {
-        console.log('Not found!')
-        res.redirect('/cramschool/courses')
-      } else {
-        const students = course.EnrolledStudents.map(r => ({
-          ...r.dataValues
-        }))
-        return res.render('courses/students', {
-          course: course.toJSON(), 
-          students: students 
-        })
-      }
-    })
+  getCourseEnrolledStudents: async (req, res) => {
+    const courseId = Number(req.params.id)
+    if (!Number.isSafeInteger(courseId) || courseId < 1) {
+      return res.status(400).send('課程 ID 必須是正整數')
+    }
+
+    const result = await courseService.getCourseEnrolledStudents(courseId)
+    if (!result) return res.redirect('/cramschool/courses')
+
+    return res.render('courses/students', result)
   },
 
   getMeetings: async (req, res) => {

@@ -18,11 +18,11 @@
         <p class="mt-1" style="color: rgb(228, 182, 57)"><strong>堂數: {{this.amounts}}</strong>堂 / 期</p>
         <a href="/cramschool/courses/{{this.id}}/calendar" class="btn btn-dark">課程行事曆</a>
         <a href="/cramschool/courses/{{this.id}}/enrolledstudents" class="btn btn-secondary">學生名單</a>
-        {{#ifCond this.Teacher.id ../user.Teacher.id }}
+        {{#if this.canViewDiaries}}
         <a href="/cramschool/courses/{{this.id}}/diaries" class="btn btn-warning">教師日誌</a>
         {{else}}
         <a href="/cramschool/courses/{{this.id}}/diaries" class="btn btn-warning disabled">教師日誌</a>
-        {{/ifCond}}
+        {{/if}}
       </div>
     </div>
   </div>

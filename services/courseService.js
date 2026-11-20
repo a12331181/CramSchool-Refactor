@@ -1,7 +1,45 @@
-const {Course, Teacher, Calendar, Enrollment, Tuition, TuitionBillItem, Diary, Attend, sequelize} = require('../models')
+const {Course, Teacher, Student, Calendar, Enrollment, Tuition, TuitionBillItem, Diary, Attend, sequelize} = require('../models')
 const {COURSE_TIMES, COURSE_TYPES} = require('../constants/courseOptions')
 const moment = require('moment')
 const { Op } = require('sequelize')
+const STUDENT_STATUS = require('../constants/studentStatus')
+
+async function getCourseDirectory(userId) {
+  const [courses, teacher] = await Promise.all([
+    Course.findAll({
+      attributes: ['id', 'name', 'time', 'amounts'],
+      where: { isActive: true },
+      include: [{ model: Teacher, attributes: ['id', 'name'] }],
+      raw: true,
+      nest: true
+    }),
+    Teacher.findOne({ attributes: ['id'], where: { UserId: userId }, raw: true })
+  ])
+
+  return courses.map(course => ({
+    ...course,
+    canViewDiaries: teacher != null && course.Teacher?.id === teacher.id
+  }))
+}
+
+async function getCourseEnrolledStudents(courseId) {
+  const course = await Course.findOne({
+    attributes: ['id', 'name'],
+    where: { id: courseId, isActive: true },
+    include: [{
+      model: Student,
+      as: 'EnrolledStudents',
+      attributes: ['id', 'name', 'school', 'grade'],
+      where: { status: STUDENT_STATUS.ACTIVE },
+      through: { attributes: [] },
+      required: false
+    }]
+  })
+
+  if (!course) return null
+  const { EnrolledStudents: students, ...courseData } = course.toJSON()
+  return { course: courseData, students }
+}
 
 async function getAdminCoursesPage({ page, pageSize }) {
   const result = await Course.findAndCountAll({
@@ -339,6 +377,8 @@ async function setCourseActive(courseId, isActive) {
 }
 
 module.exports = {
+  getCourseDirectory,
+  getCourseEnrolledStudents,
   getAdminCoursesPage,
   getCourseFormData,
   createCourse,
