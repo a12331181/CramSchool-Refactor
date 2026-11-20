@@ -1,4 +1,5 @@
 const { Op, Transaction, UniqueConstraintError, ValidationError, json } = require('sequelize')
+const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { createHash } = require('node:crypto')
 const { isDeepStrictEqual } = require('node:util')
@@ -16,9 +17,9 @@ const MAX_UNSIGNED_INT = 4_294_967_295
 const MAX_BILL_ITEM_AMOUNT = 2_147_483_647
 const TUITION_BILL_HISTORY_LIMIT = 20
 const DRAFT_ADJUSTMENT_REMOVAL_REASONS = Object.freeze({
-  extra_fee: '移除草稿額外費用',
-  leave_credit: '移除草稿請假折抵',
-  discount: '移除草稿帳單折扣'
+  [TUITION_BILL_ITEM_KIND.EXTRA_FEE]: '移除草稿額外費用',
+  [TUITION_BILL_ITEM_KIND.LEAVE_CREDIT]: '移除草稿請假折抵',
+  [TUITION_BILL_ITEM_KIND.DISCOUNT]: '移除草稿帳單折扣'
 })
 const DRAFT_NON_BLOCKING_REVIEW_CODES = new Set([
   'NO_BILLABLE_CALENDARS',
@@ -655,7 +656,7 @@ async function getStudentTuitionHistory({ courseId, studentId } = {}) {
       model: TuitionBillItem,
       as: 'items',
       attributes: ['id', 'amount'],
-      where: { CourseId: courseId, kind: 'course_fee' },
+      where: { CourseId: courseId, kind: TUITION_BILL_ITEM_KIND.COURSE_FEE },
       required: true
     }] : [],
     order: [['billingMonth', 'DESC'], ['id', 'DESC']]
@@ -684,7 +685,7 @@ function getMonthlyCourseTuitionSources({ courseIds, billingMonth }, transaction
     }),
     TuitionBillItem.findAll({
       attributes: ['CourseId', 'TuitionBillId', 'amount'],
-      where: { CourseId: courseFilter, kind: 'course_fee' },
+      where: { CourseId: courseFilter, kind: TUITION_BILL_ITEM_KIND.COURSE_FEE },
       include: [{
         model: TuitionBill,
         attributes: ['id', 'StudentId', 'status', 'totalAmount'],
@@ -910,7 +911,7 @@ function buildDraftCourseFeeItems(preview) {
 
     items.push({
       CourseId: course.id,
-      kind: 'course_fee',
+      kind: TUITION_BILL_ITEM_KIND.COURSE_FEE,
       descriptionSnapshot: course.name.trim(),
       quantity,
       unitPrice,
@@ -1091,7 +1092,7 @@ async function refreshTuitionBillDraft({ billId, billVersion, actorId } = {}) {
     if (!fees.ok) return fees
 
     const preservedTotal = savedItems.reduce((sum, item) =>
-      item.kind === 'course_fee' ? sum : sum + item.amount, 0
+      item.kind === TUITION_BILL_ITEM_KIND.COURSE_FEE ? sum : sum + item.amount, 0
     )
     const totalAmount = fees.totalAmount + preservedTotal
     if (!Number.isSafeInteger(totalAmount) || totalAmount > MAX_UNSIGNED_INT) {
@@ -1101,7 +1102,7 @@ async function refreshTuitionBillDraft({ billId, billVersion, actorId } = {}) {
       return { ok: false, code: 'DRAFT_CREDITS_EXCEED_UPDATED_TOTAL' }
     }
 
-    const savedCourseFees = savedItems.filter(item => item.kind === 'course_fee')
+    const savedCourseFees = savedItems.filter(item => item.kind === TUITION_BILL_ITEM_KIND.COURSE_FEE)
     if (isDeepStrictEqual(savedCourseFees, fees.items)) {
       return { ok: true, changed: false, billId: bill.id, totalAmount, version: bill.version }
     }
@@ -1110,7 +1111,7 @@ async function refreshTuitionBillDraft({ billId, billVersion, actorId } = {}) {
     const version = bill.version + 1
 
     await TuitionBillItem.destroy({
-      where: { TuitionBillId: bill.id, kind: 'course_fee' },
+      where: { TuitionBillId: bill.id, kind: TUITION_BILL_ITEM_KIND.COURSE_FEE },
       transaction
     })
     await TuitionBillItem.bulkCreate(fees.items.map(item => ({
@@ -1134,7 +1135,7 @@ async function refreshTuitionBillDraft({ billId, billVersion, actorId } = {}) {
 }
 
 function readTuitionBillDiscount(items) {
-  const discounts = items.filter(item => item.kind === 'discount')
+  const discounts = items.filter(item => item.kind === TUITION_BILL_ITEM_KIND.DISCOUNT)
   const invalid = discounts.some(item =>
     item.quantity !== 1 ||
     !Number.isSafeInteger(item.unitPrice) || item.unitPrice < 1 || item.unitPrice > MAX_BILL_ITEM_AMOUNT ||
@@ -1207,7 +1208,7 @@ async function setTuitionBillDraftDiscount({ billId, billVersion, actorId, amoun
       ? await current.update(values, { transaction })
       : await TuitionBillItem.create({
           TuitionBillId: bill.id,
-          kind: 'discount',
+          kind: TUITION_BILL_ITEM_KIND.DISCOUNT,
           descriptionSnapshot: '帳單折扣',
           quantity: 1,
           ...values
@@ -1269,7 +1270,7 @@ async function removeTuitionBillDraftAdjustment({ billId, billItemId, billVersio
 
     if (
       items.some(row => !Number.isSafeInteger(row.amount)) ||
-      (item.kind === 'extra_fee' ? item.amount <= 0 : item.amount >= 0)
+      (item.kind === TUITION_BILL_ITEM_KIND.EXTRA_FEE ? item.amount <= 0 : item.amount >= 0)
     ) {
       return { ok: false, code: 'INVALID_BILL_AMOUNT' }
     }
@@ -1380,7 +1381,7 @@ async function voidUnpaidTuitionBill({ billId, billVersion, actorId, reason } = 
     })
 
     if (activeCredits.some(item =>
-      item.kind !== 'leave_credit' ||
+      item.kind !== TUITION_BILL_ITEM_KIND.LEAVE_CREDIT ||
       !isId(item.ActiveLeaveAttendId) ||
       item.sourceSnapshot?.attendId !== item.ActiveLeaveAttendId
     )) {
@@ -1566,7 +1567,7 @@ async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersio
 
     await TuitionBillItem.create({
       TuitionBillId: bill.id,
-      kind: 'extra_fee',
+      kind: TUITION_BILL_ITEM_KIND.EXTRA_FEE,
       CourseId: null,
       ExtraFeeId: extraFeeId,
       descriptionSnapshot: fee.name.trim(),
@@ -1821,7 +1822,7 @@ async function findPreviousMonthLeaveBillSource({ studentId, attendId, billingMo
   const [bill] = bills
   const items = await TuitionBillItem.findAll({
     attributes: ['id', 'CourseId', 'quantity', 'unitPrice', 'sourceSnapshot'],
-    where: { TuitionBillId: bill.id, kind: 'course_fee' },
+    where: { TuitionBillId: bill.id, kind: TUITION_BILL_ITEM_KIND.COURSE_FEE },
     raw: true,
     transaction
   })
@@ -2003,7 +2004,7 @@ async function getTuitionBillRefundSummary(billId, payment, transaction) {
       const credit = await TuitionBillItem.findOne({
         attributes: ['id'],
         where: {
-          kind: 'leave_credit',
+          kind: TUITION_BILL_ITEM_KIND.LEAVE_CREDIT,
           ActiveLeaveAttendId: { [Op.ne]: null },
           [Op.and]: json('sourceSnapshot.sourceBillId', String(billId))
         },
@@ -2264,7 +2265,7 @@ function hasMatchingDraftCourseFees(items, courses) {
   const savedByCourse = new Map()
 
   for (const item of items) {
-    if (item.kind !== 'course_fee') continue
+    if (item.kind !== TUITION_BILL_ITEM_KIND.COURSE_FEE) continue
     if (savedByCourse.has(item.CourseId)) return false
     savedByCourse.set(item.CourseId, item)
   }
@@ -2404,7 +2405,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
     )
 
     for (const item of items) {
-      if (item.kind !== 'leave_credit') continue
+      if (item.kind !== TUITION_BILL_ITEM_KIND.LEAVE_CREDIT) continue
 
       const invalid = {
         ok: false,
@@ -2682,7 +2683,7 @@ function buildLeaveCreditBillItem({ draftBillId, candidate }) {
     TuitionBillId: draftBillId,
     CourseId: source.courseId,
     ExtraFeeId: null,
-    kind: 'leave_credit',
+    kind: TUITION_BILL_ITEM_KIND.LEAVE_CREDIT,
     descriptionSnapshot: source.billingMonth + ' 請假折抵',
     quantity: 1,
     unitPrice,

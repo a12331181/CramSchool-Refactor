@@ -1,4 +1,5 @@
 const { Op } = require('sequelize')
+const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const { TuitionPaymentAllocation } = require('../models')
 
 const MAX_PAYMENT_ITEMS = 500
@@ -11,11 +12,11 @@ function buildPayableItems(items, totalAmount) {
   for (const item of [...items].sort((a, b) => a.id - b.id)) {
     if (!Number.isSafeInteger(item.amount)) return null
     savedTotal += item.amount
-    if (item.kind === 'leave_credit' || item.kind === 'discount') {
+    if (item.kind === TUITION_BILL_ITEM_KIND.LEAVE_CREDIT || item.kind === TUITION_BILL_ITEM_KIND.DISCOUNT) {
       if (item.amount >= 0) return null
       continue
     }
-    if (!['course_fee', 'extra_fee'].includes(item.kind) || item.amount < 0) return null
+    if (![TUITION_BILL_ITEM_KIND.COURSE_FEE, TUITION_BILL_ITEM_KIND.EXTRA_FEE].includes(item.kind) || item.amount < 0) return null
     if (item.amount === 0) continue
     grossTotal += item.amount
 

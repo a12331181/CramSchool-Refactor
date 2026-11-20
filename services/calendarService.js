@@ -1,4 +1,5 @@
 const { Op, col, fn, literal, where } = require('sequelize')
+const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { Course, Calendar, Teacher, Enrollment, Attend, TuitionBill, TuitionBillItem, sequelize } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
@@ -211,7 +212,7 @@ async function cancelCourseSession(courseId, calendarId) {
       attributes: ['TuitionBillId'],
       where: {
         CourseId: courseId,
-        kind: 'course_fee',
+        kind: TUITION_BILL_ITEM_KIND.COURSE_FEE,
         [Op.and]: where(fn(
           'JSON_CONTAINS',
           col('TuitionBillItem.sourceSnapshot'),

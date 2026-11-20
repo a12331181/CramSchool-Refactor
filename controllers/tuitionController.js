@@ -1,4 +1,5 @@
 const db = require('../models')
+const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const Tuition = db.Tuition
 const Course = db.Course
@@ -154,7 +155,7 @@ function describeTuitionBillChange({ before, after }) {
 
   if (Number.isSafeInteger(after?.removedBillItemId)) {
     const { kind, descriptionSnapshot } = before?.item ?? {}
-    const labels = { leave_credit: '移除請假折抵', extra_fee: '移除額外費用', discount: '移除帳單折扣' }
+    const labels = { [TUITION_BILL_ITEM_KIND.LEAVE_CREDIT]: '移除請假折抵', [TUITION_BILL_ITEM_KIND.EXTRA_FEE]: '移除額外費用', [TUITION_BILL_ITEM_KIND.DISCOUNT]: '移除帳單折扣' }
     return {
       actionText: labels[kind] ?? '移除明細',
       detailText: descriptionSnapshot ? `${descriptionSnapshot}｜${amountChange}` : amountChange
@@ -555,7 +556,7 @@ const tuitionController = {
 
     const extraFeeFormToken = hasExtraFeeForm ? req.session.tuitionFormToken : null
 
-    const discount = bill.items.find(item => item.kind === 'discount')
+    const discount = bill.items.find(item => item.kind === TUITION_BILL_ITEM_KIND.DISCOUNT)
     const discountForm = isDraft && (bill.totalAmount > 0 || discount)
       ? {
           amount: discount?.unitPrice,
@@ -629,7 +630,7 @@ const tuitionController = {
 
     const items = bill.items.map(item => ({
       ...item,
-      canRemove: isDraft && ['extra_fee', 'leave_credit', 'discount'].includes(item.kind),
+      canRemove: isDraft && [TUITION_BILL_ITEM_KIND.EXTRA_FEE, TUITION_BILL_ITEM_KIND.LEAVE_CREDIT, TUITION_BILL_ITEM_KIND.DISCOUNT].includes(item.kind),
       reviewCount: Array.isArray(item.sourceSnapshot?.reviewItems)
         ? item.sourceSnapshot.reviewItems.length
         : 0
