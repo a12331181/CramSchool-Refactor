@@ -4,6 +4,7 @@ const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { Course, Calendar, Teacher, Enrollment, Attend, TuitionBill, TuitionBillItem, sequelize } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
+const COURSE_SESSION_BATCH_LIMIT = require('../constants/courseSessionBatchLimit')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
@@ -71,17 +72,50 @@ async function getCreateCourseSessionFormData(courseId) {
   }
 }
 
-async function createCourseSession(courseId, sessionData) {
+async function createCourseSession(courseId, sessionData = {}) {
   if (!Number.isSafeInteger(courseId) || courseId < 1) {
     return { ok: false, code: 'INVALID_COURSE_ID' }
   }
 
   const prepared = prepareCourseSessionData(sessionData)
+  if (!prepared.ok) return prepared
 
-  if (!prepared.ok) {
-    return prepared
+  const slot = { ...prepared.data, date: getTaipeiDate(prepared.data.startAt) }
+  return saveCourseSessions(courseId, [slot], { batch: false })
+}
+
+async function createCourseSessionBatch(courseId, { dates, startTime, endTime, teacherId, content } = {}) {
+  if (!Number.isSafeInteger(courseId) || courseId < 1) {
+    return { ok: false, code: 'INVALID_COURSE_ID' }
   }
 
+  if (
+    !Array.isArray(dates) || dates.length === 0 || dates.length > COURSE_SESSION_BATCH_LIMIT ||
+    dates.some(date => typeof date !== 'string' || !parseTaipeiDateTime(`${date}T00:00`))
+  ) {
+    return { ok: false, code: 'INVALID_DATES' }
+  }
+
+  if (new Set(dates).size !== dates.length) {
+    return { ok: false, code: 'DUPLICATE_DATES' }
+  }
+
+  const slots = []
+  for (const date of [...dates].sort()) {
+    const prepared = prepareCourseSessionData({
+      startAt: typeof startTime === 'string' ? `${date}T${startTime}` : null,
+      endAt: typeof endTime === 'string' ? `${date}T${endTime}` : null,
+      teacherId,
+      content
+    })
+    if (!prepared.ok) return prepared
+    slots.push({ ...prepared.data, date })
+  }
+
+  return saveCourseSessions(courseId, slots, { batch: true })
+}
+
+async function saveCourseSessions(courseId, slots, { batch }) {
   const driverTimezone = sequelize.options.dialectOptions?.timezone
 
   if (
@@ -91,77 +125,76 @@ async function createCourseSession(courseId, sessionData) {
     return { ok: false, code: 'UTC_TIMEZONE_REQUIRED' }
   }
 
-  const data = prepared.data
+  const { teacherId } = slots[0]
 
   return sequelize.transaction(async transaction => {
+    const locked = { transaction, lock: transaction.LOCK.UPDATE }
     const course = await Course.findByPk(courseId, {
       attributes: ['id', 'isActive'],
-      transaction,
-      lock: transaction.LOCK.UPDATE
+      ...locked
     })
+    if (!course) return { ok: false, code: 'COURSE_NOT_FOUND' }
+    if (course.isActive !== true) return { ok: false, code: 'COURSE_CLOSED' }
 
-    if (!course) {
-      return { ok: false, code: 'COURSE_NOT_FOUND' }
-    }
-
-    if (course.isActive !== true) {
-      return { ok: false, code: 'COURSE_CLOSED' }
-    }
-
-    const teacher = await Teacher.findByPk(data.teacherId, {
+    const teacher = await Teacher.findByPk(teacherId, {
       attributes: ['id', 'status'],
-      transaction,
-      lock: transaction.LOCK.UPDATE
+      ...locked
     })
-
     if (!teacher || teacher.status !== TEACHER_STATUS.ACTIVE) {
       return { ok: false, code: 'TEACHER_UNAVAILABLE' }
     }
 
-    const conflict = await Calendar.findOne({
-      attributes: ['id'],
+    const conflicts = await Calendar.findAll({
+      attributes: ['startAt', 'endAt'],
       where: {
-        status: {
-          [Op.in]: [COURSE_SESSION_STATUS.SCHEDULED, COURSE_SESSION_STATUS.COMPLETED]
-        },
-        startAt: { [Op.lt]: data.endAt },
-        endAt: { [Op.gt]: data.startAt },
-        [Op.or]: [
-          { CourseId: courseId },
-          { TeacherId: data.teacherId }
+        status: { [Op.in]: [COURSE_SESSION_STATUS.SCHEDULED, COURSE_SESSION_STATUS.COMPLETED] },
+        [Op.and]: [
+          { [Op.or]: [{ CourseId: courseId }, { TeacherId: teacherId }] },
+          {
+            [Op.or]: slots.map(slot => ({
+              startAt: { [Op.lt]: slot.endAt },
+              endAt: { [Op.gt]: slot.startAt }
+            }))
+          }
         ]
       },
+      raw: true,
       transaction
     })
 
-    if (conflict) {
-      return { ok: false, code: 'TIME_CONFLICT' }
+    if (conflicts.length > 0) {
+      const blockedDates = slots.filter(slot => conflicts.some(conflict =>
+        conflict.startAt < slot.endAt && conflict.endAt > slot.startAt
+      )).map(slot => slot.date)
+      return {
+        ok: false,
+        code: 'TIME_CONFLICT',
+        ...(batch ? { conflictDates: blockedDates.length ? blockedDates : slots.map(slot => slot.date) } : {})
+      }
     }
 
-    const calendar = await Calendar.create({
+    const rows = slots.map(({ startAt, endAt, content }) => ({
       CourseId: courseId,
-      TeacherId: data.teacherId,
-      startAt: data.startAt,
-      endAt: data.endAt,
+      TeacherId: teacherId,
+      startAt,
+      endAt,
       status: COURSE_SESSION_STATUS.SCHEDULED,
-      content: data.content,
+      content,
       date: null,
       period: null,
       isActive: false
-    }, { transaction })
+    }))
 
-    const totalCount = await Calendar.count({
-      where: { CourseId: courseId },
-      transaction
-    })
-
-    return {
-      ok: true,
-      data: {
-        id: calendar.id,
-        totalCount
-      }
+    let id
+    if (batch) {
+      await Calendar.bulkCreate(rows, { transaction, validate: true })
+    } else {
+      const calendar = await Calendar.create(rows[0], { transaction })
+      id = calendar.id
     }
+
+    const totalCount = await Calendar.count({ where: { CourseId: courseId }, transaction })
+    return { ok: true, data: batch ? { createdCount: rows.length, totalCount } : { id, totalCount } }
   })
 }
 
@@ -612,6 +645,7 @@ function prepareCourseSessionData({ startAt, endAt, teacherId, content = '' }) {
 
 module.exports = {
   createCourseSession,
+  createCourseSessionBatch,
   cancelCourseSession,
   completeCourseSession,
   getAdminCourseCalendarPage,
