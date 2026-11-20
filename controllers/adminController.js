@@ -1,8 +1,8 @@
 const db = require('../models')
 const Course = db.Course
-const User = db.User
 const Calendar = db.Calendar
 const ExtraFee = db.ExtraFee
+const userService = require('../services/userService')
 const moment = require('moment')
 const pageLimit = 12
 const calendarService = require('../services/calendarService')
@@ -385,25 +385,23 @@ const adminController = {
   },
 
   // 使用者相關程式碼
-  getUsers: (req, res) => {
-    return User.findAll({raw: true}).then(users => {
-      return res.render('admin/users/index', { users: users })
-    })
+  getUsers: async (_req, res) => {
+    const users = await userService.getAdminUserList()
+    return res.render('admin/users/index', { users })
   },
 
-  toggleAdmin: (req, res) => {
-    return User.findByPk(req.params.id)
-      .then((user) => {
-        user.update({
-          isAdmin: !user.isAdmin
-        })
-        .then((user) => {
-          req.flash('success_messages', '使用者權限已更新')
-          res.redirect('/admin/users')
-        })
-      })
+  toggleAdmin: async (req, res) => {
+    const userId = Number(req.params.id)
+    if (!Number.isSafeInteger(userId) || userId < 1) return res.status(400).send('帳號 ID 必須是正整數')
+
+    const changed = await userService.toggleUserAdmin(userId)
+    req.flash(
+      changed ? 'success_messages' : 'error_messages',
+      changed ? '使用者權限已更新' : '找不到使用者'
+    )
+    return res.redirect(303, '/admin/users')
   },
-  
+
   getExtraFees: (req, res) => {
     ExtraFee.findAll({
       raw: true,

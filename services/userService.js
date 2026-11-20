@@ -217,7 +217,25 @@ async function updateTeacherProfile(userId, body, imageUrl) {
   return true
 }
 
+function getAdminUserList() {
+  return User.findAll({
+    attributes: ['id', 'name', 'email', 'isAdmin'],
+    order: [['id', 'ASC']],
+    raw: true
+  })
+}
+
+async function toggleUserAdmin(userId) {
+  const user = await User.findByPk(userId)
+  if (!user) return false
+
+  await user.update({ isAdmin: !user.isAdmin })
+  return true
+}
+
 module.exports = {
+  getAdminUserList,
+  toggleUserAdmin,
   getTeacherProfile,
   getEditableTeacherProfile,
   updateTeacherProfile,
