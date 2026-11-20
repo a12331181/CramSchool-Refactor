@@ -1,5 +1,7 @@
 const { randomUUID } = require('node:crypto')
-const tuitionService = require('../services/tuitionService')
+const { recordTuitionBillPayment } = require('../services/tuitionPaymentService')
+const { recordTuitionBillRefund } = require('../services/tuitionRefundService')
+const { getStudentTuitionBillsForMonth } = require('../services/tuitionReportService')
 const tuitionPaymentGroupService = require('../services/tuitionPaymentGroupService')
 const { MAX_PAYMENT_AMOUNT, MIN_GROUP_BILLS, MAX_GROUP_BILLS, MAX_GROUP_NOTE_LENGTH } = require('../constants/tuitionPayment')
 const { getTaipeiDate } = require('../utils/date')
@@ -29,7 +31,7 @@ function readBillSelections(value) {
   return bills
 }
 
-const paymentController = {
+const tuitionPaymentController = {
   recordTuitionBillPayment: async (req, res) => {
     const body = req.body ?? {}
     const token = body.tuitionFormToken
@@ -48,7 +50,7 @@ const paymentController = {
       ? (Array.isArray(rawItems) ? rawItems : [rawItems]).map(readInt)
       : undefined
 
-    const result = await tuitionService.recordTuitionBillPayment({
+    const result = await recordTuitionBillPayment({
       billId,
       billVersion: body.billVersion === undefined ? undefined : readInt(body.billVersion),
       amount: readInt(body.amount),
@@ -111,7 +113,7 @@ const paymentController = {
       return res.status(400).send(invalidInput)
     }
 
-    const result = await tuitionService.recordTuitionBillRefund({
+    const result = await recordTuitionBillRefund({
       billId,
       billVersion: readInt(body.billVersion),
       actorId: req.user.id,
@@ -136,7 +138,7 @@ const paymentController = {
   getTuitionPaymentGroupForm: async (req, res) => {
     const studentId = readInt(req.params.studentId)
     const billingMonth = req.query.billingMonth
-    const result = await tuitionService.getStudentTuitionBillsForMonth({ studentId, billingMonth })
+    const result = await getStudentTuitionBillsForMonth({ studentId, billingMonth })
     if (!result.ok) return res.status(400).send('請選擇有效的學生及計費月份。')
 
     const bills = result.rows.filter(bill => bill.canReceiveGroupedPayment).map(bill => ({
@@ -230,4 +232,4 @@ const paymentController = {
   }
 }
 
-module.exports = paymentController
+module.exports = tuitionPaymentController
