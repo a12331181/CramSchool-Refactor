@@ -52,7 +52,7 @@ function findAllocations(paymentIds, billItemIds, transaction) {
 
   return references.length > 0
     ? TuitionPaymentAllocation.findAll({
-        attributes: ['PaymentId', 'TuitionBillItemId', 'amount'],
+        attributes: ['id', 'PaymentId', 'TuitionBillItemId', 'amount'],
         where: { [Op.or]: references },
         raw: true,
         transaction
@@ -111,10 +111,11 @@ function summarizeAllocationState({ items, payments, paymentStatus }, allocation
   for (const allocation of allocations) {
     const item = itemsById.get(allocation.TuitionBillItemId)
     if (
+      !Number.isSafeInteger(allocation.id) || allocation.id < 1 ||
       !allocatedByPayment.has(allocation.PaymentId) ||
       !item || item.amount <= 0 || item.amount !== allocation.amount || paidByItemId.has(item.itemId)
     ) return invalid
-    paidByItemId.set(item.itemId, allocation.PaymentId)
+    paidByItemId.set(item.itemId, { paymentId: allocation.PaymentId, allocationId: allocation.id })
     allocatedByPayment.set(allocation.PaymentId, allocatedByPayment.get(allocation.PaymentId) + allocation.amount)
   }
 
@@ -128,7 +129,10 @@ function summarizeAllocationState({ items, payments, paymentStatus }, allocation
     ok: true,
     itemized: true,
     hasAdjustments: payableItems.some(item => item.amount !== item.grossAmount),
-    items: payableItems.map(item => ({ ...item, paymentId: paidByItemId.get(item.itemId) ?? null }))
+    items: payableItems.map(item => ({
+      ...item,
+      ...(paidByItemId.get(item.itemId) ?? { paymentId: null, allocationId: null })
+    }))
   }
 }
 
