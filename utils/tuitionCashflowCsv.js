@@ -13,8 +13,10 @@ function buildCashflowCsv(rows) {
   const lines = rows.map(row => {
     const received = row.kind === CASH_KIND.PAYMENT ? row.amount : 0
     const refunded = row.kind === CASH_KIND.REFUND ? row.amount : 0
+    const label = row.paymentGroupId ? '合併收款' : received > 0 ? '收款' : '退費'
+    const billReference = row.paymentGroupId ? row.billIds.join(' / ') : row.billId
     return [
-      row.date, received > 0 ? '收款' : '退費', row.id, row.billId, row.billingMonth, row.studentName,
+      row.date, label, row.id, billReference, row.billingMonth, row.studentName,
       received, refunded, received - refunded
     ]
   })

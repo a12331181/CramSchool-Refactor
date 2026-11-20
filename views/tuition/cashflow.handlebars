@@ -5,7 +5,7 @@
 <br>
 
 <h1 class="h4">收退費對帳</h1>
-<p class="text-muted">依實際收款日與退費日對帳。明細另列帳單的計費月份。</p>
+<p class="text-muted">依實際收款日與退費日對帳。合併收款以一筆匯款列出，可點進去查看帳單分配。</p>
 
 <form method="GET" action="{{formAction}}" class="mb-3">
   <label for="cashflow-month">收退費月份：</label>
@@ -56,8 +56,12 @@
         <td>{{billingMonth}}</td>
         <td>{{amountText}}</td>
         <td>
-          {{#if billUrl}}<a href="{{billUrl}}">帳單 #{{billId}}</a>
-          {{else}}{{#if billId}}帳單 #{{billId}}{{else}}—{{/if}}{{/if}}
+          {{#if paymentGroupUrl}}
+          <a href="{{paymentGroupUrl}}">查看帳單分配{{#if groupBillCount}}（{{groupBillCount}} 張）{{/if}}</a>
+          {{else}}
+            {{#if billUrl}}<a href="{{billUrl}}">帳單 #{{billId}}</a>
+            {{else}}{{#if billId}}帳單 #{{billId}}{{else}}—{{/if}}{{/if}}
+          {{/if}}
         </td>
         {{#if ../showReview}}<td>{{reviewText}}</td>{{/if}}
       </tr>

@@ -11,7 +11,8 @@ const amountFormat = new Intl.NumberFormat('zh-TW')
 const REVIEW_LABELS = Object.freeze({
   [CASH_REVIEW.DATE]: '實際日期未填或不正確',
   [CASH_REVIEW.BILL]: '帳單關聯或狀態待核對',
-  [CASH_REVIEW.AMOUNT]: '金額待核對'
+  [CASH_REVIEW.AMOUNT]: '金額待核對',
+  [CASH_REVIEW.GROUP]: '匯款與帳單分配待核對'
 })
 
 function formatAmount(amount) {
@@ -22,9 +23,11 @@ function formatAmount(amount) {
 function toDisplayRow(row) {
   const isRefund = row.kind === CASH_KIND.REFUND
   return {
-    kindText: isRefund ? '退費' : '收款',
+    kindText: isRefund ? '退費' : row.paymentGroupId ? '合併收款' : '收款',
     id: row.id,
     billId: row.billId,
+    paymentGroupUrl: row.paymentGroupId ? `/cramschool/tuition/payment-groups/${row.paymentGroupId}` : null,
+    groupBillCount: row.billIds?.length,
     billUrl: row.billAvailable
       ? `/cramschool/tuition/bills/${row.billId}#${isRefund ? 'refund-heading' : 'payment-summary-heading'}`
       : null,

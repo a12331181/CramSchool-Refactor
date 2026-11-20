@@ -1,8 +1,10 @@
 const { Op, Transaction } = require('sequelize')
-const { Payment, TuitionBill, TuitionBillRefund, sequelize } = require('../models')
+const { Payment, TuitionBill, TuitionBillRefund, TuitionPaymentGroup, sequelize } = require('../models')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { getTaipeiDate, getTaipeiMonthRange, isTaipeiDateKey } = require('../utils/date')
 
+const { isPaymentAmount } = require('./tuitionPaymentService')
+const { getGroupPaymentRows, groupPaymentAllocationsAreValid } = require('./tuitionPaymentGroupService')
 const { CASH_KIND, CASH_REVIEW } = require('../constants/tuitionCashflow')
 const DATE_SHAPE = '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
 
@@ -33,9 +35,49 @@ function cashRow(record, kind, today) {
   }
 }
 
+async function getGroupedCashRows(period, today, transaction) {
+  const groups = await TuitionPaymentGroup.findAll({
+    attributes: ['id', 'StudentId', 'billingMonth', 'studentNameSnapshot', 'paidOn', 'amount'],
+    where: { paidOn: period },
+    raw: true,
+    transaction
+  })
+  const byGroupId = new Map(groups.map(group => [group.id, []]))
+  const payments = await getGroupPaymentRows([...byGroupId.keys()], transaction)
+  for (const payment of payments) byGroupId.get(payment.TuitionPaymentGroupId).push(payment)
+
+  return groups.map(group => {
+    const allocations = byGroupId.get(group.id)
+    let review = null
+    if (!isTaipeiDateKey(group.paidOn) || group.paidOn > today) {
+      review = CASH_REVIEW.DATE
+    } else if (!isPaymentAmount(group.amount)) {
+      review = CASH_REVIEW.AMOUNT
+    } else if (
+      !getTaipeiMonthRange(group.billingMonth) ||
+      !groupPaymentAllocationsAreValid(group, allocations)
+    ) {
+      review = CASH_REVIEW.GROUP
+    }
+
+    return {
+      kind: CASH_KIND.PAYMENT,
+      id: group.id,
+      paymentGroupId: group.id,
+      billIds: review === null ? allocations.map(payment => payment.TuitionBillId) : [],
+      billingMonth: group.billingMonth,
+      studentName: group.studentNameSnapshot,
+      date: group.paidOn,
+      amount: group.amount,
+      review
+    }
+  })
+}
+
 function compareCashRows(a, b) {
   return String(b.date ?? '').localeCompare(String(a.date ?? '')) ||
-    a.kind.localeCompare(b.kind) || b.id - a.id
+    a.kind.localeCompare(b.kind) || b.id - a.id ||
+    Number(Boolean(b.paymentGroupId)) - Number(Boolean(a.paymentGroupId))
 }
 
 async function getTuitionCashflow(cashMonth) {
@@ -53,11 +95,13 @@ async function getTuitionCashflow(cashMonth) {
     isolationLevel: Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
     readOnly: true
   }, async transaction => {
-    const [payments, refunds] = await Promise.all([
+    const [payments, refunds, groupedCashRows] = await Promise.all([
       Payment.findAll({
         attributes: ['id', 'time', 'amount', 'TuitionId', 'TuitionBillId'],
         where: {
+          // Grouped bill payments are allocations; count the parent transfer once.
           TuitionBillId: { [Op.ne]: null },
+          TuitionPaymentGroupId: null,
           isPaid: true,
           [Op.or]: [{ time: period }, { time: null }, { time: { [Op.notRegexp]: DATE_SHAPE } }]
         },
@@ -73,12 +117,14 @@ async function getTuitionCashflow(cashMonth) {
         raw: true,
         nest: true,
         transaction
-      })
+      }),
+      getGroupedCashRows(period, today, transaction)
     ])
 
     const candidates = [
       ...payments.map(payment => cashRow(payment, CASH_KIND.PAYMENT, today)),
-      ...refunds.map(refund => cashRow(refund, CASH_KIND.REFUND, today))
+      ...refunds.map(refund => cashRow(refund, CASH_KIND.REFUND, today)),
+      ...groupedCashRows
     ]
     const rows = []
     const reviewRows = []
