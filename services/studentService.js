@@ -1,4 +1,4 @@
-const {Student, Course, Enrollment, Attend, Tuition, TuitionBill, sequelize} = require('../models')
+const {Student, Course, Enrollment, Calendar, Attend, Tuition, TuitionBill, sequelize} = require('../models')
 const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
@@ -302,7 +302,44 @@ async function deleteStudent(studentId) {
   })
 }
 
+async function getStudentAttendanceHistory({ courseId, studentId }) {
+  const [course, student, currentPeriod] = await Promise.all([
+    Course.findOne({ where: { id: courseId, isActive: true } }),
+    Student.findOne({ where: { id: studentId, status: STUDENT_STATUS.ACTIVE } }),
+    Calendar.max('period', { where: { CourseId: courseId } })
+  ])
+
+  if (!course || !student) return null
+
+  const calendars = await Calendar.findAll({
+    where: { CourseId: courseId, period: currentPeriod },
+    attributes: ['id', 'date', 'content'],
+    include: [{
+      model: Attend,
+      attributes: ['id', 'isAttend', 'reason'],
+      where: { StudentId: studentId },
+      required: true
+    }],
+    order: [['id', 'ASC']]
+  })
+  const attends = calendars.map(calendar => {
+    const { date, content, Attends: [attend] } = calendar.toJSON()
+    return { id: attend.id, date, content, isAttend: attend.isAttend, reason: attend.reason }
+  })
+
+  return {
+    student: student.toJSON(),
+    course: course.toJSON(),
+    attends,
+    currentPeriod,
+    totalCalendarNums: course.amounts,
+    finishCalendarNums: attends.length,
+    remainCalendarNums: course.amounts - attends.length
+  }
+}
+
 module.exports = {
+  getStudentAttendanceHistory,
   getStudentDetails,
   getStudentsPage,
   getAdminStudentsPage,

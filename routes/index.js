@@ -47,7 +47,7 @@ module.exports = (app, passport) => {
   //學生資料相關路由
   app.get('/cramschool/students', authenticated, studentController.getStudents)
   app.get('/cramschool/students/:id', authenticated, studentController.getStudent)
-  app.get('/cramschool/students/:studentId/courses/:courseId/attend', authenticated, studentController.getStudentAttend)
+  app.get('/cramschool/students/:studentId/courses/:courseId/attend', authenticated, studentController.getStudentAttendanceHistory)
   //學費表相關路由
   app.get('/cramschool/tuition/courses/:courseId/monthly', authenticatedAdmin, tuitionController.getCourseMonthlyTuitionList)
   app.get('/cramschool/tuition/courses/:courseId/students/:studentId', authenticatedAdmin, tuitionController.getStudentTuitionHistory)
