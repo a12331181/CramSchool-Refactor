@@ -19,19 +19,13 @@ async function getCalendarPage({ courseId, page, pageSize }) {
     return { ok: false, code: 'COURSE_CLOSED' }
   }
 
-  const [result, latestPeriod] = await Promise.all([
-    Calendar.findAndCountAll({
-      where: { CourseId: courseId },
-      order: [['id', 'ASC']],
-      limit: pageSize,
-      offset: (page - 1) * pageSize,
-      raw: true
-    }),
-
-    Calendar.max('period', {
-      where: { CourseId: courseId }
-    })
-  ])
+  const result = await Calendar.findAndCountAll({
+    where: { CourseId: courseId },
+    order: [['id', 'ASC']],
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    raw: true
+  })
 
   return {
     ok: true,
@@ -44,8 +38,7 @@ async function getCalendarPage({ courseId, page, pageSize }) {
         calendar.endAt === null &&
         calendar.TeacherId === null
     })),
-    count: result.count,
-    latestPeriod
+    count: result.count
   }
 }
 
@@ -580,72 +573,6 @@ async function updateLegacyCalendar(courseId, calendarId, { date, content }) {
   })
 }
 
-async function setLegacyCalendarActive(
-  courseId,
-  calendarId,
-  targetIsActive
-) {
-  if (!Number.isSafeInteger(courseId) || courseId < 1) {
-    return { ok: false, code: 'INVALID_COURSE_ID' }
-  }
-
-  if (!Number.isSafeInteger(calendarId) || calendarId < 1) {
-    return { ok: false, code: 'INVALID_CALENDAR_ID' }
-  }
-
-  return sequelize.transaction(async transaction => {
-    const course = await Course.findByPk(courseId, {
-      attributes: ['id', 'isActive'],
-      transaction,
-      lock: transaction.LOCK.UPDATE
-    })
-
-    if (!course) {
-      return { ok: false, code: 'COURSE_NOT_FOUND' }
-    }
-
-    if (course.isActive !== true) {
-      return { ok: false, code: 'COURSE_CLOSED' }
-    }
-
-    const calendar = await Calendar.findOne({
-      where: {
-        id: calendarId,
-        CourseId: courseId,
-        status: null,
-        startAt: null,
-        endAt: null,
-        TeacherId: null
-      },
-      transaction,
-      lock: transaction.LOCK.UPDATE
-    })
-
-    if (!calendar) {
-      return { ok: false, code: 'LEGACY_CALENDAR_UNAVAILABLE' }
-    }
-
-    if (calendar.isActive === targetIsActive) {
-      return { ok: true, changed: false }
-    }
-
-    await calendar.update(
-      { isActive: targetIsActive },
-      { transaction }
-    )
-
-    return { ok: true, changed: true }
-  })
-}
-
-async function closeLegacyCalendar(courseId, calendarId) {
-  return setLegacyCalendarActive(courseId, calendarId, false)
-}
-
-async function openLegacyCalendar(courseId, calendarId) {
-  return setLegacyCalendarActive(courseId, calendarId, true)
-}
-
 function prepareCalendarData({ startAt, endAt, teacherId, content = '' }) {
   const parsedStartAt = parseTaipeiDateTime(startAt)
   const parsedEndAt = parseTaipeiDateTime(endAt)
@@ -691,7 +618,5 @@ module.exports = {
   getCreateCalendarFormData,
   getCourseCalendarData,
   getLegacyCalendarEditData,
-  updateLegacyCalendar,
-  closeLegacyCalendar,
-  openLegacyCalendar
+  updateLegacyCalendar
 }

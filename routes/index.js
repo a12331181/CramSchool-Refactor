@@ -95,15 +95,11 @@ module.exports = (app, passport) => {
   //admin calendar 相關路由
   app.get('/admin/courses/:id/calendar', authenticatedAdmin, adminController.getCalendar)
   app.get('/admin/courses/:courseId/sessions/create', authenticatedAdmin, adminController.getCreateCalendarPage)
-  app.post('/admin/courses/:id/calendar', authenticatedAdmin, adminController.postNextPeriodCalendar)
   app.get('/admin/courses/:courseId/calendar/:calendarId/edit', authenticatedAdmin, adminController.editCalendar)
   app.post('/admin/courses/:courseId/sessions', authenticatedAdmin, adminController.postCalendar)
   app.put('/admin/courses/:courseId/sessions/:calendarId/cancel',authenticatedAdmin,adminController.cancelCalendar)
   app.put('/admin/courses/:courseId/sessions/:calendarId/complete', authenticatedAdmin, adminController.completeCalendar)
   app.put('/admin/courses/:courseId/calendar/:calendarId', authenticatedAdmin, adminController.putCalendar)
-  app.delete('/admin/courses/:id/calendar', authenticatedAdmin, adminController.deleteCalendars)
-  app.put('/admin/courses/:courseId/calendar/:calendarId/close', authenticatedAdmin, adminController.closeCalendar)
-  app.put('/admin/courses/:courseId/calendar/:calendarId/open', authenticatedAdmin, adminController.openCalendar)
   //admin extrafee 相關路由 
   app.get('/admin/extrafees', authenticatedAdmin, adminController.getExtraFees)
   app.get('/admin/extrafees/create', authenticatedAdmin, adminController.getCreateExtraFeePage)

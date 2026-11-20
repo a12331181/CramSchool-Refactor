@@ -38,24 +38,10 @@
           <a class="btn btn-link" href="/admin/courses/{{../course.id}}/calendar/{{this.id}}/edit">
             修改原紀錄
           </a>
-        
-          <form action="/admin/courses/{{../course.id}}/calendar/{{this.id}}/close?_method=PUT" method="POST"
-            style="display: inline;">
-            <button type="submit" class="btn btn-sm btn-danger">
-              關閉點名
-            </button>
-          </form>
           {{else}}
           <span class="btn btn-link disabled" aria-disabled="true">
             修改原紀錄
           </span>
-        
-          <form action="/admin/courses/{{../course.id}}/calendar/{{this.id}}/open?_method=PUT" method="POST"
-            style="display: inline;">
-            <button type="submit" class="btn btn-sm btn-warning">
-              開啟點名
-            </button>
-          </form>
           {{/if}}
           {{else}}
           {{#if this.canComplete}}

@@ -97,7 +97,6 @@ const adminController = {
     return res.render('admin/calendars/index', {
       course: result.course,
       calendars,
-      isPeriodNotEqualOne: result.latestPeriod > 1,
       page,
       ...getPaginationLinks(pagination, pageUrl)
     })
@@ -331,12 +330,6 @@ const adminController = {
     return res.redirect(303, listUrl)
   },
 
-  postNextPeriodCalendar: (req, res) => {
-    return res.status(409).send(
-      '整期新增功能已停用，課堂將改以實際日期與時段建立。'
-    )
-  },
-
   editCalendar: async (req, res) => {
     const courseId = Number(req.params.courseId)
     const calendarId = Number(req.params.calendarId)
@@ -393,86 +386,6 @@ const adminController = {
 
     req.flash('success_messages', '已成功更新課堂資料')
     return res.redirect(303, `/admin/courses/${courseId}/calendar`)
-  },
-
-  deleteCalendars: (req, res) => {
-    return res.status(409).send(
-      '整期刪除功能已停用，既有課堂紀錄會保留。'
-    )
-  },
-
-  closeCalendar: async (req, res) => {
-    const courseId = Number(req.params.courseId)
-    const calendarId = Number(req.params.calendarId)
-
-    const result = await calendarService.closeLegacyCalendar(
-      courseId,
-      calendarId
-    )
-
-    if (!result.ok) {
-      const errors = {
-        INVALID_COURSE_ID: [400, '課程 ID 必須是正整數'],
-        INVALID_CALENDAR_ID: [400, '課堂 ID 必須是正整數'],
-        COURSE_NOT_FOUND: [404, '找不到課程'],
-        COURSE_CLOSED: [409, '課程已關閉，無法操作點名狀態'],
-        LEGACY_CALENDAR_UNAVAILABLE: [
-          409,
-          '此課堂目前無法使用舊點名操作，請返回列表確認'
-        ]
-      }
-
-      const [status, message] = errors[result.code] ?? [500, '關閉點名失敗']
-      return res.status(status).send(message)
-    }
-
-    const message = result.changed
-      ? '已成功關閉此課堂的點名'
-      : '此課堂的點名原本就已關閉'
-
-    req.flash('success_messages', message)
-
-    return res.redirect(
-      303,
-      `/admin/courses/${courseId}/calendar`
-    )
-  },
-
-  openCalendar: async (req, res) => {
-    const courseId = Number(req.params.courseId)
-    const calendarId = Number(req.params.calendarId)
-
-    const result = await calendarService.openLegacyCalendar(
-      courseId,
-      calendarId
-    )
-
-    if (!result.ok) {
-      const errors = {
-        INVALID_COURSE_ID: [400, '課程 ID 必須是正整數'],
-        INVALID_CALENDAR_ID: [400, '課堂 ID 必須是正整數'],
-        COURSE_NOT_FOUND: [404, '找不到課程'],
-        COURSE_CLOSED: [409, '課程已關閉，無法操作點名狀態'],
-        LEGACY_CALENDAR_UNAVAILABLE: [
-          409,
-          '此課堂目前無法使用舊點名操作，請返回列表確認'
-        ]
-      }
-
-      const [status, message] = errors[result.code] ?? [500, '開啟點名失敗']
-      return res.status(status).send(message)
-    }
-
-    const message = result.changed
-      ? '已成功開啟此課堂的點名'
-      : '此課堂的點名原本就已開啟'
-
-    req.flash('success_messages', message)
-
-    return res.redirect(
-      303,
-      `/admin/courses/${courseId}/calendar`
-    )
   },
 
   // 使用者相關程式碼
