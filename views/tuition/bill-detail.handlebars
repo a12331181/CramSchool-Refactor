@@ -1,5 +1,6 @@
-<h1 class="mt-3">{{#if bill.SupplementCourseId}}課程補單{{else}}本期帳單{{/if}} 編號#{{bill.id}}</h1>
+<h1 class="mt-3">{{#if bill.SupplementCourseId}}課程補單{{else}}本期帳單{{/if}} {{documentNo}}</h1>
 <p>姓名: {{bill.studentNameSnapshot}}｜期數: {{bill.billingMonth}}｜帳單狀態: {{statusText}}</p>
+{{#if bill.billNo}}{{#if bill.draftNo}}<p class="text-muted">原草稿編號：{{bill.draftNo}}</p>{{/if}}{{/if}}
 
 {{> tuition/bill-items}}
 

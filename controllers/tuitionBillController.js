@@ -1,3 +1,4 @@
+const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
 const { MAX_PAYMENT_AMOUNT, MAX_REFUND_AMOUNT } = require('../constants/tuitionPayment')
 const { readUnsignedInteger } = require('../utils/formNumbers')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
@@ -125,6 +126,7 @@ const tuitionBillController = {
 
     if (!result.ok) {
       const errors = {
+        DRAFT_NUMBER_EXHAUSTED: '今年的帳單草稿編號已用完，暫時無法開單。',
         DRAFT_REQUIRES_REVIEW: '有課程還無法試算，請核對後再儲存草稿。',
         NO_COURSES_IN_BILLING_MONTH: '本月沒有可儲存的課程明細。',
         NO_UNBILLED_COURSE_FEES: '本月沒有尚未出帳的課程費用。',
@@ -176,6 +178,7 @@ const tuitionBillController = {
         NO_COURSES_IN_BILLING_MONTH: '這位學生本月沒有選修這門課。',
         NO_UNBILLED_COURSE_FEES: '這門課本月沒有尚未出帳的費用或堂次。',
         ISSUED_COURSE_FEES_REQUIRE_REVIEW: '既有帳單的課程明細需要核對，暫時不能補開。',
+        DRAFT_NUMBER_EXHAUSTED: '今年的帳單草稿編號已用完，暫時無法開單。',
         DRAFT_REQUIRES_REVIEW: '這門課的選課或計費資料需要核對。',
         INVALID_AMOUNT: '應收金額超出可儲存的範圍。'
       }
@@ -400,6 +403,7 @@ const tuitionBillController = {
 
     return res.render('tuition/bill-detail', {
       bill,
+      documentNo: getTuitionDocumentNo(bill),
       items,
       statusText: labels[bill.status] ?? '待核對',
       paymentSummary,
@@ -598,6 +602,7 @@ const tuitionBillController = {
     }
 
     const errors = {
+      BILL_NUMBER_EXHAUSTED: '今年的正式帳單編號已用完，暫時無法出帳。',
       BILL_NOT_DRAFT: '只有草稿可以正式出帳。',
       BILL_VERSION_CONFLICT: '草稿已更新，請核對目前明細後再出帳。',
       BILL_HAS_NO_ITEMS: '帳單沒有明細，暫時不能出帳。',

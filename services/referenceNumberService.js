@@ -1,6 +1,6 @@
 const { QueryTypes } = require('sequelize')
 const SCHOOL_CODE = require('../constants/schoolCode')
-const { COURSE_SEQUENCE_WIDTH, STUDENT_SEQUENCE_WIDTH } = require('../constants/referenceNumbers')
+const { COURSE_SEQUENCE_WIDTH, STUDENT_SEQUENCE_WIDTH, TUITION_DOCUMENT_SEQUENCE_WIDTH } = require('../constants/referenceNumbers')
 const { getTaipeiDate } = require('../utils/date')
 
 class ReferenceNumberExhaustedError extends Error {}
@@ -45,4 +45,12 @@ function allocateStudentNo(transaction) {
   return allocateReferenceNumber({ kind: 'student', prefix: 'S' + year + SCHOOL_CODE, width: STUDENT_SEQUENCE_WIDTH }, transaction)
 }
 
-module.exports = { ReferenceNumberExhaustedError, allocateReferenceNumber, allocateCourseNo, allocateStudentNo }
+function allocateTuitionDocumentNo(kind, at, transaction) {
+  const letters = { draft: 'D', bill: 'B' }
+  if (!Object.hasOwn(letters, kind)) throw new TypeError('Unknown tuition document kind.')
+  const year = getTaipeiDate(at).slice(0, 4)
+  const prefix = letters[kind] + year + SCHOOL_CODE
+  return allocateReferenceNumber({ kind, prefix, width: TUITION_DOCUMENT_SEQUENCE_WIDTH }, transaction)
+}
+
+module.exports = { ReferenceNumberExhaustedError, allocateCourseNo, allocateStudentNo, allocateTuitionDocumentNo }

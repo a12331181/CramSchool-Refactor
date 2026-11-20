@@ -1,3 +1,4 @@
+const { allocateTuitionDocumentNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
 const { MAX_TUITION_BILL_VERSION, MAX_TUITION_BILL_ITEM_AMOUNT } = require('../constants/tuitionBillLimits')
 const { Op, Transaction, UniqueConstraintError, ValidationError } = require('sequelize')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
@@ -186,7 +187,7 @@ async function createScopedBillDraft({ studentId, billingMonth, courseId, actorI
   }
 
   const findActiveBill = (options = {}) => TuitionBill.findOne({
-    attributes: ['id', 'status', 'totalAmount'],
+    attributes: ['id', 'draftNo', 'billNo', 'status', 'totalAmount'],
     where,
     raw: true,
     ...options
@@ -220,7 +221,9 @@ async function createScopedBillDraft({ studentId, billingMonth, courseId, actorI
         return { ok: false, code: 'STUDENT_NAME_UNCONFIRMED' }
       }
 
+      const draftNo = await allocateTuitionDocumentNo('draft', new Date(), transaction)
       const bill = await TuitionBill.create({
+        draftNo,
         StudentId: studentId,
         SupplementCourseId: courseId ?? null,
         billingMonth,
@@ -240,17 +243,18 @@ async function createScopedBillDraft({ studentId, billingMonth, courseId, actorI
           entityType: 'TuitionBill',
           entityId: bill.id,
           action: 'create',
-          after: { billingMonth, courseId, status: bill.status, totalAmount: bill.totalAmount },
+          after: { billingMonth, courseId, draftNo, status: bill.status, totalAmount: bill.totalAmount },
           reason: '建立課程補單草稿'
         }, { transaction })
       }
 
       return {
         ok: true, created: true,
-        bill: { id: bill.id, status: bill.status, totalAmount: bill.totalAmount }
+        bill: { id: bill.id, draftNo, billNo: null, status: bill.status, totalAmount: bill.totalAmount }
       }
     })
   } catch (error) {
+    if (error instanceof ReferenceNumberExhaustedError) return { ok: false, code: 'DRAFT_NUMBER_EXHAUSTED' }
     if (!(error instanceof UniqueConstraintError)) throw error
     const current = await findActiveBill()
     if (!current) throw error
@@ -671,7 +675,7 @@ async function getTuitionBillDetails(billId) {
   return readTuitionSnapshot(async transaction => {
     const bill = await TuitionBill.findByPk(billId, {
       attributes: [
-        'id', 'StudentId', 'billingMonth', 'studentNameSnapshot', 'SupplementCourseId',
+        'id', 'draftNo', 'billNo', 'StudentId', 'billingMonth', 'studentNameSnapshot', 'SupplementCourseId',
         'status', 'totalAmount', 'version', 'issuedAt'
       ],
       include: [{
@@ -1460,7 +1464,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
     const bill = await TuitionBill.findByPk(billId, locked)
 
     if (!bill) return { ok: false, code: 'BILL_NOT_FOUND' }
-    if (bill.status === TUITION_BILL_STATUS.ISSUED) return { ok: true, changed: false, billId }
+    if (bill.status === TUITION_BILL_STATUS.ISSUED) return { ok: true, changed: false, billId, billNo: bill.billNo }
     if (bill.status !== TUITION_BILL_STATUS.DRAFT) return { ok: false, code: 'BILL_NOT_DRAFT' }
     if (bill.version !== billVersion) {
       return { ok: false, code: 'BILL_VERSION_CONFLICT' }
@@ -1592,6 +1596,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
     }
 
     const issuedAt = new Date()
+    const billNo = await allocateTuitionDocumentNo('bill', issuedAt, transaction)
     const version = bill.version + 1
     const before = {
       status: bill.status,
@@ -1600,7 +1605,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
       version: bill.version
     }
 
-    await bill.update({ status: TUITION_BILL_STATUS.ISSUED, issuedAt, version }, { transaction })
+    await bill.update({ status: TUITION_BILL_STATUS.ISSUED, billNo, issuedAt, version }, { transaction })
     await AuditLog.create({
       actorId,
       entityType: 'TuitionBill',
@@ -1611,13 +1616,17 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
         ...before,
         status: TUITION_BILL_STATUS.ISSUED,
         issuedAt: issuedAt.toISOString(),
+        billNo,
         version,
         ...(skipRequested ? { skippedLeaveCredits: remainingCredits.optionSnapshot } : {})
       },
       reason: skipNote || '正式出帳'
     }, { transaction })
 
-    return { ok: true, changed: true, billId: bill.id, issuedAt, version }
+    return { ok: true, changed: true, billId: bill.id, billNo, issuedAt, version }
+  }).catch(error => {
+    if (error instanceof ReferenceNumberExhaustedError) return { ok: false, code: 'BILL_NUMBER_EXHAUSTED' }
+    throw error
   })
 }
 

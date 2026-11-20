@@ -22,6 +22,14 @@ module.exports = (sequelize, DataTypes) => {
   }
 
   TuitionBill.init({
+    draftNo: {
+      type: DataTypes.CHAR(12), allowNull: true, unique: 'uq_tuition_bills_draft_no',
+      validate: { len: [12, 12], is: /^D\d{11}$/ }
+    },
+    billNo: {
+      type: DataTypes.CHAR(12), allowNull: true, unique: 'uq_tuition_bills_bill_no',
+      validate: { len: [12, 12], is: /^B\d{11}$/ }
+    },
     StudentId: { type: DataTypes.INTEGER, allowNull: false },
     SupplementCourseId: { type: DataTypes.INTEGER, allowNull: true },
     billingMonth: { type: DataTypes.CHAR(7), allowNull: false },
