@@ -26,8 +26,10 @@ function buildPayableItems(items, totalAmount) {
 
   if (
     !Number.isSafeInteger(savedTotal) || !Number.isSafeInteger(grossTotal) ||
-    savedTotal !== totalAmount || grossTotal < totalAmount || payableItems.length === 0
+    savedTotal !== totalAmount || grossTotal < totalAmount || items.length === 0
   ) return null
+
+  if (grossTotal === 0) return []
 
   // 按出帳明細順序用原價比例分配整單折抵；累計取整確保各項淨額加總等於帳單總額。
   let grossSoFar = 0n
@@ -43,19 +45,58 @@ function buildPayableItems(items, totalAmount) {
   })
 }
 
-async function getAllocationState({ items, payments, paymentStatus }, transaction) {
+function findAllocations(paymentIds, billItemIds, transaction) {
   const references = []
-  if (payments.length > 0) references.push({ PaymentId: { [Op.in]: payments.map(payment => payment.id) } })
-  if (items.length > 0) references.push({ TuitionBillItemId: { [Op.in]: items.map(item => item.id) } })
+  if (paymentIds.length > 0) references.push({ PaymentId: { [Op.in]: paymentIds } })
+  if (billItemIds.length > 0) references.push({ TuitionBillItemId: { [Op.in]: billItemIds } })
 
-  const allocations = references.length > 0
-    ? await TuitionPaymentAllocation.findAll({
+  return references.length > 0
+    ? TuitionPaymentAllocation.findAll({
         attributes: ['PaymentId', 'TuitionBillItemId', 'amount'],
         where: { [Op.or]: references },
         raw: true,
         transaction
       })
     : []
+}
+
+async function getAllocationState(input, transaction) {
+  const allocations = await findAllocations(
+    input.payments.map(payment => payment.id),
+    input.items.map(item => item.id),
+    transaction
+  )
+  return summarizeAllocationState(input, allocations)
+}
+
+async function getAllocationStates(inputByBillId, transaction) {
+  const paymentOwners = new Map()
+  const itemOwners = new Map()
+  const allocationsByBillId = new Map()
+
+  for (const [billId, { items, payments }] of inputByBillId) {
+    allocationsByBillId.set(billId, [])
+    for (const payment of payments) paymentOwners.set(payment.id, billId)
+    for (const item of items) itemOwners.set(item.id, billId)
+  }
+
+  const allocations = await findAllocations([...paymentOwners.keys()], [...itemOwners.keys()], transaction)
+  for (const allocation of allocations) {
+    const paymentBillId = paymentOwners.get(allocation.PaymentId)
+    const itemBillId = itemOwners.get(allocation.TuitionBillItemId)
+    if (paymentBillId !== undefined) allocationsByBillId.get(paymentBillId).push(allocation)
+    // A cross-bill link must fail reconciliation on both sides.
+    if (itemBillId !== undefined && itemBillId !== paymentBillId) {
+      allocationsByBillId.get(itemBillId).push(allocation)
+    }
+  }
+
+  return new Map([...inputByBillId].map(([billId, input]) => [
+    billId, summarizeAllocationState(input, allocationsByBillId.get(billId))
+  ]))
+}
+
+function summarizeAllocationState({ items, payments, paymentStatus }, allocations) {
   if (allocations.length === 0 && payments.length > 0) {
     return { ok: true, itemized: false, reason: 'LEGACY_UNALLOCATED_PAYMENT' }
   }
@@ -100,4 +141,10 @@ function createAllocations(paymentId, items, transaction) {
   })), { transaction })
 }
 
-module.exports = { MAX_PAYMENT_ITEMS, getAllocationState, createAllocations }
+module.exports = {
+  MAX_PAYMENT_ITEMS,
+  buildPayableItems,
+  getAllocationState,
+  getAllocationStates,
+  createAllocations
+}
