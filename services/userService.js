@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs')
 const { Op, Validator, UniqueConstraintError } = require('sequelize')
-const { User, UserNoCounter, Teacher, sequelize } = require('../models')
+const { User, UserNoCounter, Teacher, Course, sequelize } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 const { getTaipeiDate } = require('../utils/date')
 
@@ -179,7 +179,48 @@ async function assignUserNo({ userId, schoolCode, transaction } = {}) {
     : sequelize.transaction(assign)
 }
 
-module.exports = { 
+const TEACHER_PROFILE_FIELDS = ['name', 'sex', 'birth', 'phone', 'address', 'education', 'school']
+
+async function getTeacherProfile(userId) {
+  const teacher = await Teacher.findOne({
+    attributes: ['id', 'image', ...TEACHER_PROFILE_FIELDS],
+    where: { UserId: userId, status: TEACHER_STATUS.ACTIVE },
+    include: [
+      { model: User, attributes: ['id', 'email'] },
+      { model: Course, attributes: ['id', 'name', 'isActive'] }
+    ]
+  })
+  if (!teacher) return null
+
+  const { Courses: courses, ...profile } = teacher.toJSON()
+  return { teacher: profile, courses }
+}
+
+function getEditableTeacherProfile(userId) {
+  return User.findByPk(userId, {
+    attributes: ['id'],
+    include: [{ model: Teacher, attributes: ['id', ...TEACHER_PROFILE_FIELDS], required: true }],
+    raw: true,
+    nest: true
+  })
+}
+
+async function updateTeacherProfile(userId, body, imageUrl) {
+  const teacher = await Teacher.findOne({ where: { UserId: userId } })
+  if (!teacher) return false
+
+  const updates = Object.fromEntries(
+    TEACHER_PROFILE_FIELDS.filter(key => body[key] !== undefined).map(key => [key, body[key]])
+  )
+  if (imageUrl !== undefined) updates.image = imageUrl
+  await teacher.update(updates)
+  return true
+}
+
+module.exports = {
+  getTeacherProfile,
+  getEditableTeacherProfile,
+  updateTeacherProfile,
   signUp,
   assignUserNo
 }

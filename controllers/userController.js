@@ -1,9 +1,5 @@
 const userService = require('../services/userService')
-const db = require('../models')
-const User = db.User
-const Teacher = db.Teacher
-const Course = db.Course
-const fs = require('fs')
+const imageStorage = require('../utils/imageStorage')
 
 const userController = {
   signUpPage: (req, res) => {
@@ -66,98 +62,50 @@ const userController = {
       return res.redirect('/signin')
     })
   },
-  //目前登錄先做老師這個身分的使用者
-  getUser: (req, res) => {
-    Promise.all([
-      Teacher.findOne({
-        include: { model: Course },
-        where: { UserId: req.params.id, status: 1 }
-      }),
-      Teacher.findOne({
-        raw: true,
-        nest: true,
-        include: { model: User },
-        where: { UserId: req.params.id }
-      }),
-    ]).then(([teacher, userData]) => {
-      let userIsMatch = true
-      if (req.user.id !== Number(req.params.id)){
-        userIsMatch = false
-      }
-      if (teacher === null){
-        console.log('Not found!')
-        res.redirect('/cramschool/teachers')
-      } else {
-        const courses = teacher.Courses.map(r => ({
-          ...r.dataValues
-        }))
-        return res.render('account/profile', {
-          teacher: userData,
-          courses: courses,
-          userIsMatch: userIsMatch
-        })  
-      }
-    })
+  getUser: async (req, res) => {
+    const userId = Number(req.params.id)
+    if (!Number.isSafeInteger(userId) || userId < 1) return res.redirect('/cramschool/teachers')
+
+    const result = await userService.getTeacherProfile(userId)
+    if (!result) return res.redirect('/cramschool/teachers')
+
+    return res.render('account/profile', { ...result, userIsMatch: req.user.id === userId })
   },
 
-  getEditUserPage: (req, res) => {
-    return User.findByPk(req.params.id, {
-      raw:true,
-      nest: true, 
-      include: [Teacher]
-    }).then(user => {
-      if (req.user.id !== Number(req.params.id)){
-        return res.redirect(`/users/${req.user.id}`)
-      }
-      return res.render('account/edit-profile', {
-        user: user
-      })
-    })
+  getEditUserPage: async (req, res) => {
+    if (req.user.id !== Number(req.params.id)) return res.redirect(`/users/${req.user.id}`)
+
+    const user = await userService.getEditableTeacherProfile(req.user.id)
+    if (!user) return res.redirect('/cramschool/teachers')
+
+    return res.render('account/edit-profile', { user })
   },
 
-  putUser: (req, res) => {
-    const file = req.file
-    if (file) {
-      fs.readFile(file.path, (err, data) => {
-        if (err) console.log('Error: ', err)
-        fs.writeFile(`upload/${file.originalname}`, data, () => {
-          return Teacher.findOne({ where: { UserId : req.user.id } })
-            .then((teacher) => {
-              teacher.update({
-                name: req.body.name,
-                sex: req.body.sex,
-                birth: req.body.birth,
-                phone: req.body.phone,
-                address: req.body.address,
-                education: req.body.education,
-                school: req.body.school,
-                image: file ? `/upload/${file.originalname}` : teacher.image
-              }).then((teacher) => {
-                req.flash('success_messages', 'user was successfully to update')
-                res.redirect('/')
-              })
-            })
+  putUser: async (req, res) => {
+    let uploadedImage
+    let updated = false
+
+    try {
+      if (req.user.id !== Number(req.params.id)) return res.redirect(303, `/users/${req.user.id}`)
+
+      if (req.file) {
+        uploadedImage = await imageStorage.saveImage({
+          sourcePath: req.file.path,
+          originalName: req.file.originalname
         })
-      })
-    } else {
-      return Teacher.findOne({ where: { UserId : req.user.id } })
-        .then((teacher) => {
-          teacher.update({
-            name: req.body.name,
-            sex: req.body.sex,
-            birth: req.body.birth,
-            phone: req.body.phone,
-            address: req.body.address,
-            education: req.body.education,
-            school: req.body.school,
-            image: teacher.image
-          }).then((teacher) => {
-            req.flash('success_messages', 'user was successfully to update')
-            res.redirect('/')
-          })
-        })
+      }
+
+      updated = await userService.updateTeacherProfile(req.user.id, req.body ?? {}, uploadedImage?.url)
+      req.flash(
+        updated ? 'success_messages' : 'error_messages',
+        updated ? '已更新個人資料' : '找不到教師資料，未更新個人資料'
+      )
+      return res.redirect(303, updated ? '/' : '/cramschool/teachers')
+    } finally {
+      if (uploadedImage && !updated) await imageStorage.discardImage(uploadedImage.filename)
+      if (req.file) await imageStorage.discardTempFile(req.file.path)
     }
-  },
+  }
 }
 
 module.exports = userController
