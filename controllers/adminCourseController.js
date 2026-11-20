@@ -33,7 +33,7 @@ const adminCourseController = {
       return res.redirect(pageUrl(pagination.totalPages))
     }
 
-    return res.render('admin/courses', {
+    return res.render('admin/courses/index', {
       courses: result.rows,
       ...getPaginationLinks(pagination, pageUrl)
     })
@@ -49,7 +49,7 @@ const adminCourseController = {
     const timeList = Object.values(COURSE_TIMES).map(time => ({
       time
     }))
-    return res.render('admin/createcourse', {
+    return res.render('admin/courses/form', {
       teachers: formData.teachers,
       typeList,
       timeList
@@ -117,7 +117,7 @@ const adminCourseController = {
       time
     }))
 
-    return res.render('admin/createcourse', {
+    return res.render('admin/courses/form', {
       course: result.course,
       teachers: result.teachers,
       typeList,

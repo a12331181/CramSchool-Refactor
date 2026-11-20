@@ -46,7 +46,7 @@ const adminTeacherController = {
       return res.redirect(pageUrl(pagination.totalPages))
     }
 
-    return res.render('admin/teachers', {
+    return res.render('admin/teachers/index', {
       teachers: result.rows,
       status: status ?? '',
       statusList: [
@@ -71,7 +71,7 @@ const adminTeacherController = {
       return res.redirect('/admin/teachers')
     }
 
-    return res.render('admin/teacher', {
+    return res.render('admin/teachers/detail', {
       teacher
     })
   },
@@ -89,7 +89,7 @@ const adminTeacherController = {
       return res.redirect('/admin/teachers')
     }
 
-    return res.render('admin/editteacher', {
+    return res.render('admin/teachers/edit', {
       teacher,
       sexList: [
         { id: 1, sex: '男' },

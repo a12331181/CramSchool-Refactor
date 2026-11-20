@@ -18,7 +18,7 @@ const CALENDAR_STATUS_LABELS = Object.freeze({
 const adminController = {
   // 後臺首頁
   getSchoolIndexPage: (req, res) => {
-    return res.render('admin/cramschool')
+    return res.render('admin/dashboard')
   },
 
   // 課程行事曆相關程式碼
@@ -94,7 +94,7 @@ const adminController = {
         ? CALENDAR_STATUS_LABELS[calendar.status]
         : '待核對'
     }))
-    return res.render('admin/course', {
+    return res.render('admin/calendars/index', {
       course: result.course,
       calendars,
       isPeriodNotEqualOne: result.latestPeriod > 1,
@@ -131,7 +131,7 @@ const adminController = {
       isSelected: teacher.id === result.course.TeacherId
     }))
 
-    return res.render('admin/createcalendar', {
+    return res.render('admin/calendars/create', {
       course: result.course,
       teachers,
       values: {},
@@ -209,7 +209,7 @@ const adminController = {
       isSelected: teacher.id === teacherId
     }))
 
-    return res.status(status).render('admin/createcalendar', {
+    return res.status(status).render('admin/calendars/create', {
       course: formData.course,
       teachers,
       values: {
@@ -359,7 +359,7 @@ const adminController = {
       )
     }
 
-    return res.render('admin/editcalendar', { calendar })
+    return res.render('admin/calendars/edit', { calendar })
   },
 
   putCalendar: async (req, res) => {
@@ -478,7 +478,7 @@ const adminController = {
   // 使用者相關程式碼
   getUsers: (req, res) => {
     return User.findAll({raw: true}).then(users => {
-      return res.render('admin/users', { users: users })
+      return res.render('admin/users/index', { users: users })
     })
   },
 
@@ -500,12 +500,12 @@ const adminController = {
       raw: true,
       nest: true
     }).then(extrafees => {
-      res.render('admin/extrafee', { extrafees: extrafees })
+      res.render('admin/extra-fees/index', { extrafees: extrafees })
     })
   },
 
   getCreateExtraFeePage: (req, res) => {
-    return res.render('admin/createextrafee')
+    return res.render('admin/extra-fees/form')
   },
 
   getEditExtraFeePage: (req, res) => {
@@ -513,7 +513,7 @@ const adminController = {
       raw: true,
       nest: true
     }).then(extrafee => {
-      return res.render('admin/createextrafee', { extrafee: extrafee })
+      return res.render('admin/extra-fees/form', { extrafee: extrafee })
     })
   },
 

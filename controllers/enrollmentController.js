@@ -14,7 +14,7 @@ const enrollmentController = {
       return res.redirect('/admin/students')
     }
 
-    return res.render('admin/enrollcourse', result)
+    return res.render('admin/students/enrollment', result)
   },
 
   addEnrollment: async (req, res) => {

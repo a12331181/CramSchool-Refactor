@@ -46,7 +46,7 @@ const adminStudentController = {
       return res.redirect(pageUrl(pagination.totalPages))
     }
 
-    return res.render('admin/students', {
+    return res.render('admin/students/index', {
       students: result.rows,
       courses: result.courses,
       courseId: courseId ?? '',
@@ -75,7 +75,7 @@ const adminStudentController = {
       { id: 9, grade: '九年級' },
       { id: 10, grade: '其他' },
     ]
-    return res.render('admin/createstudent', {
+    return res.render('admin/students/form', {
       sexList: sexList,
       statusList: statusList,
       gradeList: gradeList
@@ -146,7 +146,7 @@ const adminStudentController = {
       return res.redirect('/admin/students')
     }
 
-    return res.render('admin/student', {
+    return res.render('admin/students/detail', {
       student
     })
   },
@@ -186,7 +186,7 @@ const adminStudentController = {
       return res.redirect('/admin/students')
     }
 
-    return res.render('admin/createstudent', {
+    return res.render('admin/students/form', {
       student,
       statusList,
       sexList,
