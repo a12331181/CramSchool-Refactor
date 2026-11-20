@@ -1,0 +1,148 @@
+<fieldset id="batch-date-picker" data-month="{{calendarMonth}}" data-limit="{{maxDates}}"
+  data-has-teachers="{{canSubmit}}" class="mb-3" hidden>
+  <legend class="h5">選擇上課日期</legend>
+  <p id="batch-date-help" class="text-muted">點同一天可取消選擇；切換月份會保留已選日期。每次最多 {{maxDates}} 天。</p>
+  <div class="form-inline d-flex flex-wrap mb-2">
+    <button type="button" class="btn btn-outline-secondary mr-2" id="batch-prev-month">上一月</button>
+    <label for="batch-month" class="mr-2">月份</label>
+    <input type="month" class="form-control mr-2" id="batch-month" value="{{calendarMonth}}" aria-describedby="batch-date-help">
+    <button type="button" class="btn btn-outline-secondary" id="batch-next-month">下一月</button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered text-center" aria-label="上課日期月曆">
+      <thead>
+        <tr>
+          <th scope="col">日</th><th scope="col">一</th><th scope="col">二</th><th scope="col">三</th>
+          <th scope="col">四</th><th scope="col">五</th><th scope="col">六</th>
+        </tr>
+      </thead>
+      <tbody id="batch-calendar-days"></tbody>
+    </table>
+  </div>
+  <p id="batch-date-count" aria-live="polite"></p>
+  <button type="button" class="btn btn-sm btn-link pl-0" id="batch-clear-dates">清除所有日期</button>
+  <ul id="batch-selected-dates">
+    {{#each selectedDates}}
+    <li><input type="hidden" name="dates[]" value="{{this}}">{{this}}</li>
+    {{/each}}
+  </ul>
+</fieldset>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const picker = document.getElementById('batch-date-picker')
+    const grid = document.getElementById('batch-calendar-days')
+    const monthInput = document.getElementById('batch-month')
+    const selectedList = document.getElementById('batch-selected-dates')
+    const count = document.getElementById('batch-date-count')
+    const submit = document.getElementById('batch-submit')
+    const limit = Number(picker.dataset.limit)
+    const selected = new Set([...selectedList.querySelectorAll('input')].map(input => input.value))
+    const conflicts = new Set([...document.querySelectorAll('#batch-conflict-dates [data-date]')].map(li => li.dataset.date))
+    let month = picker.dataset.month
+
+    function updateDayButton(button) {
+      const date = button.dataset.date
+      const isSelected = selected.has(date)
+      button.setAttribute('aria-pressed', String(isSelected))
+      button.setAttribute('aria-label', conflicts.has(date) ? date + '（時段有衝突）' : date)
+      button.className = 'btn btn-sm w-100 ' + (isSelected ? 'btn-primary' : 'btn-outline-secondary')
+      if (conflicts.has(date)) button.classList.add('border', 'border-danger')
+    }
+
+    function updateSelected() {
+      selectedList.replaceChildren()
+      for (const date of [...selected].sort()) {
+        const li = document.createElement('li')
+        const hidden = document.createElement('input')
+        hidden.type = 'hidden'
+        hidden.name = 'dates[]'
+        hidden.value = date
+        const remove = document.createElement('button')
+        remove.type = 'button'
+        remove.className = 'btn btn-sm btn-link'
+        remove.textContent = '移除'
+        remove.setAttribute('aria-label', '移除 ' + date)
+        remove.addEventListener('click', () => {
+          selected.delete(date)
+          updateSelected()
+          const button = [...grid.querySelectorAll('button[data-date]')].find(day => day.dataset.date === date)
+          const focusTarget = button ?? monthInput
+          focusTarget.focus()
+        })
+        li.append(hidden, date, remove)
+        selectedList.append(li)
+      }
+      for (const button of grid.querySelectorAll('button[data-date]')) updateDayButton(button)
+      count.textContent = '已選 ' + selected.size + ' 個日期（最多 ' + limit + ' 個）'
+      submit.disabled = selected.size === 0 || picker.dataset.hasTeachers !== 'true'
+    }
+
+    function renderMonth() {
+      const first = new Date(month + '-01T00:00:00Z')
+      const last = new Date(first)
+      last.setUTCMonth(last.getUTCMonth() + 1, 0)
+      const startDay = first.getUTCDay()
+      const days = last.getUTCDate()
+      grid.replaceChildren()
+      for (let cell = 0; cell < Math.ceil((startDay + days) / 7) * 7; cell += 7) {
+        const row = document.createElement('tr')
+        for (let column = 0; column < 7; column++) {
+          const td = document.createElement('td')
+          const day = cell + column - startDay + 1
+          if (day >= 1 && day <= days) {
+            const button = document.createElement('button')
+            button.type = 'button'
+            button.textContent = day
+            const date = month + '-' + String(day).padStart(2, '0')
+            button.dataset.date = date
+            updateDayButton(button)
+            button.addEventListener('click', () => {
+              if (selected.has(date)) {
+                selected.delete(date)
+              } else if (selected.size < limit) {
+                selected.add(date)
+              } else {
+                count.textContent = '最多只能選 ' + limit + ' 個日期，請先移除不需要的日期。'
+                return
+              }
+              updateSelected()
+            })
+            td.append(button)
+          }
+          row.append(td)
+        }
+        grid.append(row)
+      }
+    }
+
+    function setMonth(value) {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) {
+        monthInput.value = month
+        return
+      }
+      month = value
+      monthInput.value = month
+      renderMonth()
+    }
+
+    function moveMonth(offset) {
+      const date = new Date(month + '-01T00:00:00Z')
+      date.setUTCMonth(date.getUTCMonth() + offset)
+      setMonth(date.toISOString().slice(0, 7))
+    }
+
+    document.getElementById('batch-prev-month').addEventListener('click', () => moveMonth(-1))
+    document.getElementById('batch-next-month').addEventListener('click', () => moveMonth(1))
+    document.getElementById('batch-clear-dates').addEventListener('click', () => {
+      selected.clear()
+      updateSelected()
+    })
+    monthInput.addEventListener('change', () => setMonth(monthInput.value))
+
+    // The picker partial is placed before the form's submit button.
+    renderMonth()
+    updateSelected()
+    picker.hidden = false
+  })
+</script>

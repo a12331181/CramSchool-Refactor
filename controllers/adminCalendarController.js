@@ -1,11 +1,97 @@
 const pageLimit = 12
 const calendarService = require('../services/calendarService')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
-const { formatTaipeiDateTime } = require('../utils/date')
+const { formatTaipeiDateTime, getTaipeiDate, parseTaipeiDateTime } = require('../utils/date')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
 
+const COURSE_SESSION_BATCH_LIMIT = require('../constants/courseSessionBatchLimit')
+const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
+
+const BATCH_ERRORS = Object.freeze({
+  INVALID_DATES: [400, `請選擇 1 到 ${COURSE_SESSION_BATCH_LIMIT} 個有效日期。`],
+  DUPLICATE_DATES: [400, '日期不能重複，請重新選擇。'],
+  INVALID_START_AT: [400, '開始時間不正確。'],
+  INVALID_END_AT: [400, '結束時間不正確。'],
+  INVALID_TIME_RANGE: [400, '同一天的結束時間必須晚於開始時間。'],
+  INVALID_TEACHER_ID: [400, '請選擇有效的授課老師。'],
+  INVALID_CONTENT: [400, '課堂內容必須是文字，且不能超過 40 個字。'],
+  TEACHER_UNAVAILABLE: [409, '所選老師目前無法授課，請重新選擇。'],
+  TIME_CONFLICT: [409, '以下日期與本課程或所選老師的既有課堂重疊；本批未建立。'],
+  UTC_TIMEZONE_REQUIRED: [500, '系統時間設定異常，暫時無法新增課堂。']
+})
+
+function renderBatchForm(req, res, form, { status = 200, error, body = {}, conflictDates = [] } = {}) {
+  const readText = key => typeof body[key] === 'string' ? body[key] : ''
+  const selectedDates = Array.isArray(body.dates)
+    ? [...new Set(body.dates.filter(date => typeof date === 'string' &&
+      parseTaipeiDateTime(`${date}T00:00`)))].sort().slice(0, COURSE_SESSION_BATCH_LIMIT)
+    : []
+  const selectedTeacher = body.teacherId === undefined ? form.course.TeacherId : Number(readText('teacherId'))
+
+  req.session.courseSessionBatchToken ??= createSessionFormToken()
+  res.set('Cache-Control', 'no-store')
+  return res.status(status).render('admin/calendars/create-batch', {
+    course: form.course,
+    teachers: form.teachers.map(teacher => ({ ...teacher, isSelected: teacher.id === selectedTeacher })),
+    canSubmit: form.teachers.length > 0,
+    batchToken: req.session.courseSessionBatchToken,
+    maxDates: COURSE_SESSION_BATCH_LIMIT,
+    selectedDates,
+    conflictDates,
+    calendarMonth: (conflictDates[0] ?? selectedDates[0] ?? getTaipeiDate()).slice(0, 7),
+    values: { startTime: readText('startTime'), endTime: readText('endTime'), content: readText('content') },
+    error
+  })
+}
+
+function redirectFromUnavailableCourse(req, res, code) {
+  req.flash('error_messages', code === 'COURSE_CLOSED' ? '課程已關閉，無法新增課堂。' : '找不到課程資料。')
+  return res.redirect(303, '/admin/courses')
+}
+
 const adminCalendarController = {
+  getCreateCourseSessionBatchPage: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    if (!Number.isSafeInteger(courseId) || courseId < 1) return res.status(400).send('課程 ID 必須是正整數')
+
+    const form = await calendarService.getCreateCourseSessionFormData(courseId)
+    if (!form.ok) return redirectFromUnavailableCourse(req, res, form.code)
+    return renderBatchForm(req, res, form)
+  },
+
+  createCourseSessionBatch: async (req, res) => {
+    const courseId = Number(req.params.courseId)
+    if (!Number.isSafeInteger(courseId) || courseId < 1) return res.status(400).send('課程 ID 必須是正整數')
+
+    const body = req.body ?? {}
+    if (!isValidSessionFormToken(body.batchToken, req.session?.courseSessionBatchToken)) {
+      return res.status(403).send('表單已失效，請重新開啟批次排課頁。')
+    }
+
+    const result = await calendarService.createCourseSessionBatch(courseId, {
+      dates: body.dates,
+      startTime: body.startTime,
+      endTime: body.endTime,
+      teacherId: typeof body.teacherId === 'string' ? Number(body.teacherId) : NaN,
+      content: body.content
+    })
+    if (result.ok) {
+      const { createdCount, totalCount } = result.data
+      const { totalPages } = getPagination({ page: 1, pageSize: pageLimit, totalCount })
+      req.flash('success_messages', `已新增 ${createdCount} 堂課。`)
+      return res.redirect(303, `/admin/courses/${courseId}/calendar?page=${totalPages}`)
+    }
+    if (['COURSE_NOT_FOUND', 'COURSE_CLOSED'].includes(result.code)) {
+      return redirectFromUnavailableCourse(req, res, result.code)
+    }
+
+    const form = await calendarService.getCreateCourseSessionFormData(courseId)
+    if (!form.ok) return redirectFromUnavailableCourse(req, res, form.code)
+    const [status, error] = BATCH_ERRORS[result.code] ?? [500, '目前無法批次新增課堂。']
+    return renderBatchForm(req, res, form, { status, error, body, conflictDates: result.conflictDates })
+  },
+
   getCourseCalendar: async (req, res) => {
     const courseId = Number(req.params.id)
     const page = Number(req.query.page || 1)

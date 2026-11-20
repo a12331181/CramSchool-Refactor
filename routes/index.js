@@ -91,6 +91,8 @@ module.exports = (app, passport) => {
   app.get('/admin/courses/:courseId/sessions/create', authenticatedAdmin, adminCalendarController.getCreateCourseSessionPage)
   app.get('/admin/courses/:courseId/calendar/:calendarId/edit', authenticatedAdmin, adminCalendarController.getLegacyCalendarEditPage)
   app.post('/admin/courses/:courseId/sessions', authenticatedAdmin, adminCalendarController.createCourseSession)
+  app.get('/admin/courses/:courseId/sessions/batch/create', authenticatedAdmin, adminCalendarController.getCreateCourseSessionBatchPage)
+  app.post('/admin/courses/:courseId/sessions/batch', authenticatedAdmin, adminCalendarController.createCourseSessionBatch)
   app.put('/admin/courses/:courseId/sessions/:calendarId/cancel',authenticatedAdmin,adminCalendarController.cancelCourseSession)
   app.put('/admin/courses/:courseId/sessions/:calendarId/complete', authenticatedAdmin, adminCalendarController.completeCourseSession)
   app.put('/admin/courses/:courseId/calendar/:calendarId', authenticatedAdmin, adminCalendarController.updateLegacyCalendar)
