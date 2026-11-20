@@ -535,7 +535,10 @@ async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) 
       return {
         ...bill,
         paymentStatus: financial?.paymentStatus ?? null,
-        refunds: financial ? getBillRefundAmounts(financial.refundLedger) : null
+        refunds: financial ? getBillRefundAmounts(financial.refundLedger) : null,
+        courseNames: [...new Set((financial?.items ?? [])
+          .filter(item => item.kind === TUITION_BILL_ITEM_KIND.COURSE_FEE)
+          .map(item => item.descriptionSnapshot))]
       }
     })
 

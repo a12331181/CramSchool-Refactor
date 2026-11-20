@@ -9,6 +9,7 @@ const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
 const COURSE_PAYMENT_REVIEW = require('../constants/coursePaymentReview')
 const REFUND_MESSAGES = require('../constants/tuitionRefundMessages')
+const { buildTuitionPaymentNotice, buildMonthlyPaymentNotice } = require('../utils/tuitionPaymentNotice')
 
 const COURSE_COLLECTION_LABELS = {
   [COURSE_COLLECTION_STATUS.PAID]: ['已收齊', 'text-success'],
@@ -70,69 +71,6 @@ function getCoursePaymentStatusText(coursePayment) {
   if (coursePayment?.code === COURSE_PAYMENT_REVIEW.REFUND_UNASSIGNED) return '整單退費待核對'
   if (coursePayment?.code === COURSE_PAYMENT_REVIEW.PAYMENT_UNASSIGNED) return '分項收款待核對'
   return getTuitionBillPaymentStatusText(coursePayment)
-}
-
-function buildTuitionPaymentNotice(bill, paymentStatus, refundSummary) {
-  const hasRefund =
-    paymentStatus?.isFullyPaid && refundSummary?.ok && refundSummary.refundedAmount > 0 &&
-    refundSummary.netPaidAmount === paymentStatus.paidAmount - refundSummary.refundedAmount
-  if (
-    bill.status !== TUITION_BILL_STATUS.ISSUED || !paymentStatus?.ok ||
-    (!(paymentStatus.remainingAmount > 0) && !hasRefund) ||
-    paymentStatus.totalAmount !== bill.totalAmount ||
-    bill.items.length === 0
-  ) return null
-
-  const singleLine = text => typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : ''
-  const studentName = singleLine(bill.studentNameSnapshot)
-  if (!studentName || !/^\d{4}-(0[1-9]|1[0-2])$/.test(bill.billingMonth)) return null
-
-  const numbers = new Intl.NumberFormat('zh-TW')
-  const money = amount => `${amount < 0 ? '-' : ''}NT$ ${numbers.format(Math.abs(amount))}`
-  const itemLines = []
-  let itemTotal = 0
-
-  for (const { descriptionSnapshot, quantity, unitPrice, amount } of bill.items) {
-    const description = singleLine(descriptionSnapshot)
-    if (!description || !Number.isSafeInteger(amount)) return null
-
-    const calculation =
-      Number.isSafeInteger(quantity) && quantity > 1 &&
-      Number.isSafeInteger(unitPrice) && unitPrice >= 0 && quantity * unitPrice === amount
-        ? `（${quantity} × ${money(unitPrice)}）`
-        : ''
-    itemLines.push(`・${description}${calculation}：${money(amount)}`)
-    itemTotal += amount
-  }
-
-  if (itemTotal !== bill.totalAmount) return null
-
-  const { totalAmount, paidAmount, remainingAmount } = paymentStatus
-  const heading = hasRefund ? '家長退費通知' : '家長繳費通知'
-  const totals = [
-    `本期應收：${money(totalAmount)}`,
-    ...(paidAmount > 0 ? [`已收金額：${money(paidAmount)}`] : [])
-  ]
-  if (hasRefund) {
-    totals.push(
-      `累計已退：${money(refundSummary.refundedAmount)}`,
-      `扣除退費後實收：${money(refundSummary.netPaidAmount)}`,
-      '本期已結清，無須再繳費。'
-    )
-  } else {
-    totals.push(`尚需繳費：${money(remainingAmount)}`)
-  }
-
-  const text = [
-    `家長您好，以下是 ${studentName} ${bill.billingMonth} 的${hasRefund ? '退費摘要' : '學費明細'}：`,
-    '',
-    ...itemLines,
-    '',
-    ...totals,
-    '',
-    '再麻煩您確認，謝謝！'
-  ].join('\n')
-  return { heading, text, copyLabel: hasRefund ? '複製退費通知' : '複製繳費通知' }
 }
 
 function describeTuitionBillChange({ before, after }) {
@@ -537,6 +475,7 @@ const tuitionController = {
       hasSubtotal,
       activeBills,
       monthSummary,
+      monthlyPaymentNotice: buildMonthlyPaymentNotice({ billingMonth, bills: billsResult.rows, summary }),
       supplementPanel,
       voidedBills,
       draftFormToken,
