@@ -1,3 +1,4 @@
+const { MAX_TUITION_BILL_VERSION, MAX_TUITION_BILL_ITEM_AMOUNT } = require('../constants/tuitionBillLimits')
 const { Op, Transaction, UniqueConstraintError, ValidationError } = require('sequelize')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
@@ -17,7 +18,6 @@ const { readTuitionSnapshot } = require('./tuitionReportService')
 
 const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
 const MAX_UNSIGNED_INT = 4_294_967_295
-const MAX_BILL_ITEM_AMOUNT = 2_147_483_647
 const TUITION_BILL_HISTORY_LIMIT = 20
 const DRAFT_ADJUSTMENT_REMOVAL_REASONS = Object.freeze({
   [TUITION_BILL_ITEM_KIND.EXTRA_FEE]: '移除草稿額外費用',
@@ -51,7 +51,6 @@ function buildDraftCourseFeeItems(preview) {
     return { ok: false, code: 'NO_COURSES_IN_BILLING_MONTH' }
   }
 
-  const maxLineAmount = 2147483647
   const items = []
   let totalAmount = 0
 
@@ -72,7 +71,7 @@ function buildDraftCourseFeeItems(preview) {
       ) ||
       quantity > MAX_UNSIGNED_INT ||
       unitPrice > MAX_UNSIGNED_INT ||
-      baseAmount > maxLineAmount ||
+      baseAmount > MAX_TUITION_BILL_ITEM_AMOUNT ||
       baseAmount !== quantity * unitPrice
     ) {
       return { ok: false, code: 'INVALID_AMOUNT', courseId: course.id }
@@ -121,7 +120,7 @@ async function getSupplementalTuitionOptions({ studentId, billingMonth, preview 
       .map(item => item.courseId))
     const options = adjusted.courses.filter(entry =>
       entry.quantity > 0 && !blocked.has(entry.course.id) &&
-      Number.isSafeInteger(entry.baseAmount) && entry.baseAmount <= MAX_BILL_ITEM_AMOUNT
+      Number.isSafeInteger(entry.baseAmount) && entry.baseAmount <= MAX_TUITION_BILL_ITEM_AMOUNT
     )
     return {
       ok: true,
@@ -264,7 +263,7 @@ async function refreshTuitionBillDraft({ billId, billVersion, actorId } = {}) {
   if (
     ![billId, actorId].every(isId) ||
     !Number.isSafeInteger(billVersion) || billVersion < 0 ||
-    billVersion >= 2_147_483_647
+    billVersion >= MAX_TUITION_BILL_VERSION
   ) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
@@ -368,7 +367,7 @@ function readTuitionBillDiscount(items) {
   const discounts = items.filter(item => item.kind === TUITION_BILL_ITEM_KIND.DISCOUNT)
   const invalid = discounts.some(item =>
     item.quantity !== 1 ||
-    !Number.isSafeInteger(item.unitPrice) || item.unitPrice < 1 || item.unitPrice > MAX_BILL_ITEM_AMOUNT ||
+    !Number.isSafeInteger(item.unitPrice) || item.unitPrice < 1 || item.unitPrice > MAX_TUITION_BILL_ITEM_AMOUNT ||
     item.amount !== -item.unitPrice ||
     item.CourseId != null || item.ExtraFeeId != null || item.ActiveLeaveAttendId != null ||
     typeof item.reason !== 'string' || !item.reason.trim() || item.reason.length > 255
@@ -383,11 +382,11 @@ async function setTuitionBillDraftDiscount({ billId, billVersion, actorId, amoun
   const isId = n => Number.isSafeInteger(n) && n > 0
   if (
     ![billId, actorId].every(isId) ||
-    !Number.isSafeInteger(billVersion) || billVersion < 0 || billVersion >= MAX_BILL_ITEM_AMOUNT
+    !Number.isSafeInteger(billVersion) || billVersion < 0 || billVersion >= MAX_TUITION_BILL_ITEM_AMOUNT
   ) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
-  if (!Number.isSafeInteger(amount) || amount < 1 || amount > MAX_BILL_ITEM_AMOUNT) {
+  if (!Number.isSafeInteger(amount) || amount < 1 || amount > MAX_TUITION_BILL_ITEM_AMOUNT) {
     return { ok: false, code: 'INVALID_DISCOUNT_AMOUNT' }
   }
   const note = typeof reason === 'string' ? reason.trim() : ''
@@ -465,7 +464,7 @@ async function removeTuitionBillDraftAdjustment({ billId, billItemId, billVersio
   if (
     ![billId, billItemId, actorId].every(isId) ||
     !Number.isSafeInteger(billVersion) || billVersion < 0 ||
-    billVersion >= 2_147_483_647
+    billVersion >= MAX_TUITION_BILL_VERSION
   ) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
@@ -566,7 +565,7 @@ async function voidUnpaidTuitionBill({ billId, billVersion, actorId, reason } = 
   if (
     ![billId, actorId].every(isId) ||
     !Number.isSafeInteger(billVersion) || billVersion < 0 ||
-    billVersion >= 2_147_483_647
+    billVersion >= MAX_TUITION_BILL_VERSION
   ) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
@@ -1198,7 +1197,7 @@ async function addLeaveCreditToDraft({ billId, attendId, billVersion } = {}) {
   if (
     ![billId, attendId].every(isId) ||
     !Number.isSafeInteger(billVersion) || billVersion < 0 ||
-    billVersion >= 2_147_483_647
+    billVersion >= MAX_TUITION_BILL_VERSION
   ) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
@@ -1424,7 +1423,7 @@ async function issueTuitionBill({ billId, billVersion, actorId, leaveCreditSkipK
   if (
     ![billId, actorId].every(isId) ||
     !Number.isSafeInteger(billVersion) || billVersion < 0 ||
-    billVersion >= 2_147_483_647
+    billVersion >= MAX_TUITION_BILL_VERSION
   ) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
@@ -1626,7 +1625,7 @@ function buildLeaveCreditBillItem({ draftBillId, candidate }) {
   const { attendId, source } = candidate
   const unitPrice = source.originalUnitPrice
 
-  if (!Number.isSafeInteger(unitPrice) || unitPrice <= 0 || unitPrice > 2_147_483_647) {
+  if (!Number.isSafeInteger(unitPrice) || unitPrice <= 0 || unitPrice > MAX_TUITION_BILL_ITEM_AMOUNT) {
     throw new RangeError('請假折抵金額超出可儲存範圍。')
   }
 

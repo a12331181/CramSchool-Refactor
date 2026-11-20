@@ -1,3 +1,5 @@
+const { MAX_PAYMENT_AMOUNT, MAX_REFUND_AMOUNT } = require('../constants/tuitionPayment')
+const { readUnsignedInteger } = require('../utils/formNumbers')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { getTaipeiDate, formatTaipeiDateTime, isTaipeiDateKey } = require('../utils/date')
@@ -320,6 +322,7 @@ const tuitionBillController = {
             canRecord,
             action: `/cramschool/tuition/bills/${bill.id}/payments`,
             formToken: canRecord ? req.session.tuitionFormToken : null,
+            maxAmount: MAX_PAYMENT_AMOUNT,
             billVersion: bill.version,
             today,
             hasAdjustments: allocation.hasAdjustments,
@@ -332,7 +335,7 @@ const tuitionBillController = {
           }
         } else if (allocation?.ok === false) {
           paymentSummary.allocationMessage = '分項收款紀錄需要核對，暫時不能再登記收款。'
-        } else if (remainingAmount > 0 && remainingAmount <= 2_147_483_647) {
+        } else if (remainingAmount > 0 && remainingAmount <= MAX_PAYMENT_AMOUNT) {
           req.session.tuitionFormToken ??= createSessionFormToken()
           paymentSummary.allocationMessage = allocation?.reason === 'LEGACY_UNALLOCATED_PAYMENT'
             ? '先前收款沒有記錄對應項目，剩餘金額可整筆登記。'
@@ -383,9 +386,9 @@ const tuitionBillController = {
             itemized: refund.mode === 'items',
             items: refund.items.filter(item => item.remainingAmount > 0).map(item => ({
               ...item,
-              maxAmount: Math.min(item.remainingAmount, 2_147_483_647)
+              maxAmount: Math.min(item.remainingAmount, MAX_REFUND_AMOUNT)
             })),
-            maxAmount: Math.min(refund.netPaidAmount, 2_147_483_647),
+            maxAmount: Math.min(refund.netPaidAmount, MAX_REFUND_AMOUNT),
             earliestDate: result.paymentStatus.lastPaidOn,
             today: getTaipeiDate()
           }
@@ -427,16 +430,12 @@ const tuitionBillController = {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value)
-        ? Number(value)
-        : NaN
 
     const result = await tuitionBillService.addTuitionBillExtraFee({
       billId,
-      extraFeeId: readInt(body.extraFeeId),
-      quantity: readInt(body.quantity),
-      billVersion: readInt(body.billVersion)
+      extraFeeId: readUnsignedInteger(body.extraFeeId),
+      quantity: readUnsignedInteger(body.quantity),
+      billVersion: readUnsignedInteger(body.billVersion)
     })
 
     if (result.code === 'BILL_NOT_FOUND') {
@@ -468,16 +467,12 @@ const tuitionBillController = {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value)
-        ? Number(value)
-        : NaN
-    const billId = readInt(req.params.billId)
+    const billId = readUnsignedInteger(req.params.billId)
     const result = await tuitionBillService.setTuitionBillDraftDiscount({
       billId,
-      billVersion: readInt(body.billVersion),
+      billVersion: readUnsignedInteger(body.billVersion),
       actorId: req.user.id,
-      amount: readInt(body.amount),
+      amount: readUnsignedInteger(body.amount),
       reason: body.reason
     })
 
@@ -516,20 +511,16 @@ const tuitionBillController = {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value)
-        ? Number(value)
-        : NaN
 
-    const billId = readInt(req.params.billId)
+    const billId = readUnsignedInteger(req.params.billId)
     if (!Number.isSafeInteger(billId) || billId < 1) {
       return res.status(400).send('帳單 ID 不正確。')
     }
 
     const result = await tuitionBillService.addLeaveCreditToDraft({
       billId,
-      attendId: readInt(body.attendId),
-      billVersion: readInt(body.billVersion)
+      attendId: readUnsignedInteger(body.attendId),
+      billVersion: readUnsignedInteger(body.billVersion)
     })
 
     if (result.code === 'INVALID_INPUT') {
@@ -584,19 +575,15 @@ const tuitionBillController = {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value)
-        ? Number(value)
-        : NaN
 
-    const billId = readInt(req.params.billId)
+    const billId = readUnsignedInteger(req.params.billId)
     if (!Number.isSafeInteger(billId) || billId < 1) {
       return res.status(400).send('帳單 ID 不正確。')
     }
 
     const result = await tuitionBillService.issueTuitionBill({
       billId,
-      billVersion: readInt(body.billVersion),
+      billVersion: readUnsignedInteger(body.billVersion),
       actorId: req.user.id,
       leaveCreditSkipKey: body.leaveCreditSkipKey,
       leaveCreditSkipReason: body.leaveCreditSkipReason
@@ -648,13 +635,9 @@ const tuitionBillController = {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value)
-        ? Number(value)
-        : NaN
 
-    const billId = readInt(req.params.billId)
-    const billVersion = readInt(body.billVersion)
+    const billId = readUnsignedInteger(req.params.billId)
+    const billVersion = readUnsignedInteger(body.billVersion)
     const invalidInput = '帳單 ID 或草稿版本不正確，請重新開啟帳單再試。'
 
     if (
@@ -712,14 +695,10 @@ const tuitionBillController = {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value)
-        ? Number(value)
-        : NaN
 
-    const billId = readInt(req.params.billId)
-    const billItemId = readInt(req.params.billItemId)
-    const billVersion = readInt(body.billVersion)
+    const billId = readUnsignedInteger(req.params.billId)
+    const billItemId = readUnsignedInteger(req.params.billItemId)
+    const billVersion = readUnsignedInteger(body.billVersion)
     const invalidInput = '帳單、明細 ID 或草稿版本不正確，請重新開啟帳單再試。'
 
     if (
@@ -769,13 +748,9 @@ const tuitionBillController = {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value)
-        ? Number(value)
-        : NaN
 
-    const billId = readInt(req.params.billId)
-    const billVersion = readInt(body.billVersion)
+    const billId = readUnsignedInteger(req.params.billId)
+    const billVersion = readUnsignedInteger(body.billVersion)
     const invalidInput = '帳單 ID 或草稿版本不正確，請重新開啟帳單再試。'
 
     if (
@@ -823,13 +798,9 @@ const tuitionBillController = {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
-    const readInt = value =>
-      typeof value === 'string' && value !== '' && !/\D/.test(value)
-        ? Number(value)
-        : NaN
 
-    const billId = readInt(req.params.billId)
-    const billVersion = readInt(body.billVersion)
+    const billId = readUnsignedInteger(req.params.billId)
+    const billVersion = readUnsignedInteger(body.billVersion)
     const invalidInput = '帳單 ID 或版本不正確，請重新開啟帳單再試。'
 
     if (

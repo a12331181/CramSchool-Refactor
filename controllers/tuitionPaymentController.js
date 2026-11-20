@@ -1,3 +1,4 @@
+const { readUnsignedInteger } = require('../utils/formNumbers')
 const { randomUUID } = require('node:crypto')
 const { recordTuitionBillPayment } = require('../services/tuitionPaymentService')
 const { recordTuitionBillRefund } = require('../services/tuitionRefundService')
@@ -11,10 +12,6 @@ const REFUND_MESSAGES = require('../constants/tuitionRefundMessages')
 const amountFormat = new Intl.NumberFormat('zh-TW')
 const paymentGroupBase = '/cramschool/tuition/payment-groups'
 
-function readInt(value) {
-  return typeof value === 'string' && value !== '' && !/\D/.test(value) ? Number(value) : NaN
-}
-
 function studentTuitionUrl(studentId, billingMonth, subpath) {
   return `/cramschool/tuition/students/${studentId}/${subpath}?` + new URLSearchParams({ billingMonth })
 }
@@ -25,7 +22,7 @@ function readBillSelections(value) {
   const bills = []
   for (const field of fields) {
     if (typeof field !== 'string' || !/^[1-9]\d*:(?:0|[1-9]\d*)$/.test(field) || /\s/.test(field)) return null
-    const [id, version] = field.split(':').map(readInt)
+    const [id, version] = field.split(':').map(readUnsignedInteger)
     bills.push({ id, version })
   }
   return bills
@@ -40,20 +37,20 @@ const tuitionPaymentController = {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
-    const billId = readInt(req.params.billId)
+    const billId = readUnsignedInteger(req.params.billId)
     const invalidInput = '帳單或收款資料不正確，請重新開啟帳單再試。'
     if (body.paymentMode !== undefined && body.paymentMode !== 'items') {
       return res.status(400).send(invalidInput)
     }
     const rawItems = body.paymentItems ?? []
     const selectedItemIds = body.paymentMode === 'items'
-      ? (Array.isArray(rawItems) ? rawItems : [rawItems]).map(readInt)
+      ? (Array.isArray(rawItems) ? rawItems : [rawItems]).map(readUnsignedInteger)
       : undefined
 
     const result = await recordTuitionBillPayment({
       billId,
-      billVersion: body.billVersion === undefined ? undefined : readInt(body.billVersion),
-      amount: readInt(body.amount),
+      billVersion: body.billVersion === undefined ? undefined : readUnsignedInteger(body.billVersion),
+      amount: readUnsignedInteger(body.amount),
       selectedItemIds,
       paidOn: body.paidOn,
       actorId: req.user.id
@@ -95,7 +92,7 @@ const tuitionPaymentController = {
       return res.status(403).send('表單已失效，請重新開啟帳單再試。')
     }
 
-    const billId = readInt(req.params.billId)
+    const billId = readUnsignedInteger(req.params.billId)
     const invalidInput = '帳單 ID、版本或退費金額不正確；金額須為大於零的台幣整數。'
     const itemized = body.refundMode === 'items'
     let refundItems
@@ -107,7 +104,7 @@ const tuitionPaymentController = {
       refundItems = []
       for (const [key, value] of Object.entries(fields)) {
         if (!/^a[1-9]\d*$/.test(key) || typeof value !== 'string') return res.status(400).send(invalidInput)
-        if (value !== '') refundItems.push({ allocationId: readInt(key.slice(1)), amount: readInt(value) })
+        if (value !== '') refundItems.push({ allocationId: readUnsignedInteger(key.slice(1)), amount: readUnsignedInteger(value) })
       }
     } else if (body.refundMode !== undefined || body.refundItems !== undefined) {
       return res.status(400).send(invalidInput)
@@ -115,9 +112,9 @@ const tuitionPaymentController = {
 
     const result = await recordTuitionBillRefund({
       billId,
-      billVersion: readInt(body.billVersion),
+      billVersion: readUnsignedInteger(body.billVersion),
       actorId: req.user.id,
-      amount: itemized ? undefined : readInt(body.amount),
+      amount: itemized ? undefined : readUnsignedInteger(body.amount),
       refundItems,
       refundedOn: body.refundedOn,
       reason: body.reason
@@ -136,7 +133,7 @@ const tuitionPaymentController = {
   },
 
   getTuitionPaymentGroupForm: async (req, res) => {
-    const studentId = readInt(req.params.studentId)
+    const studentId = readUnsignedInteger(req.params.studentId)
     const billingMonth = req.query.billingMonth
     const result = await getStudentTuitionBillsForMonth({ studentId, billingMonth })
     if (!result.ok) return res.status(400).send('請選擇有效的學生及計費月份。')
@@ -177,10 +174,10 @@ const tuitionPaymentController = {
       return res.status(403).send('表單已失效，請重新開啟合併收款頁再試。')
     }
     const bills = readBillSelections(body.billSelections)
-    const studentId = readInt(req.params.studentId)
+    const studentId = readUnsignedInteger(req.params.studentId)
     const { billingMonth, paidOn, note, requestKey } = body
     const result = await tuitionPaymentGroupService.recordTuitionPaymentGroup({
-      studentId, billingMonth, bills, amount: readInt(body.amount), paidOn, note, requestKey, actorId: req.user.id
+      studentId, billingMonth, bills, amount: readUnsignedInteger(body.amount), paidOn, note, requestKey, actorId: req.user.id
     })
     if (result.ok) {
       req.flash('success_messages', result.created ? '已登記一筆合併收款。' : '這筆合併收款已登記，未重複新增。')
@@ -209,7 +206,7 @@ const tuitionPaymentController = {
   },
 
   getTuitionPaymentGroupDetails: async (req, res) => {
-    const id = readInt(req.params.paymentGroupId)
+    const id = readUnsignedInteger(req.params.paymentGroupId)
     if (!Number.isSafeInteger(id) || id < 1) return res.status(400).send('合併收款編號不正確。')
 
     const result = await tuitionPaymentGroupService.getTuitionPaymentGroup(id)

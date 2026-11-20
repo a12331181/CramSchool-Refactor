@@ -1,3 +1,5 @@
+const { MAX_TUITION_BILL_VERSION } = require('../constants/tuitionBillLimits')
+const { MAX_REFUND_AMOUNT } = require('../constants/tuitionPayment')
 const { Op, Transaction, json } = require('sequelize')
 const { TuitionBill, TuitionBillItem, TuitionBillRefund, TuitionBillRefundAllocation, AuditLog, sequelize } = require('../models')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
@@ -46,7 +48,6 @@ async function getTuitionBillRefundSummary(billId, { paymentStatus, paymentAlloc
   return { ...ledger, mode, blockedCode }
 }
 
-const MAX_REFUND_AMOUNT = 2_147_483_647
 const isPositiveInteger = value => Number.isSafeInteger(value) && value > 0
 
 function readRefundAmount(amount, refundItems) {
@@ -103,7 +104,7 @@ function selectRefundAllocations(summary, { amount, refundItems }) {
 async function recordTuitionBillRefund({ billId, billVersion, actorId, amount, refundItems, refundedOn, reason } = {}) {
   if (
     ![billId, actorId].every(isPositiveInteger) ||
-    !Number.isSafeInteger(billVersion) || billVersion < 0 || billVersion >= MAX_REFUND_AMOUNT
+    !Number.isSafeInteger(billVersion) || billVersion < 0 || billVersion >= MAX_TUITION_BILL_VERSION
   ) return { ok: false, code: 'INVALID_INPUT' }
 
   const request = readRefundAmount(amount, refundItems)

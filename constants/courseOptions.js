@@ -9,7 +9,10 @@ const COURSE_TYPES = Object.freeze({
   MONTHLY: '依月計費'
 })
 
+const MAX_COURSE_PRICE = 2_147_483_647
+
 module.exports = {
   COURSE_TIMES,
-  COURSE_TYPES
+  COURSE_TYPES,
+  MAX_COURSE_PRICE
 }

@@ -1,6 +1,6 @@
 const courseService = require('../services/courseService')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
-const {COURSE_TIMES, COURSE_TYPES} = require('../constants/courseOptions')
+const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
 const pageLimit = 12
 
 const adminCourseController = {
@@ -152,7 +152,7 @@ const adminCourseController = {
     const price = Number(body.price)
     const teacherId = Number(body.teacherId)
 
-    if (!Number.isSafeInteger(price) || price < 0 || price > 2147483647) {
+    if (!Number.isSafeInteger(price) || price < 0 || price > MAX_COURSE_PRICE) {
       return res.status(400).send('價格必須是有效的台幣整數元')
     }
 

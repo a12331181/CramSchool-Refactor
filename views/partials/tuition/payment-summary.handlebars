@@ -40,7 +40,7 @@
     {{/if}}
     {{#if canRecord}}
     <p>勾選本次已收到款項的課程或費用。</p>
-    <form method="POST" action="{{action}}" id="tuition-item-payment">
+    <form method="POST" action="{{action}}" id="tuition-item-payment" data-max-amount="{{maxAmount}}">
       <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
       <input type="hidden" name="billVersion" value="{{billVersion}}">
       <input type="hidden" name="paymentMode" value="items">
@@ -93,7 +93,7 @@
         const renderTotal = () => {
           const amount = inputs.reduce((sum, input) => input.checked ? sum + Number(input.dataset.amount) : sum, 0)
           output.textContent = amount.toLocaleString('zh-TW')
-          submit.disabled = amount === 0 || amount > 2147483647
+          submit.disabled = amount === 0 || amount > Number(form.dataset.maxAmount)
         }
         form.addEventListener('change', renderTotal)
         document.getElementById('tuition-select-unpaid').addEventListener('click', () => {

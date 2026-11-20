@@ -1,5 +1,5 @@
 const {Course, Teacher, Student, Calendar, Enrollment, Tuition, TuitionBillItem, Diary, Attend, sequelize} = require('../models')
-const {COURSE_TIMES, COURSE_TYPES} = require('../constants/courseOptions')
+const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
 const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
 
@@ -110,7 +110,7 @@ async function createCourse(courseData) {
   if (
     !Number.isSafeInteger(price) ||
     price < 0 ||
-    price > 2147483647
+    price > MAX_COURSE_PRICE
   ) {
     return { created: false, reason: 'INVALID_PRICE' }
   }

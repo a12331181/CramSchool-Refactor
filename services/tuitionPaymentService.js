@@ -1,3 +1,4 @@
+const { MAX_TUITION_BILL_VERSION } = require('../constants/tuitionBillLimits')
 const { AuditLog, Payment, TuitionBill, TuitionBillItem, sequelize } = require('../models')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { MAX_PAYMENT_AMOUNT } = require('../constants/tuitionPayment')
@@ -6,7 +7,7 @@ const { getPaidTuitionBillPayments, summarizeTuitionBillPayments } = require('./
 const { MAX_PAYMENT_ITEMS, getAllocationState, createAllocations } = require('./tuitionPaymentAllocationService')
 
 const isPositiveInteger = n => Number.isSafeInteger(n) && n > 0
-const isPaymentVersion = n => Number.isSafeInteger(n) && n >= 0 && n < MAX_PAYMENT_AMOUNT
+const isPaymentVersion = n => Number.isSafeInteger(n) && n >= 0 && n < MAX_TUITION_BILL_VERSION
 const isPaymentAmount = n => isPositiveInteger(n) && n <= MAX_PAYMENT_AMOUNT
 
 function canReceiveBillPayment(bill, financial) {
