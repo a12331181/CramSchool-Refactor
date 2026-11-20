@@ -58,20 +58,19 @@ const adminCourseController = {
 
   postCourse: async (req, res) => {
     const body = req.body ?? {}
-    const numericFields = ['amounts', 'price', 'teacherId']
+    const numericFields = ['price', 'teacherId']
 
     if (numericFields.some(field =>
       typeof body[field] !== 'string' ||
       body[field].trim() === ''
     )) {
-      return res.status(400).send('堂數、價格與教師 ID 必須填寫數字')
+      return res.status(400).send('價格與教師 ID 必須填寫數字')
     }
 
     const result = await courseService.createCourse({
       name: body.name,
       time: body.time,
       type: body.type,
-      amounts: Number(body.amounts),
       price: Number(body.price),
       teacherId: Number(body.teacherId)
     })
@@ -81,7 +80,6 @@ const adminCourseController = {
         INVALID_NAME: '課程名稱必填，且不可超過 255 字',
         INVALID_TIME: '上課時長只能是 60、90 或 120 分鐘',
         INVALID_TYPE: '計費方式不正確',
-        INVALID_AMOUNTS: '堂數必須是 1 到 36 的整數',
         INVALID_PRICE: '價格必須是有效的非負整數',
         INVALID_TEACHER_ID: '教師 ID 不正確',
         TEACHER_NOT_FOUND: '找不到所選教師，請重新選擇'

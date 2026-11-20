@@ -331,10 +331,7 @@ async function getStudentAttendanceHistory({ courseId, studentId }) {
     student: student.toJSON(),
     course: course.toJSON(),
     attends,
-    currentPeriod,
-    totalCalendarNums: course.amounts,
-    finishCalendarNums: attends.length,
-    remainCalendarNums: course.amounts - attends.length
+    currentPeriod
   }
 }
 

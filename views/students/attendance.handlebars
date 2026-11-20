@@ -7,9 +7,9 @@
   <h4 class="ml-4 mb-2" style="color: rgb(126, 120, 113);">出缺席紀錄表</h4>
 </div>
 
-  <h5 class="mr-4 my-1" style="color: rgb(211, 178, 141);">
-    <strong style="color: rgb(218, 166, 107);">目前期數: 第 {{currentPeriod}} 期 </strong>
-  </h5>
+{{#if currentPeriod}}
+<p class="text-muted">第 {{currentPeriod}} 期</p>
+{{/if}}
 <br>
 
 <table class="table table-bordered">
@@ -37,20 +37,16 @@
       </td>
       <td scope="row" style="color: rgb(146, 66, 9);">{{this.reason}}</td>
     </tr>
-    {{/each}}
-    {{#ifCond finishCalendarNums 0}}
-    <tr class="table-light">
-      <th colspan="5" style="color: rgb(192, 72, 16);text-align: center;">目前暫無該期出席資料</th>
-    </tr>
     {{else}}
-     <tr style="background-color: rgb(252, 247, 241);">
-      <th colspan="5" style="text-align: center;color:rgb(196, 110, 70)">
-        該期總堂數: {{ totalCalendarNums }} / 已上堂數: {{ finishCalendarNums }} / 剩餘堂數 : {{ remainCalendarNums }}
-      </th>
+    <tr class="table-light">
+      <td colspan="5" class="text-center text-muted">目前沒有出缺席紀錄。</td>
     </tr>
-    {{/ifCond}}
+    {{/each}}
   </tbody>
 </table>
+{{#if attends.length}}
+<p class="text-muted">共 {{attends.length}} 筆出缺席紀錄。</p>
+{{/if}}
 
 <br />
 <br />

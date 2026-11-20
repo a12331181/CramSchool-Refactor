@@ -6,7 +6,7 @@ const STUDENT_STATUS = require('../constants/studentStatus')
 async function getCourseDirectory(userId) {
   const [courses, teacher] = await Promise.all([
     Course.findAll({
-      attributes: ['id', 'name', 'time', 'amounts'],
+      attributes: ['id', 'name', 'time'],
       where: { isActive: true },
       include: [{ model: Teacher, attributes: ['id', 'name'] }],
       raw: true,
@@ -47,7 +47,6 @@ async function getAdminCoursesPage({ page, pageSize }) {
       'name',
       'time',
       'type',
-      'amounts',
       'price',
       'TeacherId',
       'isActive'
@@ -88,7 +87,6 @@ async function createCourse(courseData) {
     name,
     time,
     type,
-    amounts,
     price,
     teacherId
   } = courseData
@@ -107,10 +105,6 @@ async function createCourse(courseData) {
 
   if (!Object.values(COURSE_TYPES).includes(type)) {
     return { created: false, reason: 'INVALID_TYPE' }
-  }
-
-  if (!Number.isSafeInteger(amounts) || amounts < 1 || amounts > 36) {
-    return { created: false, reason: 'INVALID_AMOUNTS' }
   }
 
   if (
@@ -139,7 +133,6 @@ async function createCourse(courseData) {
       name: name.trim(),
       time,
       type,
-      amounts,
       price,
       TeacherId: teacherId,
       isActive: true
@@ -156,7 +149,6 @@ async function getCourseEditData(courseId) {
       'name',
       'time',
       'type',
-      'amounts',
       'price',
       'TeacherId',
       'isActive'
