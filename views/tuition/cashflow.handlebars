@@ -23,24 +23,17 @@
 </dl>
 
 {{#if reviewCount}}
-<div class="alert alert-warning">
-  另有 {{reviewCount}} 筆紀錄待核對，未放入合計；包含缺日期或日期格式不明的收款。
-</div>
-<details class="mb-3">
-  <summary>查看待核對明細（最多 20 筆）</summary>
-  <ul class="mt-2">
-    {{#each reviewRows}}
-    <li>{{kindText}} #{{id}}｜{{date}}｜{{amountText}}｜{{reviewText}}
-      {{#if billUrl}}<a href="{{billUrl}}">帳單 #{{billId}}</a>
-      {{else}}{{#if billId}}（帳單 #{{billId}}）{{/if}}{{/if}}
-    </li>
-    {{/each}}
-  </ul>
-</details>
+<p class="alert alert-warning">有 {{reviewCount}} 筆紀錄待核對，未計入合計；包含無法判定月份的舊收款。</p>
 {{/if}}
 
-<p>本月可核對共 {{totalCount}} 筆。</p>
-<a class="btn btn-sm btn-outline-primary mb-3" href="{{exportUrl}}">下載已核對的 CSV</a>
+<nav class="mb-3" aria-label="對帳清單">
+  <a class="btn btn-sm {{#unless showReview}}btn-primary{{else}}btn-outline-primary{{/unless}}"
+    href="{{verifiedUrl}}"{{#unless showReview}} aria-current="page"{{/unless}}>可核對 {{totalCount}} 筆</a>
+  <a class="btn btn-sm {{#if showReview}}btn-primary{{else}}btn-outline-primary{{/if}}"
+    href="{{reviewUrl}}"{{#if showReview}} aria-current="page"{{/if}}>待核對 {{reviewCount}} 筆</a>
+  <a class="btn btn-sm btn-outline-secondary" href="{{exportUrl}}">下載已核對的 CSV</a>
+</nav>
+
 <div class="table-responsive">
   <table class="table table-sm table-bordered">
     <thead class="table-secondary">
@@ -51,6 +44,7 @@
         <th scope="col">帳單月份</th>
         <th scope="col">金額</th>
         <th scope="col">來源帳單</th>
+        {{#if showReview}}<th scope="col">待核對原因</th>{{/if}}
       </tr>
     </thead>
     <tbody>
@@ -61,10 +55,18 @@
         <td>{{studentName}}</td>
         <td>{{billingMonth}}</td>
         <td>{{amountText}}</td>
-        <td><a href="{{billUrl}}">帳單 #{{billId}}</a></td>
+        <td>
+          {{#if billUrl}}<a href="{{billUrl}}">帳單 #{{billId}}</a>
+          {{else}}{{#if billId}}帳單 #{{billId}}{{else}}—{{/if}}{{/if}}
+        </td>
+        {{#if ../showReview}}<td>{{reviewText}}</td>{{/if}}
       </tr>
       {{else}}
+      {{#if showReview}}
+      <tr><td colspan="7">沒有待核對的紀錄。</td></tr>
+      {{else}}
       <tr><td colspan="6">本月沒有可核對的收退費。</td></tr>
+      {{/if}}
       {{/each}}
     </tbody>
   </table>

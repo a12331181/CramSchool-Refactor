@@ -1,4 +1,4 @@
-const { CASH_KIND } = require('../services/tuitionCashflowService')
+const { CASH_KIND } = require('../constants/tuitionCashflow')
 
 function csvCell(value) {
   if (Number.isSafeInteger(value)) return String(value)

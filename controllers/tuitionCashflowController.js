@@ -1,4 +1,5 @@
-const { CASH_KIND, CASH_REVIEW, getTuitionCashflow } = require('../services/tuitionCashflowService')
+const { getTuitionCashflow } = require('../services/tuitionCashflowService')
+const { CASH_KIND, CASH_REVIEW } = require('../constants/tuitionCashflow')
 const { buildCashflowCsv } = require('../utils/tuitionCashflowCsv')
 const { getTaipeiDate } = require('../utils/date')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
@@ -47,6 +48,10 @@ const tuitionCashflowController = {
       cashMonth: typeof cashMonth === 'string' ? cashMonth : ''
     }
     res.set('Cache-Control', 'no-store')
+    const view = req.query.view ?? 'verified'
+    if (view !== 'verified' && view !== 'review') {
+      return res.status(400).render('tuition/cashflow', { ...viewData, error: '請選擇有效的對帳清單。' })
+    }
     const rawPage = req.query.page ?? '1'
     if (typeof rawPage !== 'string' || !/^[1-9]\d*$/.test(rawPage) || !Number.isSafeInteger(Number(rawPage))) {
       return res.status(400).render('tuition/cashflow', { ...viewData, error: '頁碼需為正整數。' })
@@ -61,8 +66,16 @@ const tuitionCashflowController = {
       })
     }
 
-    const pagination = getPagination({ page, pageSize: PAGE_SIZE, totalCount: ledger.rows.length })
-    const pageUrl = targetPage => `${CASHFLOW_URL}?${new URLSearchParams({ cashMonth, page: targetPage })}`
+    const showReview = view === 'review'
+    const selectedRows = showReview ? ledger.reviewRows : ledger.rows
+    const pagination = getPagination({ page, pageSize: PAGE_SIZE, totalCount: selectedRows.length })
+    const viewUrl = (review, targetPage) => {
+      const params = new URLSearchParams({ cashMonth })
+      if (review) params.set('view', 'review')
+      if (targetPage !== undefined) params.set('page', String(targetPage))
+      return `${CASHFLOW_URL}?${params}`
+    }
+    const pageUrl = targetPage => viewUrl(showReview, targetPage)
     if (page > pagination.totalPages) return res.redirect(pageUrl(pagination.totalPages))
 
     const offset = (page - 1) * PAGE_SIZE
@@ -73,9 +86,11 @@ const tuitionCashflowController = {
       netText: formatAmount(ledger.totals.net),
       totalCount: ledger.rows.length,
       exportUrl: `${CSV_URL}?${new URLSearchParams({ cashMonth })}`,
-      rows: ledger.rows.slice(offset, offset + PAGE_SIZE).map(toDisplayRow),
+      rows: selectedRows.slice(offset, offset + PAGE_SIZE).map(toDisplayRow),
+      verifiedUrl: viewUrl(false),
+      showReview,
+      reviewUrl: viewUrl(true),
       reviewCount: ledger.reviewRows.length,
-      reviewRows: ledger.reviewRows.slice(0, PAGE_SIZE).map(toDisplayRow),
       ...getPaginationLinks(pagination, pageUrl)
     })
   },

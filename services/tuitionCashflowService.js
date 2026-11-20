@@ -3,8 +3,7 @@ const { Payment, TuitionBill, TuitionBillRefund, sequelize } = require('../model
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { getTaipeiDate, getTaipeiMonthRange, isTaipeiDateKey } = require('../utils/date')
 
-const CASH_KIND = Object.freeze({ PAYMENT: 'payment', REFUND: 'refund' })
-const CASH_REVIEW = Object.freeze({ DATE: 'date', BILL: 'bill', AMOUNT: 'amount' })
+const { CASH_KIND, CASH_REVIEW } = require('../constants/tuitionCashflow')
 const DATE_SHAPE = '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
 
 function cashRow(record, kind, today) {
@@ -106,4 +105,4 @@ async function getTuitionCashflow(cashMonth) {
   })
 }
 
-module.exports = { CASH_KIND, CASH_REVIEW, getTuitionCashflow }
+module.exports = { getTuitionCashflow }
