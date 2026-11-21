@@ -1,8 +1,7 @@
 const passport = require('passport')
 const LocalStrategy = require('passport-local')
 const bcrypt = require('bcryptjs')
-const db = require('../models')
-const User = db.User
+const { User } = require('../models')
 
 passport.use(new LocalStrategy(
   {
@@ -10,23 +9,36 @@ passport.use(new LocalStrategy(
     passwordField: 'password',
     passReqToCallback: true
   },
-  (req, username, password, cb) => {
-    User.findOne({ where: { email: username } }).then(user => {
-      if (!user) return cb(null, false, req.flash('error_messages', '帳號或密碼輸入錯誤'))
-      if (!bcrypt.compareSync(password, user.password)) return cb(null, false, req.flash('error_messages', '帳號或密碼輸入錯誤！'))
-      return cb(null, user)
-    })
+  async (req, username, password, done) => {
+    let user
+    let isValid
+    try {
+      user = await User.findOne({ attributes: ['id', 'password'], where: { email: username } })
+      isValid = user != null && await bcrypt.compare(password, user.password)
+    } catch (error) {
+      return done(error)
+    }
+
+    if (!isValid) {
+      req.flash('error_messages', '帳號或密碼輸入錯誤。')
+      return done(null, false)
+    }
+    return done(null, user)
   }
 ))
 
-passport.serializeUser((user, cb) => {
-  cb(null, user.id)
+passport.serializeUser((user, done) => {
+  done(null, user.id)
 })
-passport.deserializeUser((id, cb) => {
-  User.findByPk(id).then(user => {
-    user = user.toJSON()
-    return cb(null, user) 
-  })
+passport.deserializeUser(async (id, done) => {
+  let user
+  try {
+    user = await User.findByPk(id, { attributes: ['id', 'name', 'isAdmin'], raw: true })
+  } catch (error) {
+    return done(error)
+  }
+
+  return done(null, user ?? false)
 })
 
 module.exports = passport
