@@ -7,8 +7,11 @@ const methodOverride = require('method-override')
 const fs = require('node:fs')
 const path = require('node:path')
 const { getSessionSecret } = require('./utils/sessionConfig')
+const { IMAGE_ACCEPT } = require('./constants/imageUpload')
+const handleImageUploadError = require('./middlewares/imageUploadError')
 const uploadDir = path.join(__dirname, 'upload')
 const app = express()
+app.locals.imageAccept = IMAGE_ACCEPT
 const port = 3000
 
 // setup handlebars
@@ -29,7 +32,12 @@ app.use(flash())
 app.use(methodOverride('_method'))
 
 fs.mkdirSync(uploadDir, { recursive: true })
-app.use('/upload', express.static(__dirname + '/upload'))
+app.use('/upload', express.static(uploadDir, {
+  setHeaders(res) {
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('Content-Security-Policy', 'sandbox')
+  }
+}))
 
 app.use((req, res, next) => {
   res.locals.success_messages = req.flash('success_messages')
@@ -39,6 +47,7 @@ app.use((req, res, next) => {
 })
 
 require('./routes')(app, passport)
+app.use(handleImageUploadError)
 
 if (require.main === module) {
   app.listen(port, () => {

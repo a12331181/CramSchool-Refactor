@@ -90,8 +90,7 @@ const userController = {
 
       if (req.file) {
         uploadedImage = await imageStorage.saveImage({
-          sourcePath: req.file.path,
-          originalName: req.file.originalname
+          sourcePath: req.file.path
         })
       }
 
