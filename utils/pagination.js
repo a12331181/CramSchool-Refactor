@@ -1,3 +1,5 @@
+const { readUnsignedInteger } = require('./formNumbers')
+
 function getPagination({ page, pageSize, totalCount }) {
   const totalPages = Math.max(
     1,
@@ -33,8 +35,10 @@ function getPaginationLinks(pagination, pageUrl) {
 }
 
 function getPageOffset(value, pageSize) {
-  const page = Number(value || 1)
-  if (!Number.isSafeInteger(page) || page < 1) return null
+  const text = value ?? '1'
+  const page = readUnsignedInteger(text)
+  if (!Number.isSafeInteger(page) || page < 1 || text.startsWith('0')) return null
+  if (!Number.isSafeInteger(pageSize) || pageSize < 1) return null
 
   const offset = (page - 1) * pageSize
   return Number.isSafeInteger(offset) ? { page, offset } : null

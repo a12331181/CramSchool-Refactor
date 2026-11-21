@@ -2,7 +2,7 @@ const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
-const { getPagination, getPaginationLinks } = require('../utils/pagination')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
 const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
 const tuitionReportService = require('../services/tuitionReportService')
@@ -128,7 +128,6 @@ const tuitionReportController = {
     const listUrl = '/cramschool/tuition/students'
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
     const statusFilter = req.query.status ?? 'all'
-    const page = Number(req.query.page ?? 1)
     const pageSize = 12
 
     const viewData = {
@@ -140,6 +139,11 @@ const tuitionReportController = {
     }
 
     res.set('Cache-Control', 'no-store')
+    const listPage = getPageOffset(req.query.page, pageSize)
+    if (!listPage) {
+      return res.status(400).render('tuition/student-list', { ...viewData, errorMessage: '頁碼不正確。' })
+    }
+    const { page } = listPage
     const result = await tuitionReportService.getStudentTuitionList({
       billingMonth,
       statusFilter,
@@ -237,7 +241,6 @@ const tuitionReportController = {
     }
 
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
-    const page = Number(req.query.page ?? 1)
     const pageSize = 12
     const listUrl = `/cramschool/tuition/courses/${courseId}/monthly`
     const viewData = {
@@ -247,6 +250,11 @@ const tuitionReportController = {
     }
 
     res.set('Cache-Control', 'no-store')
+    const listPage = getPageOffset(req.query.page, pageSize)
+    if (!listPage) {
+      return res.status(400).render('tuition/course-monthly-list', { ...viewData, errorMessage: '頁碼不正確。' })
+    }
+    const { page } = listPage
     const result = await tuitionReportService.getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageSize })
     if (!result.ok) {
       if (result.code === 'COURSE_NOT_FOUND') return res.status(404).send('找不到課程。')

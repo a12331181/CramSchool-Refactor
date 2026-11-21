@@ -40,14 +40,11 @@ const attendanceController = {
       return res.status(400).send('課程 ID 必須是正整數。')
     }
 
-    const pageText = req.query.page ?? '1'
-    const page = Number(pageText)
-    if (
-      typeof pageText !== 'string' || !/^[1-9][0-9]*$/.test(pageText) ||
-      !Number.isSafeInteger(page) || !Number.isSafeInteger((page - 1) * SESSION_PAGE_SIZE)
-    ) {
+    const listPage = getPageOffset(req.query.page, SESSION_PAGE_SIZE)
+    if (!listPage) {
       return res.status(400).send('頁碼必須是有效的正整數。')
     }
+    const { page } = listPage
 
     const { month = '', status = '' } = req.query
     const result = await attendanceService.getCourseAttendanceSessions({

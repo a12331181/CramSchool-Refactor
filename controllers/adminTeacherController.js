@@ -1,19 +1,17 @@
 const teacherService = require('../services/teacherService')
 const TEACHER_STATUS = require('../constants/teacherStatus')
-const { getPagination, getPaginationLinks } = require('../utils/pagination')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const pageLimit = 12
 
 const adminTeacherController = {
   getTeacherListPage: async (req, res) => {
-    const page = Number(req.query.page || 1)
+    const listPage = getPageOffset(req.query.page, pageLimit)
+    if (!listPage) return res.status(400).send('頁碼必須是正整數')
+    const { page } = listPage
     const status = req.query.status
       ? Number(req.query.status)
       : undefined
-
-    if (!Number.isSafeInteger(page) || page < 1) {
-      return res.status(400).send('頁碼必須是正整數')
-    }
 
     if (
       status !== undefined &&

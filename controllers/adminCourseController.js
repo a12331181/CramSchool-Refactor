@@ -1,7 +1,7 @@
 const { readUnsignedInteger } = require('../utils/formNumbers')
 const { COURSE_PREFIX_LETTERS } = require('../constants/referenceNumbers')
 const courseService = require('../services/courseService')
-const { getPagination, getPaginationLinks } = require('../utils/pagination')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
 const pageLimit = 12
 
@@ -24,15 +24,11 @@ function readCourseSettings(body) {
 const adminCourseController = {
 // 課程相關程式碼
   getCourseListPage: async (req, res) => {
-    const page = Number(req.query.page || 1)
-
-    if (
-      !Number.isSafeInteger(page) ||
-      page < 1 ||
-      !Number.isSafeInteger((page - 1) * pageLimit)
-    ) {
+    const listPage = getPageOffset(req.query.page, pageLimit)
+    if (!listPage) {
       return res.status(400).send('頁碼不正確或超出可處理範圍')
     }
+    const { page } = listPage
 
     const result = await courseService.getAdminCoursesPage({
       page,

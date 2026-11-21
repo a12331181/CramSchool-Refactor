@@ -3,7 +3,7 @@ const { getTuitionCashflow } = require('../services/tuitionCashflowService')
 const { CASH_KIND, CASH_REVIEW } = require('../constants/tuitionCashflow')
 const { buildCashflowCsv } = require('../utils/tuitionCashflowCsv')
 const { getTaipeiDate } = require('../utils/date')
-const { getPagination, getPaginationLinks } = require('../utils/pagination')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const CASHFLOW_URL = '/cramschool/tuition/cashflow'
 const CSV_URL = '/cramschool/tuition/cashflow.csv'
@@ -56,11 +56,11 @@ const tuitionCashflowController = {
     if (view !== 'verified' && view !== 'review') {
       return res.status(400).render('tuition/cashflow', { ...viewData, error: '請選擇有效的對帳清單。' })
     }
-    const rawPage = req.query.page ?? '1'
-    if (typeof rawPage !== 'string' || !/^[1-9]\d*$/.test(rawPage) || !Number.isSafeInteger(Number(rawPage))) {
+    const listPage = getPageOffset(req.query.page, PAGE_SIZE)
+    if (!listPage) {
       return res.status(400).render('tuition/cashflow', { ...viewData, error: '頁碼需為正整數。' })
     }
-    const page = Number(rawPage)
+    const { page, offset } = listPage
     const ledger = await getTuitionCashflow(cashMonth)
     if (!ledger.ok) {
       const badMonth = ledger.code === 'INVALID_CASH_MONTH'
@@ -82,7 +82,6 @@ const tuitionCashflowController = {
     const pageUrl = targetPage => viewUrl(showReview, targetPage)
     if (page > pagination.totalPages) return res.redirect(pageUrl(pagination.totalPages))
 
-    const offset = (page - 1) * PAGE_SIZE
     return res.render('tuition/cashflow', {
       ...viewData,
       receivedText: formatAmount(ledger.totals.received),

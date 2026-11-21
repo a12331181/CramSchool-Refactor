@@ -1,6 +1,6 @@
 const pageLimit = 12
 const calendarService = require('../services/calendarService')
-const { getPagination, getPaginationLinks } = require('../utils/pagination')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 const { formatTaipeiDateTime, getTaipeiDate, parseTaipeiDateTime } = require('../utils/date')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
@@ -94,19 +94,16 @@ const adminCalendarController = {
 
   getCourseCalendarPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
-    const page = Number(req.query.page || 1)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
       return res.status(400).send('課程 ID 必須是正整數')
     }
 
-    if (
-      !Number.isSafeInteger(page) ||
-      page < 1 ||
-      !Number.isSafeInteger((page - 1) * pageLimit)
-    ) {
+    const listPage = getPageOffset(req.query.page, pageLimit)
+    if (!listPage) {
       return res.status(400).send('頁碼不正確或超出可處理範圍')
     }
+    const { page } = listPage
 
     const result = await calendarService.getAdminCourseCalendarPage({
       courseId,
@@ -302,14 +299,7 @@ const adminCalendarController = {
       return res.status(400).send('課程與課堂 ID 必須是正整數')
     }
 
-    const requestedPage = Number(req.query.page ?? 1)
-
-    const validPage =
-      Number.isSafeInteger(requestedPage) &&
-      requestedPage > 0 &&
-      Number.isSafeInteger((requestedPage - 1) * pageLimit)
-
-    const page = validPage ? requestedPage : 1
+    const page = getPageOffset(req.query.page, pageLimit)?.page ?? 1
     const listUrl = `/admin/courses/${courseId}/calendar?page=${page}`
 
     const result = await calendarService.completeCourseSession(
@@ -365,13 +355,7 @@ const adminCalendarController = {
       return res.status(400).send('課程與課堂 ID 必須是正整數')
     }
 
-    const requestedPage = Number(req.query.page ?? 1)
-    const validPage =
-      Number.isSafeInteger(requestedPage) &&
-      requestedPage > 0 &&
-      Number.isSafeInteger((requestedPage - 1) * pageLimit)
-
-    const page = validPage ? requestedPage : 1
+    const page = getPageOffset(req.query.page, pageLimit)?.page ?? 1
     const listUrl = `/admin/courses/${courseId}/calendar?page=${page}`
 
     if (!result.ok) {

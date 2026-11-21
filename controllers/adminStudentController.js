@@ -1,19 +1,17 @@
 const studentService = require('../services/studentService')
 const imageStorage = require('../utils/imageStorage')
-const { getPagination, getPaginationLinks } = require('../utils/pagination')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const pageLimit = 12
 
 const adminStudentController = {
   getStudentListPage: async (req, res) => {
-    const page = Number(req.query.page || 1)
+    const listPage = getPageOffset(req.query.page, pageLimit)
+    if (!listPage) return res.status(400).send('頁碼必須是正整數')
+    const { page } = listPage
     const courseId = req.query.courseId
       ? Number(req.query.courseId)
       : undefined
-
-    if (!Number.isSafeInteger(page) || page < 1) {
-      return res.status(400).send('頁碼必須是正整數')
-    }
 
     if (
       courseId !== undefined &&
