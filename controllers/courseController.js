@@ -1,12 +1,30 @@
 const courseService = require('../services/courseService')
 const calendarService = require('../services/calendarService')
 const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
+const STAFF_DIRECTORY_PAGE_SIZE = require('../constants/staffDirectoryPageSize')
 const { formatTaipeiDateTime } = require('../utils/date')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const courseController = {
   getCourseListPage: async (req, res) => {
-    const courses = await courseService.getCourseDirectory(req.user.id)
-    return res.render('courses/index', { courses, isAdmin: req.user.isAdmin })
+    const pageSize = STAFF_DIRECTORY_PAGE_SIZE
+    const listPage = getPageOffset(req.query.page, pageSize)
+    if (!listPage) return res.status(400).send('頁碼必須是有效的正整數。')
+
+    const { page, offset } = listPage
+    const { courses, count } = await courseService.getCourseDirectoryPage({
+      userId: req.user.id, limit: pageSize, offset
+    })
+    const pagination = getPagination({ page, pageSize, totalCount: count })
+    const pageUrl = targetPage => `/cramschool/courses?page=${targetPage}`
+    if (page > pagination.totalPages) return res.redirect(pageUrl(pagination.totalPages))
+
+    return res.render('courses/index', {
+      courses,
+      isAdmin: req.user.isAdmin,
+      totalCount: count,
+      ...getPaginationLinks(pagination, pageUrl)
+    })
   },
 
   getCourseCalendarPage: async (req, res) => {

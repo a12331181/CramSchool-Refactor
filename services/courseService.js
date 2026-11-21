@@ -5,22 +5,28 @@ const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/c
 const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
 
-async function getCourseDirectory(userId) {
-  const [courses, teacher] = await Promise.all([
-    Course.findAll({
+async function getCourseDirectoryPage({ userId, limit, offset }) {
+  const [{ rows, count }, teacher] = await Promise.all([
+    Course.findAndCountAll({
       attributes: ['id', 'courseNo', 'name', 'time'],
       where: { isActive: true },
       include: [{ model: Teacher, attributes: ['id', 'name'], include: [getTeacherAccountInclude()] }],
+      order: [['id', 'ASC']],
+      limit,
+      offset,
       raw: true,
       nest: true
     }),
     Teacher.findOne({ attributes: ['id'], where: { UserId: userId }, raw: true })
   ])
 
-  return courses.map(course => ({
-    ...course,
-    canViewDiaries: teacher != null && course.Teacher?.id === teacher.id
-  }))
+  return {
+    courses: rows.map(course => ({
+      ...course,
+      canViewDiaries: teacher != null && course.Teacher?.id === teacher.id
+    })),
+    count
+  }
 }
 
 async function getCourseEnrolledStudents(courseId) {
@@ -381,7 +387,7 @@ async function setCourseActive(courseId, isActive) {
 }
 
 module.exports = {
-  getCourseDirectory,
+  getCourseDirectoryPage,
   getCourseEnrolledStudents,
   getAdminCoursesPage,
   getCourseFormData,

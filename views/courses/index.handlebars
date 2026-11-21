@@ -2,6 +2,7 @@
 {{> staff-nav activeTab="courses" showBilling=isAdmin}}
 
 <h1 class="h4 mt-3">課程列表</h1>
+{{#if totalCount}}<p class="text-muted">共 {{totalCount}} 門課程</p>{{/if}}
 <div class="table-responsive">
   <table class="table table-bordered table-hover">
     <thead class="table-secondary">
@@ -32,3 +33,5 @@
     </tbody>
   </table>
 </div>
+
+{{#if totalCount}}{{> pagination ariaLabel="課程列表分頁"}}{{/if}}
