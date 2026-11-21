@@ -33,7 +33,7 @@
     <tbody>
       {{#each courses}}
       <tr class="table-light">
-        <th scope="row">{{this.id}}</th>
+        <th scope="row">{{this.rowNumber}}</th>
         <td>{{this.courseLabel}}{{#if this.isClosed}} <small class="text-muted">（已關閉）</small>{{/if}}</td>
         <td>{{this.receivableText}}</td>
         <td>{{this.receivedText}}</td>

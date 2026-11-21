@@ -39,9 +39,10 @@ const tuitionReportController = {
     const monthQuery = new URLSearchParams({ billingMonth })
 
     const formatAmount = amount => amount === null ? '待核對' : `NT$ ${amountFormat.format(amount)}`
-    const courses = result.courses.map(course => {
+    const courses = result.courses.map((course, index) => {
       const [collectionText, collectionClass] = COURSE_COLLECTION_LABELS[course.collectionStatus]
       return {
+        rowNumber: index + 1,
         courseLabel: formatReferenceLabel(course.courseNo, course.name),
         isClosed: Number(course.isActive) === 0,
         receivableText: formatAmount(course.receivableAmount),
