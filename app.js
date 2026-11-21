@@ -38,8 +38,12 @@ app.use((req, res, next) => {
   next()
 })
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}!`)
-})
-
 require('./routes')(app, passport)
+
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Example app listening on port ${port}!`)
+  })
+}
+
+module.exports = app
