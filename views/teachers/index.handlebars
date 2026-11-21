@@ -2,6 +2,7 @@
 {{> staff-nav activeTab="teachers" showBilling=isAdmin}}
 
 <h1 class="h4 mt-3">老師列表</h1>
+{{#if totalCount}}<p class="text-muted">共 {{totalCount}} 位老師</p>{{/if}}
 <div class="table-responsive">
   <table class="table table-bordered table-hover">
     <thead class="table-secondary">
@@ -28,3 +29,5 @@
     </tbody>
   </table>
 </div>
+
+{{#if totalCount}}{{> pagination ariaLabel="老師列表分頁"}}{{/if}}

@@ -5,8 +5,8 @@ function getTeacherAccountInclude() {
   return { model: User, attributes: ['userNo'], required: false }
 }
 
-async function getActiveTeachers() {
-  const teachers = await Teacher.findAll({
+async function getActiveTeachersPage({ limit, offset }) {
+  const { rows, count } = await Teacher.findAndCountAll({
     attributes: ['name', 'phone', 'UserId'],
     where: {
       status: TEACHER_STATUS.ACTIVE
@@ -15,10 +15,12 @@ async function getActiveTeachers() {
       model: User,
       attributes: ['email', 'userNo']
     }],
-    order: [['id', 'ASC']]
+    order: [['id', 'ASC']],
+    limit,
+    offset
   })
 
-  return teachers.map(teacher => teacher.toJSON())
+  return { teachers: rows.map(teacher => teacher.toJSON()), count }
 }
 
 async function getTeachersPage({ page, pageSize, status }) {
@@ -112,7 +114,7 @@ async function updateTeacher(teacherId, teacherData) {
 
 module.exports = {
   getTeacherAccountInclude,
-  getActiveTeachers,
+  getActiveTeachersPage,
   getTeachersPage,
   getTeacherDetails,
   updateTeacher
