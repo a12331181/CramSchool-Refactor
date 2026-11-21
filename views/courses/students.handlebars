@@ -1,31 +1,36 @@
 <br>
 
 <h1>{{referenceLabel course.courseNo course.name}}</h1>
+<h2 class="h4">學生名單</h2>
 
-<h3 class="ml-2" style="color: rgb(171, 174, 175);">學生名單</h3>
-
-<div class="row">
-  {{#each students}}
-  <div class="col-md-3 mt-3">
-    <div class="card" style="width: 16rem;">
-      <div class="card-body" style="background-color: rgb(110, 181, 238);">
-        <h5 class="card-title" style="color: rgb(250, 253, 255);"><strong>{{referenceLabel this.studentNo this.name}}</strong></h5>
-      </div>
-      <ul class="list-group list-group-flush">
-        <li class="list-group-item"><strong>就讀學校: </strong>{{this.school}}</li>
-        <li class="list-group-item"><strong>年級: </strong>{{this.grade}}</li>
-      </ul>
-      <div class="card-body" style="background-color: rgb(237, 243, 245);">
-        <a href="/cramschool/students/{{this.id}}" class="card-link">詳細資料</a>
-        <a href="/cramschool/students/{{this.id}}/courses/{{../course.id}}/attend" class="card-link">出缺席資料</a>
-      </div>
-    </div>
-  </div>
-  {{else}}
-  <p class="col text-muted">目前沒有在學選課學生。</p>
-  {{/each}}
+<div class="table-responsive">
+  <table class="table table-bordered table-hover">
+    <thead class="table-secondary">
+      <tr>
+        <th scope="col">學生編號</th>
+        <th scope="col">姓名</th>
+        <th scope="col">就讀學校</th>
+        <th scope="col">年級</th>
+        <th scope="col">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each students}}
+      <tr>
+        <td>{{#if studentNo}}{{studentNo}}{{else}}—{{/if}}</td>
+        <th scope="row">{{name}}</th>
+        <td>{{#if school}}{{school}}{{else}}—{{/if}}</td>
+        <td>{{#if grade}}{{grade}}{{else}}—{{/if}}</td>
+        <td>
+          <a href="/cramschool/students/{{id}}" class="btn btn-sm btn-outline-dark">詳細資料</a>
+          <a href="/cramschool/students/{{id}}/courses/{{../course.id}}/attend" class="btn btn-sm btn-outline-primary">出缺席紀錄</a>
+        </td>
+      </tr>
+      {{else}}
+      <tr><td colspan="5" class="text-center text-muted">目前沒有在學選課學生。</td></tr>
+      {{/each}}
+    </tbody>
+  </table>
 </div>
 
-<br />
-<br />
-<a href="javascript:history.back()">回上一頁</a>
+<a href="/cramschool/courses">回課程列表</a>
