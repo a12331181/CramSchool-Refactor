@@ -33,8 +33,8 @@ async function getStudentsPage({ page, courseId, pageSize }) {
   const offset = (page - 1) * pageSize
 
   const query = {
+    attributes: ['id', 'studentNo', 'name', 'school', 'grade'],
     raw: true,
-    nest: true,
     distinct: true,
     where: { status: STUDENT_STATUS.ACTIVE },
     order: [['id', 'ASC']],
@@ -46,16 +46,22 @@ async function getStudentsPage({ page, courseId, pageSize }) {
     query.include = [{
       model: Course,
       as: 'EnrolledCourses',
-      where: { id: courseId }
+      attributes: [],
+      through: { attributes: [] },
+      where: { id: courseId },
+      required: true
     }]
   }
 
-  const result = await Student.findAndCountAll(query)
-
-  const courses = await Course.findAll({
-    where: { isActive: true },
-    raw: true
-  })
+  const [result, courses] = await Promise.all([
+    Student.findAndCountAll(query),
+    Course.findAll({
+      attributes: ['id', 'courseNo', 'name'],
+      where: { isActive: true },
+      order: [['id', 'ASC']],
+      raw: true
+    })
+  ])
 
   return {
     rows: result.rows,
@@ -87,13 +93,14 @@ async function getAdminStudentsPage({ page, pageSize, courseId }) {
     }]
   }
 
-  const result = await Student.findAndCountAll(query)
-
-  const courses = await Course.findAll({
-    attributes: ['id', 'name'],
-    order: [['id', 'ASC']],
-    raw: true
-  })
+  const [result, courses] = await Promise.all([
+    Student.findAndCountAll(query),
+    Course.findAll({
+      attributes: ['id', 'courseNo', 'name'],
+      order: [['id', 'ASC']],
+      raw: true
+    })
+  ])
 
   return {
     rows: result.rows.map(student => student.toJSON()),
