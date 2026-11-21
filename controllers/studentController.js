@@ -1,5 +1,7 @@
 const studentService = require('../services/studentService')
+const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
 const { getPagination, getPaginationLinks } = require('../utils/pagination')
+const { formatTaipeiDateTime } = require('../utils/date')
 const pageLimit = 12
 
 const studentController = {
@@ -76,7 +78,18 @@ const studentController = {
     const result = await studentService.getStudentAttendanceHistory({ courseId, studentId })
     if (!result) return res.redirect('/cramschool/students')
 
-    return res.render('students/attendance', result)
+    return res.render('students/attendance', {
+      student: result.student,
+      course: result.course,
+      attends: result.attends.map(({ calendarId, startAt, content, status, reason, isCancelled }) => ({
+        calendarId,
+        startAtText: formatTaipeiDateTime(startAt),
+        content,
+        statusText: Object.hasOwn(ATTEND_STATUS_LABELS, status) ? ATTEND_STATUS_LABELS[status] : '待核對',
+        reason,
+        isCancelled
+      }))
+    })
   }
 }
 

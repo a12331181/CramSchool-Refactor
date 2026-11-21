@@ -2,40 +2,30 @@
 
 <h1 style="color: rgb(73, 73, 60);"><strong>{{referenceLabel course.courseNo course.name}}</strong></h1>
 
-<div class="row">
-  <h4 class="ml-4 mb-2" style="color: rgb(117, 117, 95);"><strong>{{referenceLabel student.studentNo student.name}}</strong></h4>
-  <h4 class="ml-4 mb-2" style="color: rgb(126, 120, 113);">出缺席紀錄表</h4>
-</div>
+<h2 class="h4">{{referenceLabel student.studentNo student.name}}｜出缺席紀錄</h2>
 
-{{#if currentPeriod}}
-<p class="text-muted">第 {{currentPeriod}} 期</p>
-{{/if}}
-<br>
-
+<div class="table-responsive">
 <table class="table table-bordered">
   <thead>
     <tr class="table-primary">
-      <th scope="col">#</th>
-      <th scope="col">日期</th>
+      <th scope="col">課堂編號</th>
+      <th scope="col">上課時間（台北）</th>
       <th scope="col">上課內容</th>
       <th scope="col">出席狀況</th>
-      <th scope="col">缺席原因</th>
+      <th scope="col">原因／備註</th>
     </tr>
   </thead>
   <tbody>
     {{#each attends}}
     <tr class="table-light">
-      <th scope="row">{{this.id}}</th>
-      <td scope="row">{{this.date}}</td>
-      <td scope="row">{{this.content}}</td>
+      <th scope="row">{{this.calendarId}}</th>
+      <td>{{this.startAtText}}</td>
+      <td>{{this.content}}</td>
       <td>
-        {{#if this.isAttend}}
-        <p style="color: rgb(109, 179, 39);">正常出席</p>
-        {{else}}
-        <p style="color: rgb(207, 57, 20);">缺席</p>
-        {{/if}}
+        {{this.statusText}}
+        {{#if this.isCancelled}}<small class="d-block text-muted">課堂已取消</small>{{/if}}
       </td>
-      <td scope="row" style="color: rgb(146, 66, 9);">{{this.reason}}</td>
+      <td>{{#if this.reason}}{{this.reason}}{{else}}—{{/if}}</td>
     </tr>
     {{else}}
     <tr class="table-light">
@@ -44,11 +34,11 @@
     {{/each}}
   </tbody>
 </table>
+</div>
 {{#if attends.length}}
 <p class="text-muted">共 {{attends.length}} 筆出缺席紀錄。</p>
 {{/if}}
 
-<br />
-<br />
-
-<a href="javascript:history.back()">回上一頁</a>
+<a href="/cramschool/students/{{student.id}}">回學生資料</a>
+<span aria-hidden="true">｜</span>
+<a href="/cramschool/courses/{{course.id}}/enrolledstudents">回課程學生名單</a>

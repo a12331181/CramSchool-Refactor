@@ -3,6 +3,8 @@ const {Student, Course, Enrollment, Calendar, Attend, LegacyTuition, TuitionBill
 const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
+const ATTEND_STATUS = require('../constants/attendStatus')
 const { getTaipeiDate } = require('../utils/date')
 
 function getStudentReference(studentId, transaction) {
@@ -309,36 +311,87 @@ async function deleteStudent(studentId) {
 }
 
 async function getStudentAttendanceHistory({ courseId, studentId }) {
-  const [course, student, currentPeriod] = await Promise.all([
-    Course.findOne({ where: { id: courseId, isActive: true } }),
-    Student.findOne({ where: { id: studentId, status: STUDENT_STATUS.ACTIVE } }),
-    Calendar.max('period', { where: { CourseId: courseId } })
+  const [course, student] = await Promise.all([
+    Course.findOne({
+      attributes: ['id', 'courseNo', 'name'],
+      where: { id: courseId, isActive: true },
+      raw: true
+    }),
+    Student.findOne({
+      attributes: ['id', 'studentNo', 'name'],
+      where: { id: studentId, status: STUDENT_STATUS.ACTIVE },
+      raw: true
+    })
   ])
 
   if (!course || !student) return null
 
-  const calendars = await Calendar.findAll({
-    where: { CourseId: courseId, period: currentPeriod },
-    attributes: ['id', 'date', 'content'],
-    include: [{
-      model: Attend,
-      attributes: ['id', 'isAttend', 'reason'],
-      where: { StudentId: studentId },
-      required: true
-    }],
-    order: [['id', 'ASC']]
-  })
-  const attends = calendars.map(calendar => {
-    const { date, content, Attends: [attend] } = calendar.toJSON()
-    return { id: attend.id, date, content, isAttend: attend.isAttend, reason: attend.reason }
-  })
+  const [calendars, enrollments] = await Promise.all([
+    Calendar.findAll({
+      attributes: ['id', 'startAt', 'endAt', 'status', 'content'],
+      where: {
+        CourseId: courseId,
+        status: { [Op.in]: Object.values(COURSE_SESSION_STATUS) },
+        startAt: { [Op.ne]: null },
+        endAt: { [Op.ne]: null }
+      },
+      include: [{
+        model: Attend,
+        attributes: ['id', 'status', 'reason'],
+        where: { StudentId: studentId },
+        required: false
+      }],
+      order: [['startAt', 'DESC'], ['id', 'DESC']]
+    }),
+    Enrollment.findAll({
+      attributes: ['startsOn', 'endsOn', 'status'],
+      where: {
+        CourseId: courseId,
+        StudentId: studentId,
+        status: { [Op.in]: [ENROLLMENT_STATUS.ACTIVE, ENROLLMENT_STATUS.ENDED] }
+      },
+      raw: true
+    })
+  ])
 
-  return {
-    student: student.toJSON(),
-    course: course.toJSON(),
-    attends,
-    currentPeriod
+  const now = Date.now()
+  const attends = []
+  for (const calendar of calendars) {
+    const { id, startAt, endAt, status: sessionStatus, content, Attends } = calendar.get({ plain: true })
+    if (
+      !(startAt instanceof Date) || !Number.isFinite(startAt.getTime()) ||
+      !(endAt instanceof Date) || !Number.isFinite(endAt.getTime()) ||
+      startAt >= endAt
+    ) continue
+
+    const attend = Attends[0]
+    const isCancelled = sessionStatus === COURSE_SESSION_STATUS.CANCELLED
+    if (!attend) {
+      if (isCancelled || endAt.getTime() > now) continue
+
+      const sessionDate = getTaipeiDate(startAt)
+      const candidates = enrollments.filter(({ startsOn, endsOn }) =>
+        (startsOn == null || startsOn <= sessionDate) &&
+        (endsOn == null || endsOn > sessionDate)
+      )
+      const [enrollment] = candidates
+      if (
+        candidates.length !== 1 || enrollment.startsOn == null ||
+        (enrollment.status === ENROLLMENT_STATUS.ENDED && enrollment.endsOn == null)
+      ) continue
+    }
+
+    attends.push({
+      calendarId: id,
+      startAt,
+      content,
+      status: attend ? attend.status : ATTEND_STATUS.UNMARKED,
+      reason: attend?.reason ?? '',
+      isCancelled
+    })
   }
+
+  return { student, course, attends }
 }
 
 module.exports = {
