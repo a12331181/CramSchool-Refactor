@@ -22,7 +22,7 @@ const courseController = {
       return res.redirect('/cramschool/courses')
     }
 
-    const { course, sessions, currentPeriod, legacyCalendars } = result
+    const { course, sessions } = result
 
     return res.render('courses/calendar', {
       course,
@@ -31,11 +31,7 @@ const courseController = {
         endAtText: formatTaipeiDateTime(session.endAt) ?? '待核對',
         statusText: COURSE_SESSION_STATUS_LABELS[session.status] ?? '待核對',
         content: session.content
-      })),
-      calendars: legacyCalendars,
-      currentPeriod,
-      firstCalendarDate: legacyCalendars[0]?.date,
-      lastCalendarDate: legacyCalendars.at(-1)?.date
+      }))
     })
   },
 

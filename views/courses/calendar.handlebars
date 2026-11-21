@@ -1,81 +1,31 @@
-<br />
+<br>
 
 <h1>{{referenceLabel course.courseNo course.name}}</h1>
-{{#if sessions.length}}
-<h4>課堂時段（台北時間）</h4>
-<table class="table table-bordered">
-  <thead>
-    <tr>
-      <th scope="col">開始時間</th>
-      <th scope="col">結束時間</th>
-      <th scope="col">狀態</th>
-      <th scope="col">課堂內容</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{#each sessions}}
-    <tr>
-      <td>{{this.startAtText}}</td>
-      <td>{{this.endAtText}}</td>
-      <td>{{this.statusText}}</td>
-      <td>{{this.content}}</td>
-    </tr>
-    {{/each}}
-  </tbody>
-</table>
-{{else}}
-{{#unless calendars.length}}
-  <p class="text-muted">目前沒有可顯示的課堂。</p>
-{{/unless}}
-{{/if}}
+<h2 class="h4">課堂時段（台北時間）</h2>
 
-{{#if calendars.length}}
-<div class="row justify-content-between">
-  <h4 class="ml-4 my-1" style="color: rgb(116, 122, 133)">課程行事曆</h4>
-  <h5 class="mr-4 my-1" style="color: rgb(110, 172, 207);">
-    <strong style="color: rgb(70, 62, 47);">目前期數: 第 {{currentPeriod}} 期 </strong>
-  </h5>
-</div>
-<div class="row ml-1 mt-2" style="color: rgb(97, 138, 202)">
-  <h6 class="mx-2" style="color: rgb(214, 157, 72)"><strong>上課期間 :</strong></h6>
-  <h6 class="mx-1" style="color: rgb(214, 157, 72)">{{firstCalendarDate}}</h6>
-  <h6 class="mx-1" style="color: rgb(214, 157, 72)"> ~ </h6>
-  <h6 class="mx-1" style="color: rgb(214, 157, 72)"> {{lastCalendarDate}}</h6>
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <thead class="table-secondary">
+      <tr>
+        <th scope="col">開始時間</th>
+        <th scope="col">結束時間</th>
+        <th scope="col">狀態</th>
+        <th scope="col">課堂內容</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each sessions}}
+      <tr>
+        <td>{{this.startAtText}}</td>
+        <td>{{this.endAtText}}</td>
+        <td>{{this.statusText}}</td>
+        <td>{{this.content}}</td>
+      </tr>
+      {{else}}
+      <tr><td colspan="4" class="text-center text-muted">目前沒有可顯示的課堂。</td></tr>
+      {{/each}}
+    </tbody>
+  </table>
 </div>
 
-<div class="row">
-  {{#each calendars}}
-  {{#if this.isActive}}
-  <div class="col-md-3">
-    <div class="card mt-3">
-      <div class="card-header" style="background-color: rgb(76, 163, 245);">
-        <h5 style="color: rgb(246, 249, 252);"><strong>{{this.date}}</strong></h5>
-      </div>
-      <div class="card-body" style="color: rgb(95, 113, 143); min-height: 240px">
-        <h5><strong>課程進度:</strong></h5>
-        <h5 class="card-title" style="color: rgb(144, 164, 196)">{{this.content}}</h5>
-      </div>
-    </div>
-  </div>
-  {{else}}
-  <div class="col-md-3">
-    <div class="card mt-3 text-white">
-      <div class="card-header bg-dark" style="background-color: darkgray;">
-        <h5><strong>{{this.date}}</strong></h5>
-      </div>
-      <div class="card-body" style="color: rgb(28, 36, 49); min-height: 240px; background-color: rgb(224, 224, 224);">
-        <h5><strong>課程進度:</strong></h5>
-        <h5 class="card-title" style="color: rgb(53, 84, 133)">{{this.content}}</h5>
-        <br />
-        <h5 style="color: rgba(243, 55, 55, 0.911);"><strong>---- 此堂課已結束 ----</strong></h5>
-      </div>
-    </div>
-  </div>
-  {{/if}}
-  {{/each}}
-</div>
-{{/if}}
-
-<br />
-<br />
-<a href="javascript:history.back()">回上一頁</a>
+<a href="/cramschool/courses">回課程列表</a>

@@ -482,45 +482,19 @@ async function getCourseCalendarData(courseId) {
 
   if (!course) return null
 
-  const legacyWhere = {
-    CourseId: courseId,
-    status: null,
-    startAt: null,
-    endAt: null,
-    TeacherId: null
-  }
+  const sessions = await Calendar.findAll({
+    attributes: ['startAt', 'endAt', 'status', 'content'],
+    where: {
+      CourseId: courseId,
+      status: { [Op.in]: Object.values(COURSE_SESSION_STATUS) },
+      startAt: { [Op.ne]: null },
+      endAt: { [Op.ne]: null }
+    },
+    order: [['startAt', 'ASC'], ['id', 'ASC']],
+    raw: true
+  })
 
-  const [sessions, currentPeriod] = await Promise.all([
-    Calendar.findAll({
-      attributes: ['id', 'startAt', 'endAt', 'status', 'content'],
-      where: {
-        CourseId: courseId,
-        status: {
-          [Op.in]: [
-            COURSE_SESSION_STATUS.SCHEDULED,
-            COURSE_SESSION_STATUS.COMPLETED,
-            COURSE_SESSION_STATUS.CANCELLED
-          ]
-        },
-        startAt: { [Op.ne]: null },
-        endAt: { [Op.ne]: null }
-      },
-      order: [['startAt', 'ASC'], ['id', 'ASC']],
-      raw: true
-    }),
-    Calendar.max('period', { where: legacyWhere })
-  ])
-
-  const legacyCalendars = currentPeriod == null
-    ? []
-    : await Calendar.findAll({
-        attributes: ['id', 'date', 'content', 'isActive'],
-        where: { ...legacyWhere, period: currentPeriod },
-        order: [['date', 'ASC'], ['id', 'ASC']],
-        raw: true
-      })
-
-  return { course, sessions, currentPeriod, legacyCalendars }
+  return { course, sessions }
 }
 
 async function getLegacyCalendarEditData(courseId, calendarId) {
