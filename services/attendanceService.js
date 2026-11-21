@@ -39,19 +39,28 @@ function getVisibleSessionJoin(viewer) {
   }
 }
 
-async function getAttendanceHome({ userId }) {
+async function getAttendanceHome({ userId, limit, offset }) {
   const viewer = await getAttendanceViewer(userId)
-  if (!viewer) return { courses: [], isAdmin: false }
+  if (!viewer) return { courses: [], count: 0, isAdmin: false }
 
-  const courses = await Course.findAll({
-    attributes: ['id', 'courseNo', 'name'],
+  const accessQuery = {
     ...(viewer.isAdmin ? {} : { where: { isActive: true } }),
-    include: [getVisibleSessionJoin(viewer)],
-    group: [col('Course.id'), col('Course.courseNo'), col('Course.name')],
-    order: [['name', 'ASC'], ['id', 'ASC']],
-    raw: true
-  })
-  return { courses, isAdmin: viewer.isAdmin }
+    include: [getVisibleSessionJoin(viewer)]
+  }
+  const [courses, count] = await Promise.all([
+    Course.findAll({
+      ...accessQuery,
+      attributes: ['id', 'courseNo', 'name'],
+      group: [col('Course.id'), col('Course.courseNo'), col('Course.name')],
+      order: [['name', 'ASC'], ['id', 'ASC']],
+      subQuery: false,
+      limit,
+      offset,
+      raw: true
+    }),
+    Course.count({ ...accessQuery, distinct: true, col: 'id' })
+  ])
+  return { courses, count, isAdmin: viewer.isAdmin }
 }
 
 async function getCourseAttendanceSessions({ courseId, userId, month, status, page, pageSize }) {

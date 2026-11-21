@@ -4,16 +4,34 @@ const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
+const STAFF_DIRECTORY_PAGE_SIZE = require('../constants/staffDirectoryPageSize')
 const { formatTaipeiDateTime } = require('../utils/date')
-const { getPagination, getPaginationLinks } = require('../utils/pagination')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const SESSION_PAGE_SIZE = 20
 
 const attendanceController = {
   getAttendanceHomePage: async (req, res) => {
-    const data = await attendanceService.getAttendanceHome({ userId: req.user.id })
+    const pageSize = STAFF_DIRECTORY_PAGE_SIZE
+    const listPage = getPageOffset(req.query.page, pageSize)
+    if (!listPage) return res.status(400).send('頁碼必須是有效的正整數。')
+
+    const { page, offset } = listPage
+    const { courses, count, isAdmin } = await attendanceService.getAttendanceHome({
+      userId: req.user.id, limit: pageSize, offset
+    })
     res.set('Cache-Control', 'no-store')
-    return res.render('attendance/index', data)
+
+    const pagination = getPagination({ page, pageSize, totalCount: count })
+    const pageUrl = targetPage => `/cramschool/attend?page=${targetPage}`
+    if (page > pagination.totalPages) return res.redirect(pageUrl(pagination.totalPages))
+
+    return res.render('attendance/index', {
+      courses,
+      isAdmin,
+      totalCount: count,
+      ...getPaginationLinks(pagination, pageUrl)
+    })
   },
 
   getCourseAttendanceSessionsPage: async (req, res) => {
