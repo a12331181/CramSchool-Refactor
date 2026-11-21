@@ -1,4 +1,5 @@
 const { getTeacherAccountInclude } = require('./teacherService')
+const { getCandidateEnrollmentWhere, getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
 const { User, Course, Teacher, Calendar, Enrollment, Student, Attend, AuditLog, sequelize } = require('../models')
 const { Op, col, UniqueConstraintError } = require('sequelize')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
@@ -102,14 +103,8 @@ async function getCourseAttendanceSessions({ courseId, userId, month, status, pa
 }
 
 async function getAttendanceRoster({ courseId, calendarId, userId }) {
-   const user = await User.findByPk(userId, {
-    attributes: ['id', 'isAdmin'],
-    raw: true
-  })
-
-  if (!user) return null
-
-  const isAdmin = Number(user.isAdmin) === 1
+  const viewer = await getAttendanceViewer(userId)
+  if (!viewer) return null
 
   const calendar = await Calendar.findOne({
     attributes: ['id', 'CourseId', 'startAt', 'endAt', 'status', 'content'],
@@ -124,12 +119,7 @@ async function getAttendanceRoster({ courseId, calendarId, userId }) {
       }
     },
     include: [
-      {
-        model: Teacher,
-        attributes: ['UserId'],
-        ...(isAdmin ? {} : { where: { UserId: userId } }),
-        required: true
-      },
+      getVisibleTeacherJoin(viewer, ['UserId']),
       {
         model: Course,
         attributes: ['id', 'courseNo', 'name', 'isActive'],
@@ -157,58 +147,29 @@ async function getAttendanceRoster({ courseId, calendarId, userId }) {
     attributes: ['StudentId', 'startsOn', 'endsOn', 'status'],
     where: {
       CourseId: courseId,
-      status: {
-        [Op.in]: [
-          ENROLLMENT_STATUS.ACTIVE,
-          ENROLLMENT_STATUS.ENDED
-        ]
-      },
-      [Op.and]: [
-        {
-          [Op.or]: [
-            { startsOn: null },
-            { startsOn: { [Op.lte]: calendarDate } }
-          ]
-        },
-        {
-          [Op.or]: [
-            { endsOn: null },
-            { endsOn: { [Op.gt]: calendarDate } }
-          ]
-        }
-      ]
+      ...getCandidateEnrollmentWhere(calendarDate)
     },
     raw: true
   })
 
-  const studentIds = new Set()
-  const pendingIds = new Set()
-
+  const enrollmentsByStudent = new Map()
   for (const enrollment of enrollments) {
-    const unknownDates =
-      enrollment.startsOn == null ||
-      (
-        enrollment.status === ENROLLMENT_STATUS.ENDED &&
-        enrollment.endsOn == null
-      )
-
-    if (unknownDates) {
-      pendingIds.add(enrollment.StudentId)
-    } else {
-      studentIds.add(enrollment.StudentId)
-    }
+    const candidates = enrollmentsByStudent.get(enrollment.StudentId) ?? []
+    candidates.push(enrollment)
+    enrollmentsByStudent.set(enrollment.StudentId, candidates)
   }
 
-  for (const id of studentIds) {
-    pendingIds.delete(id)
-  }
-
-  const students = studentIds.size === 0
+  const pendingIds = new Set(
+    [...enrollmentsByStudent]
+      .filter(([, candidates]) => !getConfirmedSessionEnrollment(candidates))
+      .map(([studentId]) => studentId)
+  )
+  const students = enrollmentsByStudent.size === 0
     ? []
     : await Student.findAll({
         attributes: ['id', 'studentNo', 'name'],
         where: {
-          id: { [Op.in]: [...studentIds] }
+          id: { [Op.in]: [...enrollmentsByStudent.keys()] }
         },
         order: [['id', 'ASC']],
         raw: true
@@ -227,12 +188,13 @@ async function getAttendanceRoster({ courseId, calendarId, userId }) {
   return {
     calendar,
     course: calendar.Course,
-    isAdmin,
+    isAdmin: viewer.isAdmin,
     calendarDate,
     pendingCount: pendingIds.size,
-    isAssignedTeacher: calendar.Teacher.UserId === user.id,
+    isAssignedTeacher: calendar.Teacher.UserId === viewer.userId,
     students: students.map(student => ({
       ...student,
+      needsEnrollmentReview: pendingIds.has(student.id),
       hasAttend: attendByStudentId.has(student.id),
       attendStatus: attendByStudentId.get(student.id)?.status ?? null,
       attendReason: attendByStudentId.get(student.id)?.reason ?? '',
@@ -349,35 +311,13 @@ async function recordAttendance({
         where: {
           StudentId: studentId,
           CourseId: courseId,
-          status: {
-            [Op.in]: [ENROLLMENT_STATUS.ACTIVE, ENROLLMENT_STATUS.ENDED]
-          },
-          [Op.and]: [
-            {
-              [Op.or]: [
-                { startsOn: null },
-                { startsOn: { [Op.lte]: calendarDate } }
-              ]
-            },
-            {
-              [Op.or]: [
-                { endsOn: null },
-                { endsOn: { [Op.gt]: calendarDate } }
-              ]
-            }
-          ]
+          ...getCandidateEnrollmentWhere(calendarDate)
         },
         limit: 2
       })
 
-      const enrollment = enrollments[0]
-      if (
-        enrollments.length !== 1 || enrollment.startsOn == null ||
-        (
-          enrollment.status === ENROLLMENT_STATUS.ENDED &&
-          enrollment.endsOn == null
-        )
-      ) {
+      const enrollment = getConfirmedSessionEnrollment(enrollments)
+      if (!enrollment) {
         return { ok: false, code: 'ENROLLMENT_UNCONFIRMED' }
       }
 

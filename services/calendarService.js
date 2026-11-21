@@ -1,4 +1,5 @@
 const { getTeacherAccountInclude } = require('./teacherService')
+const { getCandidateEnrollmentWhere, isConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
 const { Op, col, fn, literal, where } = require('sequelize')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
@@ -6,7 +7,6 @@ const { Course, Calendar, Teacher, Enrollment, Attend, TuitionBill, TuitionBillI
 const TEACHER_STATUS = require('../constants/teacherStatus')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const COURSE_SESSION_BATCH_LIMIT = require('../constants/courseSessionBatchLimit')
-const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
 
@@ -369,26 +369,7 @@ async function checkCourseSessionAttendance({ calendar, transaction }) {
     attributes: ['id', 'StudentId', 'startsOn', 'endsOn', 'status'],
     where: {
       CourseId: calendar.CourseId,
-      status: {
-        [Op.in]: [
-          ENROLLMENT_STATUS.ACTIVE,
-          ENROLLMENT_STATUS.ENDED
-        ]
-      },
-      [Op.and]: [
-        {
-          [Op.or]: [
-            { startsOn: null },
-            { startsOn: { [Op.lte]: calendarDate } }
-          ]
-        },
-        {
-          [Op.or]: [
-            { endsOn: null },
-            { endsOn: { [Op.gt]: calendarDate } }
-          ]
-        }
-      ]
+      ...getCandidateEnrollmentWhere(calendarDate)
     }
   })
 
@@ -398,11 +379,7 @@ async function checkCourseSessionAttendance({ calendar, transaction }) {
     if (
       !Number.isSafeInteger(enrollment.StudentId) ||
       enrollment.StudentId < 1 ||
-      enrollment.startsOn == null ||
-      (
-        enrollment.status === ENROLLMENT_STATUS.ENDED &&
-        enrollment.endsOn == null
-      ) ||
+      !isConfirmedSessionEnrollment(enrollment) ||
       enrollmentByStudentId.has(enrollment.StudentId)
     ) {
       return {

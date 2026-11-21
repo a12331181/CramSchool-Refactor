@@ -1,4 +1,5 @@
 const { allocateStudentNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
+const { getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
 const {Student, Course, Enrollment, Calendar, Attend, LegacyTuition, TuitionBill, sequelize} = require('../models')
 const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
@@ -374,11 +375,7 @@ async function getStudentAttendanceHistory({ courseId, studentId }) {
         (startsOn == null || startsOn <= sessionDate) &&
         (endsOn == null || endsOn > sessionDate)
       )
-      const [enrollment] = candidates
-      if (
-        candidates.length !== 1 || enrollment.startsOn == null ||
-        (enrollment.status === ENROLLMENT_STATUS.ENDED && enrollment.endsOn == null)
-      ) continue
+      if (!getConfirmedSessionEnrollment(candidates)) continue
     }
 
     attends.push({

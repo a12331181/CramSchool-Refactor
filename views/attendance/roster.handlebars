@@ -7,7 +7,7 @@
 
 {{#if pendingCount}}
 <p class="alert alert-info">
-  另有 {{pendingCount}} 位學生的選課日期待核對。
+  有 {{pendingCount}} 位學生的選課期間待核對，確認前無法新增點名。
 </p>
 {{/if}}
 
@@ -26,7 +26,10 @@
     <tr>
       <td>{{this.id}}</td>
       <td>{{referenceLabel this.studentNo this.name}}</td>
-      <td>{{this.attendText}}</td>
+      <td>
+        {{this.attendText}}
+        {{#if this.needsEnrollmentReview}}<small class="d-block text-muted">選課待核對</small>{{/if}}
+      </td>
       <td>
         {{#if this.attendReason}}
         {{this.attendReason}}

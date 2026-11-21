@@ -134,7 +134,7 @@ const attendanceController = {
         attendText: student.hasAttend
           ? ATTEND_STATUS_LABELS[student.attendStatus] ?? '舊紀錄待核對'
           : ATTEND_STATUS_LABELS[ATTEND_STATUS.UNMARKED],
-        canCreateAttend: canCreate && !student.hasAttend,
+        canCreateAttend: canCreate && !student.hasAttend && !student.needsEnrollmentReview,
         canUpdateAttend:
           canUpdate && student.hasAttend &&
           [ATTEND_STATUS.PRESENT, ATTEND_STATUS.ABSENT, ATTEND_STATUS.EXCUSED]
