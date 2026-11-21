@@ -4,11 +4,7 @@ const { Model } = require('sequelize')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 
 module.exports = (sequelize, DataTypes) => {
-  class Enrollment extends Model {
-    static associate(models) {
-      // 關聯查詢會在切換選課期間流程時一起調整
-    }
-  }
+  class Enrollment extends Model {}
 
   Enrollment.init({
     id: {
