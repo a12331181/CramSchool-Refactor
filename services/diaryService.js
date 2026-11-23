@@ -22,6 +22,7 @@ function withDeletePermissions(page, viewer) {
 
 function getRecentDiaries(limit) {
   return Diary.findAll({
+    attributes: ['id', 'date', 'subject'],
     raw: true,
     nest: true,
     limit,
@@ -32,6 +33,7 @@ function getRecentDiaries(limit) {
 
 async function getDiariesPage({ offset, limit, viewer }) {
   const page = await Diary.findAndCountAll({
+    attributes: ['id', 'date', 'subject'],
     raw: true,
     nest: true,
     include: [activeCourseInclude(), diaryAuthorInclude()],

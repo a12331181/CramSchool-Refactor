@@ -3,6 +3,7 @@ const { Meeting, Teacher } = require('../models')
 
 function getRecentMeetings(limit) {
   return Meeting.findAll({
+    attributes: ['id', 'date', 'subject'],
     raw: true,
     nest: true,
     limit,
@@ -12,6 +13,7 @@ function getRecentMeetings(limit) {
 
 function getMeetingsPage({ offset, limit }) {
   return Meeting.findAndCountAll({
+    attributes: ['id', 'date', 'subject'],
     raw: true,
     nest: true,
     offset,
