@@ -6,6 +6,6 @@ const router = Router()
 
 router.get('/', authenticatedAdmin, adminUserController.getUserListPage)
 router.post('/invitations', authenticatedAdmin, adminUserController.createTeacherInvitation)
-router.put('/:userId/toggleAdmin', authenticatedAdmin, adminUserController.toggleUserAdmin )
+router.put('/:userId/toggleAdmin', authenticatedAdmin, adminUserController.toggleUserAdmin)
 
 module.exports = router

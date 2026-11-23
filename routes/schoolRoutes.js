@@ -18,7 +18,11 @@ router.get('/diaries', authenticated, diaryController.getDiaryListPage)
 router.get('/courses/:courseId/diaries', authenticated, diaryController.getCourseDiariesPage)
 router.get('/courses/:courseId/diaries/create', authenticated, diaryController.getCreateDiaryPage)
 router.post('/courses/:courseId/diaries', authenticated, diaryController.createDiary)
-router.get('/courses/:courseId/diaries/:diaryId', authenticated, diaryController.getDiaryDetailsPage)
+router.get(
+  '/courses/:courseId/diaries/:diaryId',
+  authenticated,
+  diaryController.getDiaryDetailsPage
+)
 router.delete('/courses/:courseId/diaries/:diaryId', authenticated, diaryController.deleteDiary)
 
 module.exports = router

@@ -6,6 +6,10 @@ const router = Router()
 
 router.get('/', authenticated, studentController.getStudentListPage)
 router.get('/:studentId', authenticated, studentController.getStudentDetailsPage)
-router.get('/:studentId/courses/:courseId/attend', authenticated, studentController.getStudentAttendanceHistoryPage)
+router.get(
+  '/:studentId/courses/:courseId/attend',
+  authenticated,
+  studentController.getStudentAttendanceHistoryPage
+)
 
 module.exports = router

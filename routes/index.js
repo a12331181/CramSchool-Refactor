@@ -29,5 +29,10 @@ module.exports = (app, passport) => {
   app.use('/admin/extrafees', adminExtraFeeRoutes)
   app.use('/', createAccountRoutes(passport))
   app.use('/admin/teachers', adminTeacherRoutes)
-  app.use('/admin/students', authenticatedAdmin, adminStudentRoutes, enrollmentRoutes)
+  app.use(
+    '/admin/students',
+    authenticatedAdmin,
+    adminStudentRoutes,
+    enrollmentRoutes
+  )
 }

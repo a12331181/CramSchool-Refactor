@@ -5,24 +5,12 @@ const router = express.Router()
 
 router.use(authenticatedAdmin)
 
-router.get(
-  '/',
-  adminTeacherController.getTeacherListPage
-)
+router.get('/', adminTeacherController.getTeacherListPage)
 
-router.get(
-  '/:teacherId',
-  adminTeacherController.getTeacherDetailsPage
-)
+router.get('/:teacherId', adminTeacherController.getTeacherDetailsPage)
 
-router.get(
-  '/:teacherId/edit',
-  adminTeacherController.getEditTeacherPage
-)
+router.get('/:teacherId/edit', adminTeacherController.getEditTeacherPage)
 
-router.put(
-  '/:teacherId',
-  adminTeacherController.updateTeacher
-)
+router.put('/:teacherId', adminTeacherController.updateTeacher)
 
 module.exports = router
