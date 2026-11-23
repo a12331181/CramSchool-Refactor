@@ -13,6 +13,7 @@ const { authenticated } = require('./middlewares/auth')
 const uploadDir = path.join(__dirname, 'upload')
 const app = express()
 app.locals.imageAccept = IMAGE_ACCEPT
+app.use('/assets/workspace', express.static(path.join(__dirname, 'public', 'workspace')))
 const port = 3000
 
 // setup handlebars

@@ -1,3 +1,4 @@
+const { getTaipeiDate } = require('../utils/date')
 const meetingService = require('../services/meetingService')
 const diaryService = require('../services/diaryService')
 
@@ -7,7 +8,10 @@ const schoolController = {
       meetingService.getRecentMeetings(5),
       diaryService.getRecentDiaries(4)
     ])
-    return res.render('school/home', { isAdmin: req.user.isAdmin, meetings, diaries })
+    return res.render('school/home', {
+      layout: 'workspace', workspaceTitle: '校務總覽', activeNav: 'home',
+      today: getTaipeiDate(), isAdmin: req.user.isAdmin, meetings, diaries
+    })
   },
 
   getIntroductionPage: (req, res) => {

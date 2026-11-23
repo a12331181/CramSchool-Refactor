@@ -1,0 +1,35 @@
+{{#*inline "workspace-link"}}
+<a href="{{href}}" class="ws-nav-link"{{#ifCond activeNav tab}} aria-current="page"{{/ifCond}}>
+  {{> workspace/icon name=icon}}<span>{{label}}</span>
+</a>
+{{/inline}}
+<nav aria-label="校務導覽">
+  <div class="ws-group">
+    <span class="ws-group-title">教務</span>
+    {{> workspace-link tab="home" href="/cramschool" icon="grid" label="校務總覽"}}
+    {{> workspace-link tab="courses" href="/cramschool/courses" icon="book" label="課程列表"}}
+    {{> workspace-link tab="students" href="/cramschool/students" icon="users" label="學生名單"}}
+    {{> workspace-link tab="teachers" href="/cramschool/teachers" icon="teacher" label="教師名單"}}
+    {{> workspace-link tab="attendance" href="/cramschool/attend" icon="checklist" label="課程點名"}}
+    {{> workspace-link tab="diaries" href="/cramschool/diaries" icon="journal" label="教師日誌"}}
+    {{> workspace-link tab="meetings" href="/cramschool/meetings" icon="meeting" label="會議紀錄"}}
+  </div>
+  {{#if user.isAdmin}}
+  <div class="ws-group">
+    <span class="ws-group-title">帳務</span>
+    {{> workspace-link tab="fees" href="/cramschool/payment" icon="wallet" label="課程收費紀錄"}}
+    {{> workspace-link tab="billing" href="/cramschool/tuition/students" icon="receipt" label="學生繳費紀錄"}}
+    {{> workspace-link tab="cashflow" href="/cramschool/tuition/cashflow" icon="flow" label="收退費對帳"}}
+  </div>
+  <div class="ws-group">
+    <span class="ws-group-title">管理</span>
+    {{> workspace-link tab="admin-home" href="/admin/cramschool" icon="settings" label="後台總覽"}}
+    {{> workspace-link tab="admin-students" href="/admin/students" icon="id" label="學生管理"}}
+    {{> workspace-link tab="accounts" href="/admin/users" icon="key" label="帳號管理"}}
+  </div>
+  {{/if}}
+  <div class="ws-group ws-secondary">
+    {{> workspace-link href="/cramschool/introduction" icon="info" label="關於系統" tab="about"}}
+    {{> workspace-link href="/logout" icon="logout" label="登出" tab="logout"}}
+  </div>
+</nav>

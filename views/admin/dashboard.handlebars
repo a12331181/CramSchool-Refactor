@@ -1,50 +1,11 @@
-<br />
-
-<h1>資料管理後台</h1>
-
-{{> admin-nav activeTab="home"}}
-
-<div class="card mt-2">
-  <div class="card-body">
-    <h5><strong>後台課程功能</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item">可以瀏覽所有課程的資訊</li>
-      <li class="list-group-item">可以新增、修改和刪除課程</li>
-      <li class="list-group-item">可以瀏覽所有課程行事曆</li>
-      <li class="list-group-item">可以新增下一期課程行事曆</li>
-      <li class="list-group-item">可以刪除尚未進行的新一期課程行事曆</li>
-      <li class="list-group-item">可以修改個別課程行事曆內容</li>
-      <li class="list-group-item">如果該課程行事曆確認結束後，可將其關閉</li>
-    </ul>
-  </div>
-  <div class="card-body">
-    <h5><strong>後台教師功能</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item">可以瀏覽所有教師資訊</li>
-      <li class="list-group-item">可以修改個別教師資訊</li>
-      <li class="list-group-item">如果該教師離職、留職停薪，可切換其狀態</li>
-    </ul>
-  </div>
-  <div class="card-body">
-    <h5><strong>後台學生功能</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item">可以瀏覽學生資訊</li>
-      <li class="list-group-item">可以新增、修改和刪除學生資訊</li>
-      <li class="list-group-item">可以註冊、註銷學生課程</li>
-      <li class="list-group-item">如果該學生停學，可切換狀態</li>
-    </ul>
-  </div>
-  <div class="card-body">
-    <h5><strong>後台額外費用功能</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item">可以新增費用</li>
-      <li class="list-group-item">可以修改費用金額</li>
-    </ul>
-  </div>
-  <div class="card-body">
-    <h5><strong>後台使用者功能</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item">可以切換使用者權限</li>
-    </ul>
-  </div>
+<div class="ws-heading"><h1>後台總覽</h1><a class="ws-btn ws-primary" href="/admin/students/create">{{> workspace/icon name="plus"}}新增學生</a></div>
+{{#*inline "admin-entry"}}
+<a class="ws-shortcut" href="{{url}}"><span class="ws-tile-icon {{tint}}">{{> workspace/icon name=symbol}}</span><div><h2>{{label}}</h2><p>{{description}}</p></div>{{> workspace/icon name="chevron"}}</a>
+{{/inline}}
+<div class="ws-shortcuts ws-admin-cards">
+  {{> admin-entry url="/admin/students" symbol="users" tint="ws-mint" label="學生管理" description="學生資料、學籍與選課"}}
+  {{> admin-entry url="/admin/courses" symbol="book" label="課程管理" description="課程設定、排課與結課"}}
+  {{> admin-entry url="/admin/teachers" symbol="teacher" tint="ws-blue" label="教師管理" description="教師資料與在職狀態"}}
+  {{> admin-entry url="/admin/users" symbol="key" tint="ws-blue" label="帳號管理" description="邀請新老師或調整權限"}}
+  {{> admin-entry url="/admin/extrafees" symbol="receipt" label="額外費用" description="費用項目與收費金額"}}
 </div>
