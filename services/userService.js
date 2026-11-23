@@ -1,6 +1,6 @@
 const SCHOOL_CODE = require('../constants/schoolCode')
 const bcrypt = require('bcryptjs')
-const { Op, Validator, UniqueConstraintError } = require('sequelize')
+const { Op, Transaction, Validator, UniqueConstraintError } = require('sequelize')
 const { User, UserNoCounter, Teacher, Course, sequelize } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 const { getTaipeiDate } = require('../utils/date')
@@ -226,17 +226,33 @@ function getAdminUserList() {
   })
 }
 
-async function toggleUserAdmin(userId) {
-  const user = await User.findByPk(userId)
-  if (!user) return false
+async function setUserAdmin({ userId, actorId, isAdmin }) {
+  return sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED }, async transaction => {
+    // Use the same lock order for promotions and demotions, including simultaneous requests.
+    const users = await User.findAll({
+      attributes: ['id', 'isAdmin'],
+      where: { [Op.or]: [{ isAdmin: true }, { id: { [Op.in]: [actorId, userId] } }] },
+      order: [['id', 'ASC']],
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
 
-  await user.update({ isAdmin: !user.isAdmin })
-  return true
+    if (!users.some(user => user.id === actorId && user.isAdmin)) return { ok: false, code: 'FORBIDDEN' }
+    const target = users.find(user => user.id === userId)
+    if (!target) return { ok: false, code: 'USER_NOT_FOUND' }
+
+    if (target.isAdmin === isAdmin) return { ok: true }
+    if (!isAdmin && !users.some(user => user.id !== userId && user.isAdmin)) {
+      return { ok: false, code: 'LAST_ADMIN' }
+    }
+    await target.update({ isAdmin }, { transaction })
+    return { ok: true }
+  })
 }
 
 module.exports = {
   getAdminUserList,
-  toggleUserAdmin,
+  setUserAdmin,
   getTeacherProfile,
   getEditableTeacherProfile,
   updateTeacherProfile,

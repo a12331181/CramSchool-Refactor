@@ -23,16 +23,22 @@
       {{#if isAdmin}}
       <td>管理員</td>
       <td>
+        {{#ifCond this.id ../lastAdminId}}
+        最後一位管理員
+        {{else}}
         <form action="/admin/users/{{this.id}}/toggleAdmin?_method=PUT" method="POST" style="display: inline;">
+          <input type="hidden" name="isAdmin" value="false">
           <button type="submit" class="btn btn-link">
             切換為使用者
           </button>
         </form>
+        {{/ifCond}}
       </td>
       {{else}}
       <td>一般使用者</td>
       <td>
         <form action="/admin/users/{{this.id}}/toggleAdmin?_method=PUT" method="POST" style="display: inline;">
+          <input type="hidden" name="isAdmin" value="true">
           <button type="submit" class="btn btn-link">
             切換為管理員
           </button>
