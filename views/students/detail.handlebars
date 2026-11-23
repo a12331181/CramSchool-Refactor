@@ -36,7 +36,6 @@
 
 <div class="row">
 {{#each enrolledCourses}}
-{{#if isActive }}
 <div class="card col-md-3">
   <div class="card-body">
     <h5 class="card-title">{{referenceLabel this.courseNo this.name}}</h5>
@@ -44,7 +43,6 @@
     <a href="/cramschool/students/{{../student.id}}/courses/{{this.id}}/attend" class="card-link">出缺席狀況</a>
   </div>
 </div>
-{{/if}}
 {{/each}}
 </div>
 <br />

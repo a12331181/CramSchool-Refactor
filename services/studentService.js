@@ -15,7 +15,9 @@ function getStudentReference(studentId, transaction) {
 
 async function getStudentDetails(studentId) {
   const student = await Student.findOne({
-    include: [{ model: Course, as: 'EnrolledCourses' }],
+    include: [{
+      model: Course, as: 'EnrolledCourses', where: { isActive: true }, required: false
+    }],
     where: {
       id: studentId,
       status: STUDENT_STATUS.ACTIVE

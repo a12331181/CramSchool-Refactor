@@ -185,7 +185,7 @@ async function getTeacherProfile(userId) {
     where: { UserId: userId, status: TEACHER_STATUS.ACTIVE },
     include: [
       { model: User, attributes: ['id', 'email', 'userNo'] },
-      { model: Course, attributes: ['id', 'courseNo', 'name', 'isActive'] }
+      { model: Course, attributes: ['id', 'courseNo', 'name'], where: { isActive: true }, required: false }
     ]
   })
   if (!teacher) return null
