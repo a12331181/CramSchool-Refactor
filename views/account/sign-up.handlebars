@@ -1,4 +1,5 @@
 <form class="form-signin" action="/signup" method="POST" style="width: 100%;">
+  <input type="hidden" name="inviteToken" value="{{inviteToken}}">
   <div class="text-center mb-4">
     <h1 class="h3 mb-3 font-weight-normal">註冊帳號</h1>
   </div>
@@ -15,7 +16,7 @@
 
   <div class="form-label-group my-1">
     <label for="inputEmail">信箱</label>
-    <input id="inputEmail" type="email" name="email" class="form-control" placeholder="輸入信箱..." maxlength="254" autocomplete="email" required>
+    <input id="inputEmail" type="email" name="email" class="form-control" placeholder="輸入信箱..." maxlength="254" autocomplete="email" value="{{invitedEmail}}" readonly required>
   </div>
 
   <div class="form-label-group my-1">
@@ -25,12 +26,12 @@
 
   <div class="form-label-group my-1">
     <label for="inputPassword">密碼</label>
-    <input type="password" name="password" class="form-control" placeholder="輸入密碼..." required>
+    <input type="password" name="password" class="form-control" placeholder="輸入密碼..." autocomplete="new-password" required>
   </div>
 
   <div class="form-label-group my-1">
     <label for="inputPasswordCheck">密碼確認</label>
-    <input type="password" name="passwordCheck" class="form-control" placeholder="輸入密碼..." required>
+    <input type="password" name="passwordCheck" class="form-control" placeholder="輸入密碼..." autocomplete="new-password" required>
   </div>
 
   <br />

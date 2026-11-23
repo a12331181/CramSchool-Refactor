@@ -1,11 +1,32 @@
 const userService = require('../services/userService')
+const invitationService = require('../services/teacherInvitationService')
+const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
+const { formatTaipeiDateTime } = require('../utils/date')
 
 const adminUserController = {
-  getUserListPage: async (_req, res) => {
+  getUserListPage: async (req, res) => {
     const users = await userService.getAdminUserList()
     const admins = users.filter(user => user.isAdmin)
     const lastAdminId = admins.length === 1 ? admins[0].id : null
-    return res.render('admin/users/index', { users, lastAdminId })
+    const inviteFormToken = req.session.inviteFormToken ??= createSessionFormToken()
+    return res.render('admin/users/index', { users, lastAdminId, inviteFormToken })
+  },
+
+  createTeacherInvitation: async (req, res) => {
+    const { email, inviteFormToken } = req.body ?? {}
+    if (!isValidSessionFormToken(inviteFormToken, req.session.inviteFormToken)) {
+      return res.status(403).send('邀請表單已失效，請重新開啟使用者管理。')
+    }
+    const result = await invitationService.createTeacherInvitation({ email, actorId: req.user.id })
+    if (result.code === 'FORBIDDEN') return res.sendStatus(403)
+    if (!result.ok) {
+      req.flash('error_messages', result.code === 'EMAIL_EXISTS' ? '這個信箱已有帳號。' : '請輸入有效的教師信箱。')
+      return res.redirect(303, '/admin/users')
+    }
+    res.set({ 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' })
+    return res.render('admin/users/invitation', {
+      email: result.email, expiresAt: formatTaipeiDateTime(result.expiresAt), signupPath: '/signup?invite=' + result.token
+    })
   },
 
   toggleUserAdmin: async (req, res) => {

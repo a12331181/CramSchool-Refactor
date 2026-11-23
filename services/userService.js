@@ -4,8 +4,9 @@ const { Op, Transaction, Validator, UniqueConstraintError } = require('sequelize
 const { User, UserNoCounter, Teacher, Course, sequelize } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 const { getTaipeiDate } = require('../utils/date')
+const { getActiveInvitation } = require('./teacherInvitationService')
 
-async function signUp({ name, email, password, realName, phone } = {}) {
+async function signUp({ name, email, password, realName, phone, inviteToken } = {}) {
   const requiredText = [name, email, realName]
 
   if (
@@ -20,7 +21,7 @@ async function signUp({ name, email, password, realName, phone } = {}) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
 
-  const normalizedEmail = email.trim()
+  const normalizedEmail = email.trim().toLowerCase()
 
   if (!Validator.isEmail(normalizedEmail, {
     allow_utf8_local_part: false
@@ -45,19 +46,13 @@ async function signUp({ name, email, password, realName, phone } = {}) {
     return { ok: false, code: 'PASSWORD_TOO_LONG' }
   }
 
-  const existingUser = await User.findOne({
-    attributes: ['id'],
-    where: { email: normalizedEmail }
-  })
-
-  if (existingUser) {
-    return { ok: false, code: 'EMAIL_EXISTS' }
-  }
-
   const passwordHash = await bcrypt.hash(password, 10)
 
   try {
     return await sequelize.transaction(async transaction => {
+      const invite = await getActiveInvitation(inviteToken, { email: normalizedEmail, transaction })
+      if (!invite) return { ok: false, code: 'INVALID_INVITATION' }
+
       const user = await User.create({
         name: name.trim(),
         email: normalizedEmail,
@@ -78,6 +73,7 @@ async function signUp({ name, email, password, realName, phone } = {}) {
         status: TEACHER_STATUS.ACTIVE
       }, { transaction })
 
+      await invite.destroy({ transaction })
       return { ok: true, userId: user.id, userNo }
     })
   } catch (error) {

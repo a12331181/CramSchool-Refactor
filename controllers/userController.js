@@ -1,7 +1,20 @@
 const userService = require('../services/userService')
 const imageStorage = require('../utils/imageStorage')
+const { getActiveInvitation } = require('../services/teacherInvitationService')
+
+const unavailableInvite = '這個教師邀請無法使用，請向管理員索取新的註冊連結。'
 
 const userController = {
+  loadTeacherInvitation: async (req, res, next) => {
+    res.set({ 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' })
+    const token = req.method === 'POST' ? req.body?.inviteToken : req.query.invite
+    const invite = await getActiveInvitation(token)
+    if (!invite) return res.status(410).send(unavailableInvite)
+    res.locals.inviteToken = token
+    res.locals.invitedEmail = invite.email
+    return next()
+  },
+
   getSignUpPage: (req, res) => {
     return res.render('account/sign-up')
   },
@@ -9,9 +22,13 @@ const userController = {
   signUp: async (req, res) => {
     const body = req.body ?? {}
 
+    const signupPath = '/signup?invite=' + res.locals.inviteToken
+    if (typeof body.email !== 'string' || body.email.trim().toLowerCase() !== res.locals.invitedEmail) {
+      return res.status(400).send('請使用管理員邀請的信箱。')
+    }
     if (body.passwordCheck !== body.password) {
       req.flash('error_messages', '兩次密碼輸入不同！')
-      return res.redirect(303, '/signup')
+      return res.redirect(303, signupPath)
     }
 
     const result = await userService.signUp({
@@ -19,9 +36,11 @@ const userController = {
       email: body.email,
       password: body.password,
       realName: body.realName,
-      phone: body.phone
+      phone: body.phone,
+      inviteToken: res.locals.inviteToken
     })
 
+    if (result.code === 'INVALID_INVITATION') return res.status(410).send(unavailableInvite)
     if (!result.ok) {
       const errors = {
         INVALID_INPUT: '請完整填寫姓名、暱稱、信箱與密碼，文字欄位限 255 字以內。',
@@ -32,7 +51,7 @@ const userController = {
       }
 
       req.flash('error_messages', errors[result.code] ?? '目前無法註冊。')
-      return res.redirect(303, '/signup')
+      return res.redirect(303, signupPath)
     }
 
     req.flash(
