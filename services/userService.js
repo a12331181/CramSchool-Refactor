@@ -1,3 +1,4 @@
+const { discardUnusedProfileImage } = require('./profileImageService')
 const SCHOOL_CODE = require('../constants/schoolCode')
 const bcrypt = require('bcryptjs')
 const { Op, Transaction, Validator, UniqueConstraintError } = require('sequelize')
@@ -203,15 +204,25 @@ function getEditableTeacherProfile(userId) {
 }
 
 async function updateTeacherProfile(userId, body, imageUrl) {
-  const teacher = await Teacher.findOne({ where: { UserId: userId } })
-  if (!teacher) return false
+  let previousImage
+  const updated = await sequelize.transaction(async transaction => {
+    const teacher = await Teacher.findOne({
+      where: { UserId: userId }, transaction, lock: transaction.LOCK.UPDATE
+    })
+    if (!teacher) return false
 
-  const updates = Object.fromEntries(
-    TEACHER_PROFILE_FIELDS.filter(key => body[key] !== undefined).map(key => [key, body[key]])
-  )
-  if (imageUrl !== undefined) updates.image = imageUrl
-  await teacher.update(updates)
-  return true
+    const updates = Object.fromEntries(
+      TEACHER_PROFILE_FIELDS.filter(key => body[key] !== undefined).map(key => [key, body[key]])
+    )
+    if (imageUrl !== undefined && imageUrl !== teacher.image) {
+      previousImage = teacher.image
+      updates.image = imageUrl
+    }
+    await teacher.update(updates, { transaction })
+    return true
+  })
+  if (updated) await discardUnusedProfileImage(previousImage)
+  return updated
 }
 
 function getAdminUserList() {

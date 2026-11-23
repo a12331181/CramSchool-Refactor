@@ -1,3 +1,4 @@
+const { discardUnusedProfileImage } = require('../services/profileImageService')
 const userService = require('../services/userService')
 const imageStorage = require('../utils/imageStorage')
 const { getActiveInvitation } = require('../services/teacherInvitationService')
@@ -120,7 +121,7 @@ const userController = {
       )
       return res.redirect(303, updated ? '/' : '/cramschool/teachers')
     } finally {
-      if (uploadedImage && !updated) await imageStorage.discardImage(uploadedImage.filename)
+      if (uploadedImage && !updated) await discardUnusedProfileImage(uploadedImage.url)
       if (req.file) await imageStorage.discardTempFile(req.file.path)
     }
   }

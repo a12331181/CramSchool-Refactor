@@ -1,3 +1,4 @@
+const { discardUnusedProfileImage } = require('./profileImageService')
 const { allocateStudentNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
 const { getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
 const {Student, Course, Enrollment, Calendar, Attend, LegacyTuition, TuitionBill, sequelize} = require('../models')
@@ -137,7 +138,8 @@ async function updateStudent(studentId, studentData) {
     }
   }
 
-  return sequelize.transaction(async transaction => {
+  let previousImage
+  const result = await sequelize.transaction(async transaction => {
     const student = await Student.findByPk(studentId, {
       transaction,
       lock: transaction.LOCK.UPDATE
@@ -188,6 +190,7 @@ async function updateStudent(studentId, studentData) {
       }
     }
 
+    if (updates.image !== undefined && updates.image !== student.image) previousImage = student.image
     await student.update(updates, {
       transaction
     })
@@ -210,6 +213,8 @@ async function updateStudent(studentId, studentData) {
       status: studentData.status
     }
   })
+  if (result.updated) await discardUnusedProfileImage(previousImage)
+  return result
 }
 
 async function createStudent(studentData) {
@@ -243,7 +248,8 @@ async function createStudent(studentData) {
 }
 
 async function deleteStudent(studentId) {
-  return sequelize.transaction(async transaction => {
+  let previousImage
+  const result = await sequelize.transaction(async transaction => {
     const student = await Student.findByPk(studentId, {
       transaction,
       lock: transaction.LOCK.UPDATE
@@ -308,6 +314,7 @@ async function deleteStudent(studentId) {
       return { deleted: false, reason: 'HAS_ENROLLMENTS' }
     }
 
+    previousImage = student.image
     await student.destroy({
       transaction
     })
@@ -316,6 +323,8 @@ async function deleteStudent(studentId) {
       deleted: true
     }
   })
+  if (result.deleted) await discardUnusedProfileImage(previousImage)
+  return result
 }
 
 async function getStudentAttendanceHistory({ courseId, studentId }) {

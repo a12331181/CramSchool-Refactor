@@ -1,3 +1,4 @@
+const { discardUnusedProfileImage } = require('../services/profileImageService')
 const studentService = require('../services/studentService')
 const imageStorage = require('../utils/imageStorage')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
@@ -118,9 +119,7 @@ const adminStudentController = {
       return res.redirect('/admin/students')
     } finally {
       if (uploadedImage && !createCompleted) {
-        await imageStorage.discardImage(
-          uploadedImage.filename
-        )
+        await discardUnusedProfileImage(uploadedImage.url)
       }
 
       if (req.file) {
@@ -245,9 +244,7 @@ const adminStudentController = {
       return res.redirect('/admin/students')
     } finally {
       if (uploadedImage && !updateCompleted) {
-        await imageStorage.discardImage(
-          uploadedImage.filename
-        )
+        await discardUnusedProfileImage(uploadedImage.url)
       }
 
       if (req.file) {
