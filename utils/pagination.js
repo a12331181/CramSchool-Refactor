@@ -6,29 +6,32 @@ function getPagination({ page, pageSize, totalCount }) {
     Math.ceil(totalCount / pageSize)
   )
 
-  const totalPage = Array.from(
-    { length: totalPages },
-    (_, index) => index + 1
-  )
-
   return {
     page,
     totalPages,
-    totalPage,
     prev: Math.max(1, page - 1),
     next: Math.min(totalPages, page + 1)
   }
 }
 
 function getPaginationLinks(pagination, pageUrl) {
-  const { page, totalPages, totalPage, prev, next } = pagination
+  const { page, totalPages, prev, next } = pagination
+  let numbers
+
+  if (totalPages <= 7) {
+    numbers = Array.from({ length: totalPages }, (_, index) => index + 1)
+  } else if (page <= 4) {
+    numbers = [1, 2, 3, 4, 5, null, totalPages]
+  } else if (page >= totalPages - 3) {
+    numbers = [1, null, totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+  } else {
+    numbers = [1, null, page - 1, page, page + 1, null, totalPages]
+  }
 
   return {
-    pageLinks: totalPage.map(number => ({
-      number,
-      url: pageUrl(number),
-      isCurrent: number === page
-    })),
+    pageLinks: numbers.map(number => number === null
+      ? { isGap: true }
+      : { number, url: pageUrl(number), isCurrent: number === page }),
     prevUrl: page > 1 ? pageUrl(prev) : null,
     nextUrl: page < totalPages ? pageUrl(next) : null
   }
