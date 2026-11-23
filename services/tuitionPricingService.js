@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const { Attend, Calendar, Course, Enrollment, Student, sequelize } = require('../models')
-const { COURSE_TYPES } = require('../constants/courseOptions')
+const { COURSE_TYPES, COURSE_PRICING_FIELDS } = require('../constants/courseOptions')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 const ATTEND_STATUS = require('../constants/attendStatus')
@@ -207,11 +207,15 @@ async function getTuitionPreview({ courseId, studentId, billingMonth } = {}, tra
   if (!result.ok) return result
 
   const course = await Course.findByPk(courseId, {
-    attributes: ['id', 'courseNo', 'name', 'type', 'price'],
+    attributes: COURSE_PRICING_FIELDS,
     raw: true,
     transaction
   })
 
+  return priceCourseSessions(course, studentId, result, transaction)
+}
+
+async function priceCourseSessions(course, studentId, result, transaction) {
   if (!course) {
     return { ok: false, code: 'COURSE_NOT_FOUND' }
   }
@@ -385,22 +389,25 @@ async function getStudentTuitionPreview({ studentId, billingMonth, courseId } = 
     courseIds.add(row.CourseId)
   }
 
-  // 正式出帳已鎖定學生。鎖住課程以等候既有改價／排課交易，並避免比對後又變動。
-  if (transaction && courseIds.size > 0) {
-    await Course.findAll({
-      attributes: ['id'],
-      where: { id: { [Op.in]: [...courseIds] } },
-      order: [['id', 'ASC']],
-      transaction,
-      lock: transaction.LOCK.SHARE
-    })
-  }
+  // 正式出帳仍按課程 ID 依序取共享鎖，直接使用已鎖定的價格資料。
+  const priceRows = courseIds.size === 0 ? [] : await Course.findAll({
+    attributes: COURSE_PRICING_FIELDS,
+    where: { id: { [Op.in]: [...courseIds] } },
+    order: [['id', 'ASC']],
+    raw: true,
+    transaction,
+    ...(transaction && { lock: transaction.LOCK.SHARE })
+  })
+  const courseById = new Map(priceRows.map(course => [course.id, course]))
 
   const courses = []
   let baseSubtotal = 0
 
   for (const courseId of courseIds) {
-    const preview = await getTuitionPreview({ courseId, studentId, billingMonth }, transaction)
+    const sessions = await getTuitionCalendars({ courseId, studentId, billingMonth }, transaction)
+    const preview = sessions.ok
+      ? await priceCourseSessions(courseById.get(courseId), studentId, sessions, transaction)
+      : sessions
 
     if (!preview.ok) {
       if (preview.code === 'NOT_ENROLLED_IN_BILLING_MONTH') continue

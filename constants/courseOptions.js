@@ -9,10 +9,12 @@ const COURSE_TYPES = Object.freeze({
   MONTHLY: '依月計費'
 })
 
+const COURSE_PRICING_FIELDS = Object.freeze(['id', 'courseNo', 'name', 'type', 'price'])
 const MAX_COURSE_PRICE = 2_147_483_647
 
 module.exports = {
   COURSE_TIMES,
   COURSE_TYPES,
+  COURSE_PRICING_FIELDS,
   MAX_COURSE_PRICE
 }
