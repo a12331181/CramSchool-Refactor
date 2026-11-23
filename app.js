@@ -9,6 +9,7 @@ const path = require('node:path')
 const { getSessionSecret } = require('./utils/sessionConfig')
 const { IMAGE_ACCEPT } = require('./constants/imageUpload')
 const handleImageUploadError = require('./middlewares/imageUploadError')
+const { authenticated } = require('./middlewares/auth')
 const uploadDir = path.join(__dirname, 'upload')
 const app = express()
 app.locals.imageAccept = IMAGE_ACCEPT
@@ -32,8 +33,9 @@ app.use(flash())
 app.use(methodOverride('_method'))
 
 fs.mkdirSync(uploadDir, { recursive: true })
-app.use('/upload', express.static(uploadDir, {
+app.use('/upload', authenticated, express.static(uploadDir, {
   setHeaders(res) {
+    res.setHeader('Cache-Control', 'private, no-store')
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('Content-Security-Policy', 'sandbox')
   }
