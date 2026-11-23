@@ -114,6 +114,7 @@ async function getAdminStudentDetails(studentId) {
   const student = await Student.findByPk(studentId, {
     attributes: [
       'id',
+      'studentNo',
       'name',
       'sex',
       'birth',
