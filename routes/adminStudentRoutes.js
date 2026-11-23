@@ -1,10 +1,11 @@
+const studentDirectoryController = require('../controllers/studentDirectoryController')
 const express = require('express')
 const adminStudentController = require('../controllers/adminStudentController')
 const upload = require('../middlewares/upload')
 
 const router = express.Router()
 
-router.get('/', adminStudentController.getStudentListPage)
+router.get('/', studentDirectoryController.getAdminStudentListPage)
 
 router.get('/create', adminStudentController.getCreateStudentPage)
 

@@ -1,51 +1,56 @@
-<br>
+<div class="ws-heading">
+  <h1>{{workspaceTitle}}</h1>
+  {{#if user.isAdmin}}<a class="ws-btn ws-primary" href="/admin/students/create">{{> workspace/icon name="plus"}}新增學生</a>{{/if}}
+</div>
 
-{{> staff-nav activeTab="students" showBilling=isAdmin}}
-
-<br>
-
-<form action="/cramschool/students">
-  <div class="form-group d-flex justify-content-center">
-    <label class="mr-2 mt-1" for="courseId"><strong style="color: rgb(83, 6, 6);">依課程篩選: </strong></label>
-    <select name="courseId" id="courseId" class="form-control-sm col-8" onchange="this.form.submit()">
-      <option value="" {{#ifCond '' courseId}} selected{{/ifCond}}>全部學生</option>
-      {{#each courses}}
-        <option value="{{this.id}}" {{#ifCond this.id ../courseId}} selected{{/ifCond}}>{{referenceLabel this.courseNo this.name}}</option>
-      {{/each}}
-    </select>
-  </div>
-</form>
-
-<table class="table table-bordered">
-  <thead>
-    <tr class="table-primary">
-      <th scope="col">#</th>
-      <th scope="col">學生姓名</th>
-      <th scope="col">學校</th>
-      <th scope="col">年級</th>
-      <th scope="col">#</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{#each students}}
-    <tr class="table-light">
-      <th scope="row">{{this.id}}</th>
-      <td>{{referenceLabel this.studentNo this.name}}</td>
-      <td>{{this.school}}</td>
-      <td>{{this.grade}}</td>
-      <th scope="col">
-        <a href="/cramschool/students/{{this.id}}" class="btn btn-sm btn-dark">基本資料</a>
-      </th>
-    </tr>
-    {{else}}
-    <tr>
-      <td colspan="5" class="text-center">
-        沒有符合條件的學生
-      </td>
-    </tr>
-    {{/each}}
-  </tbody>
-</table>
-
-<br />
-{{> pagination ariaLabel="學生列表分頁"}}
+<section class="ws-panel" aria-labelledby="students-title">
+  <header class="ws-panel-head ws-directory-head">
+    <div class="ws-total"><h2 id="students-title">{{> workspace/icon name="users"}}{{#if courseId}}篩選結果{{else}}全部學生{{/if}}</h2><span>{{count}} 位</span></div>
+    <form action="{{directoryPath}}" method="get" class="ws-filters">
+      <label for="courseId">{{> workspace/icon name="filter"}}依課程篩選</label>
+      <select id="courseId" name="courseId">
+        <option value=""{{#ifCond '' courseId}} selected{{/ifCond}}>全部課程</option>
+        {{#each courses}}<option value="{{id}}"{{#ifCond id ../courseId}} selected{{/ifCond}}>{{referenceLabel courseNo name}}</option>{{/each}}
+      </select>
+      <button class="ws-btn" type="submit">套用</button>
+    </form>
+  </header>
+  {{#if students}}
+  <div class="ws-scroll"><table class="ws-table ws-directory">
+    <thead><tr>
+      <th scope="col">學生姓名</th><th scope="col">學號</th><th scope="col">學校</th><th scope="col">年級</th>
+      {{#if manageStudents}}<th scope="col">性別</th>{{/if}}<th scope="col">學籍狀態</th>
+      {{#if manageStudents}}<th scope="col">操作</th>{{/if}}
+    </tr></thead>
+    <tbody>{{#each students}}
+      <tr>
+        <th scope="row" class="ws-name"><a href="{{../directoryPath}}/{{id}}"><span class="ws-student-dot" aria-hidden="true">{{initial name}}</span>{{#if name}}{{name}}{{else}}查看學生資料{{/if}}</a></th>
+        <td data-label="學號" class="ws-num">{{#if studentNo}}{{studentNo}}{{else}}—{{/if}}<small class="ws-id">ID {{id}}</small></td>
+        <td data-label="學校">{{#if school}}{{school}}{{else}}—{{/if}}</td>
+        <td data-label="年級">{{#if grade}}{{grade}}{{else}}—{{/if}}</td>
+        {{#if ../manageStudents}}<td data-label="性別">{{#if sex}}{{sex}}{{else}}—{{/if}}</td>{{/if}}
+        <td data-label="學籍狀態">
+          {{#if ../manageStudents}}
+            {{#ifCond status ../activeStatus}}<span class="ws-status">在學</span>
+            {{else}}{{#ifCond status ../leftStatus}}<span class="ws-status ws-inactive">離開</span>
+            {{else}}<span class="ws-status ws-inactive">待確認</span>{{/ifCond}}{{/ifCond}}
+          {{else}}<span class="ws-status">在學</span>{{/if}}
+        </td>
+        {{#if ../manageStudents}}
+        <td class="ws-operations" data-label="操作"><div class="ws-actions">
+          <a class="ws-action" href="/admin/students/{{id}}/edit">{{> workspace/icon name="edit"}}編輯</a>
+          {{#ifCond status ../activeStatus}}
+          <a class="ws-action" href="/admin/students/{{id}}/enrolls">{{> workspace/icon name="book"}}選課</a>
+          <form method="post" action="/admin/students/{{id}}?_method=DELETE"><button class="ws-action ws-danger" type="submit">{{> workspace/icon name="trash"}}刪除</button></form>
+          {{/ifCond}}
+        </div></td>
+        {{/if}}
+      </tr>
+    {{/each}}</tbody>
+  </table></div>
+  {{else}}
+  <p class="ws-empty">沒有符合條件的學生。{{#if courseId}} <a class="ws-link" href="{{directoryPath}}">查看全部學生</a>{{/if}}</p>
+  {{/if}}
+  {{#if prevUrl}}<div class="ws-pager">{{> pagination ariaLabel="學生列表分頁"}}</div>
+  {{else if nextUrl}}<div class="ws-pager">{{> pagination ariaLabel="學生列表分頁"}}</div>{{/if}}
+</section>

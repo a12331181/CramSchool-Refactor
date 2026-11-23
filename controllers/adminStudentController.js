@@ -1,58 +1,9 @@
 const { SEX_OPTIONS, GRADE_OPTIONS, STUDENT_STATUS_OPTIONS } = require('../constants/profileOptions')
-const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const { discardUnusedProfileImage } = require('../services/profileImageService')
 const studentService = require('../services/studentService')
 const imageStorage = require('../utils/imageStorage')
-const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const adminStudentController = {
-  getStudentListPage: async (req, res) => {
-    const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
-    if (!listPage) return res.status(400).send('頁碼必須是正整數')
-    const { page } = listPage
-    const courseId = req.query.courseId
-      ? Number(req.query.courseId)
-      : undefined
-
-    if (
-      courseId !== undefined &&
-      (!Number.isSafeInteger(courseId) || courseId < 1)
-    ) {
-      return res.status(400).send('課程 ID 必須是正整數')
-    }
-
-    const result = await studentService.getAdminStudentsPage({
-      page,
-      pageSize: DIRECTORY_PAGE_SIZE,
-      courseId
-    })
-
-    const pagination = getPagination({
-      page,
-      pageSize: DIRECTORY_PAGE_SIZE,
-      totalCount: result.count
-    })
-
-    const pageUrl = targetPage => {
-      const queryParams = new URLSearchParams({ page: String(targetPage) })
-      if (courseId !== undefined) {
-        queryParams.set('courseId', String(courseId))
-      }
-      return `/admin/students?${queryParams.toString()}`
-    }
-
-    if (page > pagination.totalPages) {
-      return res.redirect(pageUrl(pagination.totalPages))
-    }
-
-    return res.render('admin/students/index', {
-      students: result.rows,
-      courses: result.courses,
-      courseId: courseId ?? '',
-      ...getPaginationLinks(pagination, pageUrl)
-    })
-  },
-
   getCreateStudentPage: (req, res) => {
     return res.render('admin/students/form', { sexList: SEX_OPTIONS, gradeList: GRADE_OPTIONS, statusList: STUDENT_STATUS_OPTIONS })
   },
