@@ -1,6 +1,11 @@
-const { MAX_EXTRA_FEE_QUANTITY } = require('../constants/extraFeeLimits')
+const { MAX_EXTRA_FEE_QUANTITY, MAX_EXTRA_FEE_BILL_AMOUNT } = require('../constants/extraFeeLimits')
 const { allocateTuitionDocumentNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
-const { MAX_TUITION_BILL_VERSION, MAX_TUITION_BILL_ITEM_AMOUNT } = require('../constants/tuitionBillLimits')
+const {
+  MAX_TUITION_BILL_VERSION,
+  MAX_TUITION_BILL_ITEM_AMOUNT,
+  MAX_UNSIGNED_INT,
+  TUITION_BILL_HISTORY_LIMIT
+} = require('../constants/tuitionBillLimits')
 const { Op, Transaction, UniqueConstraintError, ValidationError } = require('sequelize')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
@@ -18,9 +23,6 @@ const { getTuitionBillPaymentStatus, getPaidTuitionBillPayments, summarizeTuitio
 const { getStudentTuitionPreview } = require('./tuitionPricingService')
 const { readTuitionSnapshot } = require('./tuitionReportService')
 
-const MAX_EXTRA_FEE_BILL_AMOUNT = 10000000
-const MAX_UNSIGNED_INT = 4_294_967_295
-const TUITION_BILL_HISTORY_LIMIT = 20
 const DRAFT_ADJUSTMENT_REMOVAL_REASONS = Object.freeze({
   [TUITION_BILL_ITEM_KIND.EXTRA_FEE]: '移除草稿額外費用',
   [TUITION_BILL_ITEM_KIND.LEAVE_CREDIT]: '移除草稿請假折抵',
@@ -387,7 +389,7 @@ async function setTuitionBillDraftDiscount({ billId, billVersion, actorId, amoun
   const isId = n => Number.isSafeInteger(n) && n > 0
   if (
     ![billId, actorId].every(isId) ||
-    !Number.isSafeInteger(billVersion) || billVersion < 0 || billVersion >= MAX_TUITION_BILL_ITEM_AMOUNT
+    !Number.isSafeInteger(billVersion) || billVersion < 0 || billVersion >= MAX_TUITION_BILL_VERSION
   ) {
     return { ok: false, code: 'INVALID_INPUT' }
   }
@@ -808,7 +810,7 @@ async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersio
     if (
       !Number.isInteger(bill.totalAmount) || bill.totalAmount < 0 ||
       totalAmount > MAX_EXTRA_FEE_BILL_AMOUNT ||
-      billVersion >= MAX_EXTRA_FEE_BILL_AMOUNT
+      billVersion >= MAX_TUITION_BILL_VERSION
     ) {
       return { ok: false, code: 'INVALID_AMOUNT' }
     }
