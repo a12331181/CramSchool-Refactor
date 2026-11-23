@@ -71,7 +71,7 @@
       <option value="{{this.id}}" 
         {{#ifCond this.id ../course.TeacherId}} 
           selected
-        {{/ifCond}}>{{referenceLabel this.User.userNo this.name}}
+        {{/ifCond}}>{{referenceLabel this.User.userNo this.name}}{{#unless this.isActiveTeacher}}（原任教師，目前非在職）{{/unless}}
       </option>
       {{/each}}
     </select>

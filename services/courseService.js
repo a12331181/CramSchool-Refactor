@@ -4,6 +4,7 @@ const {Course, Teacher, Student, Calendar, Enrollment, LegacyTuition, TuitionBil
 const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
 const { Op } = require('sequelize')
 const STUDENT_STATUS = require('../constants/studentStatus')
+const TEACHER_STATUS = require('../constants/teacherStatus')
 
 async function getCourseDirectoryPage({ userId, limit, offset }) {
   const [{ rows, count }, teacher] = await Promise.all([
@@ -80,9 +81,20 @@ async function getAdminCoursesPage({ page, pageSize }) {
   }
 }
 
-async function getCourseFormData() {
+function findActiveTeacherForAssignment(id, transaction) {
+  return Teacher.findOne({
+    where: { id, status: TEACHER_STATUS.ACTIVE },
+    attributes: ['id'],
+    transaction,
+    lock: transaction.LOCK.SHARE
+  })
+}
+
+async function getCourseFormData(currentTeacherId) {
+  const active = { status: TEACHER_STATUS.ACTIVE }
   const teachers = await Teacher.findAll({
-    attributes: ['id', 'name'],
+    attributes: ['id', 'name', 'status'],
+    where: currentTeacherId == null ? active : { [Op.or]: [active, { id: currentTeacherId }] },
     include: [getTeacherAccountInclude()],
     order: [['id', 'ASC']],
     raw: true,
@@ -90,7 +102,7 @@ async function getCourseFormData() {
   })
 
   return {
-    teachers
+    teachers: teachers.map(teacher => ({ ...teacher, isActiveTeacher: teacher.status === TEACHER_STATUS.ACTIVE }))
   }
 }
 
@@ -128,14 +140,8 @@ async function createCourse(courseData = {}) {
   if (reason) return { created: false, reason }
 
   return sequelize.transaction(async transaction => {
-    const teacher = await Teacher.findByPk(teacherId, {
-      attributes: ['id'],
-      transaction
-    })
-
-    if (!teacher) {
-      return { created: false, reason: 'TEACHER_NOT_FOUND' }
-    }
+    const teacher = await findActiveTeacherForAssignment(teacherId, transaction)
+    if (!teacher) return { created: false, reason: 'TEACHER_UNAVAILABLE' }
 
     const courseNo = await allocateCourseNo(coursePrefix, transaction)
     const course = await Course.create({
@@ -173,7 +179,7 @@ async function getCourseEditData(courseId) {
     return null
   }
 
-  const formData = await getCourseFormData()
+  const formData = await getCourseFormData(course.TeacherId)
 
   return {
     course: course.toJSON(),
@@ -207,16 +213,9 @@ async function updateCourse(courseId, courseData = {}) {
       }
     }
 
-    const teacher = await Teacher.findByPk(courseData.teacherId, {
-      attributes: ['id'],
-      transaction
-    })
-
-    if (!teacher) {
-      return {
-        ok: false,
-        code: 'TEACHER_NOT_FOUND'
-      }
+    if (courseData.teacherId !== course.TeacherId) {
+      const teacher = await findActiveTeacherForAssignment(courseData.teacherId, transaction)
+      if (!teacher) return { ok: false, code: 'TEACHER_UNAVAILABLE' }
     }
 
     await course.update({

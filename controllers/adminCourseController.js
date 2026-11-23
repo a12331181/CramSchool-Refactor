@@ -91,7 +91,7 @@ const adminCourseController = {
         INVALID_COURSE_PREFIX: '請選擇兩個大寫英文字母作為課程編號開頭',
         COURSE_NUMBER_EXHAUSTED: '這個課程前綴的編號已用完，請改用其他前綴',
         ...COURSE_SETTINGS_MESSAGES,
-        TEACHER_NOT_FOUND: '找不到所選教師，請重新選擇'
+        TEACHER_UNAVAILABLE: '請選擇在職教師。'
       }
 
       const status = result.reason === 'COURSE_NUMBER_EXHAUSTED' ? 409 : 400
@@ -153,7 +153,7 @@ const adminCourseController = {
       const errorMessages = {
         COURSE_NOT_FOUND: '找不到課程資料',
         COURSE_CLOSED: '課程已關閉，無法修改',
-        TEACHER_NOT_FOUND: '找不到所選教師'
+        TEACHER_UNAVAILABLE: '請選擇在職教師。'
       }
 
       req.flash(
