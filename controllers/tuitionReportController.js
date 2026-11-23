@@ -1,3 +1,4 @@
+const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
@@ -128,7 +129,7 @@ const tuitionReportController = {
     const listUrl = '/cramschool/tuition/students'
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
     const statusFilter = req.query.status ?? 'all'
-    const pageSize = 12
+    const pageSize = DIRECTORY_PAGE_SIZE
 
     const viewData = {
       listUrl,
@@ -241,7 +242,7 @@ const tuitionReportController = {
     }
 
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
-    const pageSize = 12
+    const pageSize = DIRECTORY_PAGE_SIZE
     const listUrl = `/cramschool/tuition/courses/${courseId}/monthly`
     const viewData = {
       listUrl,

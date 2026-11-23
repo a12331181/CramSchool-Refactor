@@ -1,4 +1,4 @@
-const pageLimit = 12
+const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const calendarService = require('../services/calendarService')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 const { formatTaipeiDateTime, getTaipeiDate, parseTaipeiDateTime } = require('../utils/date')
@@ -78,7 +78,7 @@ const adminCalendarController = {
     })
     if (result.ok) {
       const { createdCount, totalCount } = result.data
-      const { totalPages } = getPagination({ page: 1, pageSize: pageLimit, totalCount })
+      const { totalPages } = getPagination({ page: 1, pageSize: DIRECTORY_PAGE_SIZE, totalCount })
       req.flash('success_messages', `已新增 ${createdCount} 堂課。`)
       return res.redirect(303, `/admin/courses/${courseId}/calendar?page=${totalPages}`)
     }
@@ -99,7 +99,7 @@ const adminCalendarController = {
       return res.status(400).send('課程 ID 必須是正整數')
     }
 
-    const listPage = getPageOffset(req.query.page, pageLimit)
+    const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
     if (!listPage) {
       return res.status(400).send('頁碼不正確或超出可處理範圍')
     }
@@ -108,7 +108,7 @@ const adminCalendarController = {
     const result = await calendarService.getAdminCourseCalendarPage({
       courseId,
       page,
-      pageSize: pageLimit
+      pageSize: DIRECTORY_PAGE_SIZE
     })
 
     if (!result.ok) {
@@ -127,7 +127,7 @@ const adminCalendarController = {
 
     const pagination = getPagination({
       page,
-      pageSize: pageLimit,
+      pageSize: DIRECTORY_PAGE_SIZE,
       totalCount: result.count
     })
 
@@ -229,7 +229,7 @@ const adminCalendarController = {
     if (result.ok) {
       const pagination = getPagination({
         page: 1,
-        pageSize: pageLimit,
+        pageSize: DIRECTORY_PAGE_SIZE,
         totalCount: result.data.totalCount
       })
 
@@ -299,7 +299,7 @@ const adminCalendarController = {
       return res.status(400).send('課程與課堂 ID 必須是正整數')
     }
 
-    const page = getPageOffset(req.query.page, pageLimit)?.page ?? 1
+    const page = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)?.page ?? 1
     const listUrl = `/admin/courses/${courseId}/calendar?page=${page}`
 
     const result = await calendarService.completeCourseSession(
@@ -355,7 +355,7 @@ const adminCalendarController = {
       return res.status(400).send('課程與課堂 ID 必須是正整數')
     }
 
-    const page = getPageOffset(req.query.page, pageLimit)?.page ?? 1
+    const page = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)?.page ?? 1
     const listUrl = `/admin/courses/${courseId}/calendar?page=${page}`
 
     if (!result.ok) {

@@ -1,3 +1,4 @@
+const { CASHFLOW_PAGE_SIZE } = require('../constants/pagination')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
 const { getTuitionCashflow } = require('../services/tuitionCashflowService')
 const { CASH_KIND, CASH_REVIEW } = require('../constants/tuitionCashflow')
@@ -7,7 +8,6 @@ const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/p
 
 const CASHFLOW_URL = '/cramschool/tuition/cashflow'
 const CSV_URL = '/cramschool/tuition/cashflow.csv'
-const PAGE_SIZE = 20
 const amountFormat = new Intl.NumberFormat('zh-TW')
 const REVIEW_LABELS = Object.freeze({
   [CASH_REVIEW.DATE]: '實際日期未填或不正確',
@@ -56,7 +56,7 @@ const tuitionCashflowController = {
     if (view !== 'verified' && view !== 'review') {
       return res.status(400).render('tuition/cashflow', { ...viewData, error: '請選擇有效的對帳清單。' })
     }
-    const listPage = getPageOffset(req.query.page, PAGE_SIZE)
+    const listPage = getPageOffset(req.query.page, CASHFLOW_PAGE_SIZE)
     if (!listPage) {
       return res.status(400).render('tuition/cashflow', { ...viewData, error: '頁碼需為正整數。' })
     }
@@ -72,7 +72,7 @@ const tuitionCashflowController = {
 
     const showReview = view === 'review'
     const selectedRows = showReview ? ledger.reviewRows : ledger.rows
-    const pagination = getPagination({ page, pageSize: PAGE_SIZE, totalCount: selectedRows.length })
+    const pagination = getPagination({ page, pageSize: CASHFLOW_PAGE_SIZE, totalCount: selectedRows.length })
     const viewUrl = (review, targetPage) => {
       const params = new URLSearchParams({ cashMonth })
       if (review) params.set('view', 'review')
@@ -89,7 +89,7 @@ const tuitionCashflowController = {
       netText: formatAmount(ledger.totals.net),
       totalCount: ledger.rows.length,
       exportUrl: `${CSV_URL}?${new URLSearchParams({ cashMonth })}`,
-      rows: selectedRows.slice(offset, offset + PAGE_SIZE).map(toDisplayRow),
+      rows: selectedRows.slice(offset, offset + CASHFLOW_PAGE_SIZE).map(toDisplayRow),
       verifiedUrl: viewUrl(false),
       showReview,
       reviewUrl: viewUrl(true),

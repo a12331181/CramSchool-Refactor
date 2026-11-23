@@ -1,9 +1,8 @@
+const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const { discardUnusedProfileImage } = require('../services/profileImageService')
 const studentService = require('../services/studentService')
 const imageStorage = require('../utils/imageStorage')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
-
-const pageLimit = 12
 
 const studentFormOptions = {
   sexList: [
@@ -30,7 +29,7 @@ const studentFormOptions = {
 
 const adminStudentController = {
   getStudentListPage: async (req, res) => {
-    const listPage = getPageOffset(req.query.page, pageLimit)
+    const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
     if (!listPage) return res.status(400).send('頁碼必須是正整數')
     const { page } = listPage
     const courseId = req.query.courseId
@@ -46,13 +45,13 @@ const adminStudentController = {
 
     const result = await studentService.getAdminStudentsPage({
       page,
-      pageSize: pageLimit,
+      pageSize: DIRECTORY_PAGE_SIZE,
       courseId
     })
 
     const pagination = getPagination({
       page,
-      pageSize: pageLimit,
+      pageSize: DIRECTORY_PAGE_SIZE,
       totalCount: result.count
     })
 

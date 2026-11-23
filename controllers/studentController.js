@@ -1,12 +1,12 @@
+const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const studentService = require('../services/studentService')
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 const { formatTaipeiDateTime } = require('../utils/date')
-const pageLimit = 12
 
 const studentController = {
   getStudentListPage: async (req, res) => {
-    const listPage = getPageOffset(req.query.page, pageLimit)
+    const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
     if (!listPage) return res.status(400).send('頁碼必須是正整數')
     const { page: requestedPage } = listPage
 
@@ -24,7 +24,7 @@ const studentController = {
     const queryOptions = {
       page: requestedPage,
       courseId: requestedCourseId,
-      pageSize: pageLimit
+      pageSize: DIRECTORY_PAGE_SIZE
     }
 
     const result = await studentService.getStudentsPage(queryOptions)

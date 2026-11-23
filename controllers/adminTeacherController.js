@@ -1,12 +1,11 @@
+const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const teacherService = require('../services/teacherService')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
-const pageLimit = 12
-
 const adminTeacherController = {
   getTeacherListPage: async (req, res) => {
-    const listPage = getPageOffset(req.query.page, pageLimit)
+    const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
     if (!listPage) return res.status(400).send('頁碼必須是正整數')
     const { page } = listPage
     const status = req.query.status
@@ -22,13 +21,13 @@ const adminTeacherController = {
 
     const result = await teacherService.getTeachersPage({
       page,
-      pageSize: pageLimit,
+      pageSize: DIRECTORY_PAGE_SIZE,
       status
     })
 
     const pagination = getPagination({
       page,
-      pageSize: pageLimit,
+      pageSize: DIRECTORY_PAGE_SIZE,
       totalCount: result.count
     })
 

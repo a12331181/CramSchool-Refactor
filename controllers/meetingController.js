@@ -1,6 +1,6 @@
 const meetingService = require('../services/meetingService')
 const { getPagination, getPaginationLinks, getPageOffset } = require('../utils/pagination')
-const SCHOOL_RECORDS_PAGE_SIZE = require('../constants/schoolRecordsPageSize')
+const { SCHOOL_RECORDS_PAGE_SIZE } = require('../constants/pagination')
 
 const meetingController = {
   getMeetingListPage: async (req, res) => {

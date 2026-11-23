@@ -1,6 +1,6 @@
 const diaryService = require('../services/diaryService')
 const { getPagination, getPaginationLinks, getPageOffset } = require('../utils/pagination')
-const SCHOOL_RECORDS_PAGE_SIZE = require('../constants/schoolRecordsPageSize')
+const { SCHOOL_RECORDS_PAGE_SIZE } = require('../constants/pagination')
 
 const diaryController = {
   getDiaryListPage: async (req, res) => {

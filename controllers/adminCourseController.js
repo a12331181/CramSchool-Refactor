@@ -1,9 +1,9 @@
+const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const { readUnsignedInteger } = require('../utils/formNumbers')
 const { COURSE_PREFIX_LETTERS } = require('../constants/referenceNumbers')
 const courseService = require('../services/courseService')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
-const pageLimit = 12
 
 const COURSE_SETTINGS_MESSAGES = Object.freeze({
   INVALID_TIME: '上課時長只能是 60、90 或 120 分鐘',
@@ -24,7 +24,7 @@ function readCourseSettings(body) {
 const adminCourseController = {
 // 課程相關程式碼
   getCourseListPage: async (req, res) => {
-    const listPage = getPageOffset(req.query.page, pageLimit)
+    const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
     if (!listPage) {
       return res.status(400).send('頁碼不正確或超出可處理範圍')
     }
@@ -32,12 +32,12 @@ const adminCourseController = {
 
     const result = await courseService.getAdminCoursesPage({
       page,
-      pageSize: pageLimit
+      pageSize: DIRECTORY_PAGE_SIZE
     })
 
     const pagination = getPagination({
       page,
-      pageSize: pageLimit,
+      pageSize: DIRECTORY_PAGE_SIZE,
       totalCount: result.count
     })
 

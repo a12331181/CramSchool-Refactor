@@ -1,13 +1,13 @@
 const courseService = require('../services/courseService')
 const calendarService = require('../services/calendarService')
 const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
-const STAFF_DIRECTORY_PAGE_SIZE = require('../constants/staffDirectoryPageSize')
+const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const { formatTaipeiDateTime } = require('../utils/date')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const courseController = {
   getCourseListPage: async (req, res) => {
-    const pageSize = STAFF_DIRECTORY_PAGE_SIZE
+    const pageSize = DIRECTORY_PAGE_SIZE
     const listPage = getPageOffset(req.query.page, pageSize)
     if (!listPage) return res.status(400).send('頁碼必須是有效的正整數。')
 

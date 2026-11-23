@@ -4,15 +4,13 @@ const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
 const ATTEND_STATUS = require('../constants/attendStatus')
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
-const STAFF_DIRECTORY_PAGE_SIZE = require('../constants/staffDirectoryPageSize')
+const { DIRECTORY_PAGE_SIZE, ATTENDANCE_SESSION_PAGE_SIZE } = require('../constants/pagination')
 const { formatTaipeiDateTime } = require('../utils/date')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
-const SESSION_PAGE_SIZE = 20
-
 const attendanceController = {
   getAttendanceHomePage: async (req, res) => {
-    const pageSize = STAFF_DIRECTORY_PAGE_SIZE
+    const pageSize = DIRECTORY_PAGE_SIZE
     const listPage = getPageOffset(req.query.page, pageSize)
     if (!listPage) return res.status(400).send('頁碼必須是有效的正整數。')
 
@@ -40,7 +38,7 @@ const attendanceController = {
       return res.status(400).send('課程 ID 必須是正整數。')
     }
 
-    const listPage = getPageOffset(req.query.page, SESSION_PAGE_SIZE)
+    const listPage = getPageOffset(req.query.page, ATTENDANCE_SESSION_PAGE_SIZE)
     if (!listPage) {
       return res.status(400).send('頁碼必須是有效的正整數。')
     }
@@ -48,7 +46,7 @@ const attendanceController = {
 
     const { month = '', status = '' } = req.query
     const result = await attendanceService.getCourseAttendanceSessions({
-      courseId, userId: req.user.id, month, status, page, pageSize: SESSION_PAGE_SIZE
+      courseId, userId: req.user.id, month, status, page, pageSize: ATTENDANCE_SESSION_PAGE_SIZE
     })
     res.set('Cache-Control', 'no-store')
     if (!result.ok) {
@@ -57,7 +55,7 @@ const attendanceController = {
       return res.status(404).send('找不到可查看的課程。')
     }
 
-    const pagination = getPagination({ page, pageSize: SESSION_PAGE_SIZE, totalCount: result.count })
+    const pagination = getPagination({ page, pageSize: ATTENDANCE_SESSION_PAGE_SIZE, totalCount: result.count })
     const listUrl = `/cramschool/attend/courses/${courseId}/sessions`
     const pageUrl = targetPage => {
       const query = new URLSearchParams()
