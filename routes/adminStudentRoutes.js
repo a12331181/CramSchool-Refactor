@@ -2,12 +2,9 @@ const express = require('express')
 const adminStudentController = require(
   '../controllers/adminStudentController'
 )
-const { authenticatedAdmin } = require('../middlewares/auth')
 const upload = require('../middlewares/upload')
 
 const router = express.Router()
-
-router.use(authenticatedAdmin)
 
 router.get(
   '/',

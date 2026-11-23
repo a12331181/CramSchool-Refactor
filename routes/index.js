@@ -1,4 +1,4 @@
-const { authenticated } = require('../middlewares/auth')
+const { authenticated, authenticatedAdmin } = require('../middlewares/auth')
 const schoolRoutes = require('./schoolRoutes')
 const courseRoutes = require('./courseRoutes')
 const attendanceRoutes = require('./attendanceRoutes')
@@ -29,5 +29,5 @@ module.exports = (app, passport) => {
   app.use('/admin/extrafees', adminExtraFeeRoutes)
   app.use('/', createAccountRoutes(passport))
   app.use('/admin/teachers', adminTeacherRoutes)
-  app.use('/admin/students', adminStudentRoutes, enrollmentRoutes)
+  app.use('/admin/students', authenticatedAdmin, adminStudentRoutes, enrollmentRoutes)
 }
