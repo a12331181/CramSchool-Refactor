@@ -5,6 +5,29 @@ const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/p
 
 const pageLimit = 12
 
+const studentFormOptions = {
+  sexList: [
+    { id: 1, sex: '男' },
+    { id: 2, sex: '女' },
+  ],
+  statusList: [
+    { id: 1, status: '在學' },
+    { id: 2, status: '離開' }
+  ],
+  gradeList: [
+    { id: 1, grade: '一年級' },
+    { id: 2, grade: '二年級' },
+    { id: 3, grade: '三年級' },
+    { id: 4, grade: '四年級' },
+    { id: 5, grade: '五年級' },
+    { id: 6, grade: '六年級' },
+    { id: 7, grade: '七年級' },
+    { id: 8, grade: '八年級' },
+    { id: 9, grade: '九年級' },
+    { id: 10, grade: '其他' },
+  ]
+}
+
 const adminStudentController = {
   getStudentListPage: async (req, res) => {
     const listPage = getPageOffset(req.query.page, pageLimit)
@@ -54,31 +77,7 @@ const adminStudentController = {
   },
 
   getCreateStudentPage: (req, res) => {
-    const sexList = [
-      { id: 1, sex: '男' },
-      { id: 2, sex: '女' },
-    ]
-    const statusList = [
-      { id: 1, status: '在學' },
-      { id: 2, status: '離開' }
-    ]
-    const gradeList = [
-      { id: 1, grade: '一年級' },
-      { id: 2, grade: '二年級' },
-      { id: 3, grade: '三年級' },
-      { id: 4, grade: '四年級' },
-      { id: 5, grade: '五年級' },
-      { id: 6, grade: '六年級' },
-      { id: 7, grade: '七年級' },
-      { id: 8, grade: '八年級' },
-      { id: 9, grade: '九年級' },
-      { id: 10, grade: '其他' },
-    ]
-    return res.render('admin/students/form', {
-      sexList: sexList,
-      statusList: statusList,
-      gradeList: gradeList
-    })
+    return res.render('admin/students/form', { ...studentFormOptions })
   },
 
   createStudent: async (req, res) => {
@@ -151,26 +150,6 @@ const adminStudentController = {
   },
 
   getEditStudentPage: async (req, res) => {
-    const sexList = [
-      { id: 1, sex: '男' },
-      { id: 2, sex: '女' },
-    ]
-    const statusList = [
-      { id: 1, status: '在學' },
-      { id: 2, status: '離開' }
-    ]
-    const gradeList = [
-      { id: 1, grade: '一年級' },
-      { id: 2, grade: '二年級' },
-      { id: 3, grade: '三年級' },
-      { id: 4, grade: '四年級' },
-      { id: 5, grade: '五年級' },
-      { id: 6, grade: '六年級' },
-      { id: 7, grade: '七年級' },
-      { id: 8, grade: '八年級' },
-      { id: 9, grade: '九年級' },
-      { id: 10, grade: '其他' },
-    ]
     const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
@@ -185,12 +164,7 @@ const adminStudentController = {
       return res.redirect('/admin/students')
     }
 
-    return res.render('admin/students/form', {
-      student,
-      statusList,
-      sexList,
-      gradeList
-    })
+    return res.render('admin/students/form', { student, ...studentFormOptions })
   },
 
   updateStudent: async (req, res) => {
