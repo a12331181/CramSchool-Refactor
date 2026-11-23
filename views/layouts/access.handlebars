@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  {{> workspace/head title=workspaceTitle}}
+</head>
+<body class="ws ws-access">
+  <main class="ws-access-card" id="workspace-main">
+    <a class="ws-brand" href="/signin"><span class="ws-mark">{{> workspace/icon name="abacus"}}</span>補習班管理系統</a>
+    {{> workspace/messages}}
+    {{{body}}}
+  </main>
+</body>
+</html>

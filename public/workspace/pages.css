@@ -1,0 +1,9 @@
+/* Shared content styles for the school workspace. */
+.ws-page-heading { align-items: center; flex-wrap: wrap; }
+.ws-page-title, .ws-tools { display: flex; align-items: center; gap: .75rem; }
+.ws-page-title { min-width: 0; }
+.ws-page-title h1 { overflow-wrap: anywhere; }
+.ws-tools { gap: .5rem; flex-wrap: wrap; }
+.ws-access { display: grid; min-height: 100vh; padding: clamp(1rem, 5vw, 4rem); place-items: center; }
+.ws-access-card { width: min(100%, 28rem); padding: clamp(1.4rem, 4vw, 2.5rem); border: 1px solid var(--line); border-radius: 16px; background: white; }
+.ws-access-card .ws-brand { margin: 0 0 1.8rem; }

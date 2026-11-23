@@ -18,7 +18,7 @@ const port = 3000
 
 // setup handlebars
 app.engine('handlebars', engine({
-  defaultLayout: 'main',
+  defaultLayout: 'workspace',
   helpers: require('./config/handlebars-helpers')
 })) 
 app.set('view engine', 'handlebars')

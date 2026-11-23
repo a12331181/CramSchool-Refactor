@@ -18,7 +18,7 @@ const userController = {
   },
 
   getSignUpPage: (req, res) => {
-    return res.render('account/sign-up')
+    return res.render('account/sign-up', { layout: 'access', workspaceTitle: '教師註冊' })
   },
 
   signUp: async (req, res) => {
@@ -65,7 +65,7 @@ const userController = {
   },
 
   getSignInPage: (req, res) => {
-    return res.render('account/sign-in')
+    return res.render('account/sign-in', { layout: 'access', workspaceTitle: '登入' })
   },
 
   signIn: (req, res) => {
@@ -100,7 +100,7 @@ const userController = {
     if (!user) return res.redirect('/cramschool/teachers')
 
     return res.render('account/edit-profile', {
-      user, sexList: SEX_OPTIONS, hasListedSex: SEX_OPTIONS.includes(user.Teacher.sex)
+      profile: user, sexList: SEX_OPTIONS, hasListedSex: SEX_OPTIONS.includes(user.Teacher.sex)
     })
   },
 

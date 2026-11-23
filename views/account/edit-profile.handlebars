@@ -1,7 +1,7 @@
-<form action="/users/{{user.id}}?_method=PUT" method="POST" enctype="multipart/form-data">
+<form action="/users/{{profile.id}}?_method=PUT" method="POST" enctype="multipart/form-data">
   <div class="form-group">
     <label for="name">教師名稱</label>
-    <input type="text" class="form-control" name="name" id="name" placeholder="輸入教師名稱.." value="{{user.Teacher.name}}"
+    <input type="text" class="form-control" name="name" id="name" placeholder="輸入教師名稱.." value="{{profile.Teacher.name}}"
       required>
   </div>
   
@@ -9,41 +9,41 @@
     <label for="sex">性別</label>
     <select class="form-control" name="sex" id="sex">
       {{#unless hasListedSex}}
-      <option value="{{user.Teacher.sex}}" selected>{{#if user.Teacher.sex}}{{user.Teacher.sex}}{{else}}未填寫{{/if}}</option>
+      <option value="{{profile.Teacher.sex}}" selected>{{#if profile.Teacher.sex}}{{profile.Teacher.sex}}{{else}}未填寫{{/if}}</option>
       {{/unless}}
       {{#each sexList}}
-      <option value="{{this}}"{{#ifCond ../user.Teacher.sex this}} selected{{/ifCond}}>{{this}}</option>
+      <option value="{{this}}"{{#ifCond ../profile.Teacher.sex this}} selected{{/ifCond}}>{{this}}</option>
       {{/each}}
     </select>
   </div>
   
   <div class="form-group">
     <label for="birth">生日</label>
-    <input type="date" class="form-control" name="birth" id="birth" value="{{user.Teacher.birth}}" placeholder="輸入出生年月日.."
+    <input type="date" class="form-control" name="birth" id="birth" value="{{profile.Teacher.birth}}" placeholder="輸入出生年月日.."
       required>
   </div>
   
   <div class="form-group">
     <label for="phone">聯絡方式</label>
-    <input type="text" class="form-control" name="phone" id="phone" value="{{user.Teacher.phone}}" placeholder="輸入聯絡方式.."
+    <input type="text" class="form-control" name="phone" id="phone" value="{{profile.Teacher.phone}}" placeholder="輸入聯絡方式.."
       required>
   </div>
   
   <div class="form-group">
     <label for="address">聯絡地址</label>
-    <input type="text" class="form-control" name="address" id="address" value="{{user.Teacher.address}}"
+    <input type="text" class="form-control" name="address" id="address" value="{{profile.Teacher.address}}"
       placeholder="輸入聯絡地址.." required>
   </div>
   
   <div class="form-group">
     <label for="education">最高學歷</label>
-    <input type="text" class="form-control" name="education" id="education" value="{{user.Teacher.education}}"
+    <input type="text" class="form-control" name="education" id="education" value="{{profile.Teacher.education}}"
       placeholder="輸入最高學歷.." required>
   </div>
   
   <div class="form-group">
     <label for="school">學校</label>
-    <input type="text" class="form-control" name="school" id="school" value="{{user.Teacher.school}}" placeholder="輸入學校.."
+    <input type="text" class="form-control" name="school" id="school" value="{{profile.Teacher.school}}" placeholder="輸入學校.."
       required>
   </div>
 
