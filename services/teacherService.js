@@ -1,3 +1,4 @@
+const { TEACHER_PROFILE_FIELDS } = require('../constants/profileOptions')
 const { Teacher, User } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 
@@ -92,10 +93,7 @@ async function updateTeacher(teacherId, teacherData) {
     }
   }
 
-  const editableFields = [
-    'name', 'sex', 'birth', 'phone',
-    'address', 'education', 'school', 'status'
-  ]
+  const editableFields = [...TEACHER_PROFILE_FIELDS, 'status']
 
   const updates = {}
 

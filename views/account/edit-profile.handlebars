@@ -8,8 +8,12 @@
   <div class="form-group">
     <label for="sex">性別</label>
     <select class="form-control" name="sex" id="sex">
-      <option value="男">男</option>
-      <option value="女">女</option>
+      {{#unless hasListedSex}}
+      <option value="{{user.Teacher.sex}}" selected>{{#if user.Teacher.sex}}{{user.Teacher.sex}}{{else}}未填寫{{/if}}</option>
+      {{/unless}}
+      {{#each sexList}}
+      <option value="{{this}}"{{#ifCond ../user.Teacher.sex this}} selected{{/ifCond}}>{{this}}</option>
+      {{/each}}
     </select>
   </div>
   

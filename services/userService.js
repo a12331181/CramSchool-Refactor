@@ -1,3 +1,4 @@
+const { TEACHER_PROFILE_FIELDS } = require('../constants/profileOptions')
 const { discardUnusedProfileImage } = require('./profileImageService')
 const SCHOOL_CODE = require('../constants/schoolCode')
 const bcrypt = require('bcryptjs')
@@ -177,7 +178,6 @@ async function assignUserNo({ userId, schoolCode, transaction } = {}) {
     : sequelize.transaction(assign)
 }
 
-const TEACHER_PROFILE_FIELDS = ['name', 'sex', 'birth', 'phone', 'address', 'education', 'school']
 
 async function getTeacherProfile(userId) {
   const teacher = await Teacher.findOne({

@@ -12,10 +12,10 @@
     <label for="sex">性別</label>
     <select class="form-control" name="sex" id="sex" {{#ifCond student.status 2 }} disabled {{/ifCond}}>
       {{#each sexList}}
-      <option value="{{this.sex}}" 
-        {{#ifCond ../student.sex this.sex}} 
+      <option value="{{this}}"
+        {{#ifCond ../student.sex this}}
           selected 
-        {{/ifCond}}>{{this.sex}}
+        {{/ifCond}}>{{this}}
       </option>
       {{/each}}
     </select>
@@ -35,10 +35,10 @@
     <label for="grade">年級</label>
     <select class="form-control" name="grade" id="grade" {{#ifCond student.status 2 }} disabled {{/ifCond}}>
       {{#each gradeList}}
-      <option value="{{this.grade}}" 
-        {{#ifCond ../student.grade this.grade}} 
+      <option value="{{this}}"
+        {{#ifCond ../student.grade this}}
           selected 
-        {{/ifCond}}>{{this.grade}}
+        {{/ifCond}}>{{this}}
       </option>
       {{/each}}
     </select>

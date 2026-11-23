@@ -1,3 +1,4 @@
+const { SEX_OPTIONS } = require('../constants/profileOptions')
 const { discardUnusedProfileImage } = require('../services/profileImageService')
 const userService = require('../services/userService')
 const imageStorage = require('../utils/imageStorage')
@@ -98,7 +99,9 @@ const userController = {
     const user = await userService.getEditableTeacherProfile(req.user.id)
     if (!user) return res.redirect('/cramschool/teachers')
 
-    return res.render('account/edit-profile', { user })
+    return res.render('account/edit-profile', {
+      user, sexList: SEX_OPTIONS, hasListedSex: SEX_OPTIONS.includes(user.Teacher.sex)
+    })
   },
 
   updateUserProfile: async (req, res) => {

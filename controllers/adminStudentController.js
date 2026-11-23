@@ -1,31 +1,9 @@
+const { SEX_OPTIONS, GRADE_OPTIONS, STUDENT_STATUS_OPTIONS } = require('../constants/profileOptions')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const { discardUnusedProfileImage } = require('../services/profileImageService')
 const studentService = require('../services/studentService')
 const imageStorage = require('../utils/imageStorage')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
-
-const studentFormOptions = {
-  sexList: [
-    { id: 1, sex: '男' },
-    { id: 2, sex: '女' },
-  ],
-  statusList: [
-    { id: 1, status: '在學' },
-    { id: 2, status: '離開' }
-  ],
-  gradeList: [
-    { id: 1, grade: '一年級' },
-    { id: 2, grade: '二年級' },
-    { id: 3, grade: '三年級' },
-    { id: 4, grade: '四年級' },
-    { id: 5, grade: '五年級' },
-    { id: 6, grade: '六年級' },
-    { id: 7, grade: '七年級' },
-    { id: 8, grade: '八年級' },
-    { id: 9, grade: '九年級' },
-    { id: 10, grade: '其他' },
-  ]
-}
 
 const adminStudentController = {
   getStudentListPage: async (req, res) => {
@@ -76,7 +54,7 @@ const adminStudentController = {
   },
 
   getCreateStudentPage: (req, res) => {
-    return res.render('admin/students/form', { ...studentFormOptions })
+    return res.render('admin/students/form', { sexList: SEX_OPTIONS, gradeList: GRADE_OPTIONS, statusList: STUDENT_STATUS_OPTIONS })
   },
 
   createStudent: async (req, res) => {
@@ -163,7 +141,7 @@ const adminStudentController = {
       return res.redirect('/admin/students')
     }
 
-    return res.render('admin/students/form', { student, ...studentFormOptions })
+    return res.render('admin/students/form', { student, sexList: SEX_OPTIONS, gradeList: GRADE_OPTIONS, statusList: STUDENT_STATUS_OPTIONS })
   },
 
   updateStudent: async (req, res) => {

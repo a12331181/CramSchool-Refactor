@@ -8,11 +8,11 @@
     <label for="sex">性別</label>
     <select class="form-control" name="sex" id="sex" {{#ifCond teacher.status 3 }} disabled {{/ifCond}}>
       {{#each sexList}}
-        <option value="{{this.sex}}"
-          {{#ifCond ../teacher.sex this.sex}} 
+        <option value="{{this}}"
+          {{#ifCond ../teacher.sex this}}
             selected 
           {{/ifCond}}
-        >{{this.sex}}</option>
+        >{{this}}</option>
       {{/each}}
     </select>
   </div>

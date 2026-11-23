@@ -1,3 +1,4 @@
+const { SEX_OPTIONS, TEACHER_STATUS_OPTIONS } = require('../constants/profileOptions')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const teacherService = require('../services/teacherService')
 const TEACHER_STATUS = require('../constants/teacherStatus')
@@ -46,11 +47,7 @@ const adminTeacherController = {
     return res.render('admin/teachers/index', {
       teachers: result.rows,
       status: status ?? '',
-      statusList: [
-        { id: TEACHER_STATUS.ACTIVE, status: '在職' },
-        { id: TEACHER_STATUS.ON_LEAVE, status: '留職停薪' },
-        { id: TEACHER_STATUS.LEFT, status: '離職' }
-      ],
+      statusList: TEACHER_STATUS_OPTIONS,
       ...getPaginationLinks(pagination, pageUrl)
     })
   },
@@ -88,15 +85,8 @@ const adminTeacherController = {
 
     return res.render('admin/teachers/edit', {
       teacher,
-      sexList: [
-        { id: 1, sex: '男' },
-        { id: 2, sex: '女' }
-      ],
-      statusList: [
-        { id: TEACHER_STATUS.ACTIVE, status: '在職' },
-        { id: TEACHER_STATUS.ON_LEAVE, status: '留職停薪' },
-        { id: TEACHER_STATUS.LEFT, status: '離職' }
-      ]
+      sexList: SEX_OPTIONS,
+      statusList: TEACHER_STATUS_OPTIONS
     })
   },
 
