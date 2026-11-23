@@ -1,12 +1,23 @@
 const { getTeacherAccountInclude } = require('./teacherService')
-const { Course, Diary, Teacher } = require('../models')
+const { Course, Diary, Teacher, sequelize } = require('../models')
 
 function activeCourseInclude() {
   return { model: Course, attributes: ['id', 'courseNo', 'name'], where: { isActive: true } }
 }
 
 function diaryAuthorInclude() {
-  return { model: Teacher, attributes: ['name'], include: [getTeacherAccountInclude()], required: false }
+  return { model: Teacher, attributes: ['name', 'UserId'], include: [getTeacherAccountInclude()], required: false }
+}
+
+function canDeleteDiary(diary, viewer) {
+  return Number.isSafeInteger(viewer?.id) && (Boolean(viewer.isAdmin) || diary.Teacher?.UserId === viewer.id)
+}
+
+function withDeletePermissions(page, viewer) {
+  return {
+    count: page.count,
+    rows: page.rows.map(diary => ({ ...diary, canDelete: canDeleteDiary(diary, viewer) }))
+  }
 }
 
 function getRecentDiaries(limit) {
@@ -19,8 +30,8 @@ function getRecentDiaries(limit) {
   })
 }
 
-function getDiariesPage({ offset, limit }) {
-  return Diary.findAndCountAll({
+async function getDiariesPage({ offset, limit, viewer }) {
+  const page = await Diary.findAndCountAll({
     raw: true,
     nest: true,
     include: [activeCourseInclude(), diaryAuthorInclude()],
@@ -28,9 +39,10 @@ function getDiariesPage({ offset, limit }) {
     limit,
     order: [['createdAt', 'DESC'], ['id', 'DESC']]
   })
+  return withDeletePermissions(page, viewer)
 }
 
-async function getCourseDiariesPage({ courseId, offset, limit }) {
+async function getCourseDiariesPage({ courseId, offset, limit, viewer }) {
   const course = await Course.findOne({ attributes: ['id', 'courseNo', 'name'], raw: true, where: { id: courseId, isActive: true } })
   if (!course) return null
 
@@ -38,12 +50,13 @@ async function getCourseDiariesPage({ courseId, offset, limit }) {
     raw: true,
     nest: true,
     attributes: ['id', 'date', 'subject'],
+    include: [{ model: Teacher, attributes: ['UserId'], required: false }],
     where: { CourseId: courseId },
     offset,
     limit,
     order: [['createdAt', 'DESC'], ['id', 'DESC']]
   })
-  return { course, diaries }
+  return { course, diaries: withDeletePermissions(diaries, viewer) }
 }
 
 function getDiaryDetails({ courseId, diaryId }) {
@@ -69,14 +82,21 @@ async function createDiary({ courseId, userId, date, subject, content }) {
   return true
 }
 
-async function deleteDiary({ diaryId, courseId }) {
+async function deleteDiary({ diaryId, courseId, viewer }) {
   const where = { id: diaryId }
   if (courseId !== undefined) where.CourseId = courseId
-  const diary = await Diary.findOne({ where })
-  if (!diary) return false
-
-  await diary.destroy()
-  return true
+  return sequelize.transaction(async transaction => {
+    const diary = await Diary.findOne({
+      where,
+      include: [{ model: Teacher, attributes: ['UserId'], required: false }],
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    })
+    if (!diary) return { ok: false, code: 'NOT_FOUND' }
+    if (!canDeleteDiary(diary, viewer)) return { ok: false, code: 'FORBIDDEN' }
+    await diary.destroy({ transaction })
+    return { ok: true }
+  })
 }
 
 module.exports = {

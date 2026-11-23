@@ -10,7 +10,7 @@
       <th scope="col">主題</th>
       <th scope="col">課程</th>
       <th scope="col">教師</th>
-      {{#if isAdmin}}
+      {{#if showDeleteColumn}}
       <th scope="col">#</th>
       {{/if}}
     </tr>
@@ -23,11 +23,13 @@
       <td><a href="/cramschool/courses/{{this.Course.id}}/diaries/{{this.id}}">{{this.subject}}</a></td>
       <td style="color: rgb(211, 146, 60);">{{referenceLabel this.Course.courseNo this.Course.name}}</td>
       <td style="color: rgb(124, 150, 199);">{{referenceLabel this.Teacher.User.userNo this.Teacher.name}}</td>
-      {{#if ../isAdmin}}
+      {{#if ../showDeleteColumn}}
       <td>
+        {{#if canDelete}}
         <form action="/cramschool/diaries/{{this.id}}?_method=DELETE" method="POST" style="display: inline;">
           <button type="submit" class="btn btn-sm btn-danger">刪除</button>
         </form>
+        {{/if}}
       </td>
       {{/if}}
     </tr>

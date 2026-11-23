@@ -13,7 +13,7 @@ router.get('/meetings/create', authenticated, meetingController.getCreateMeeting
 router.get('/meetings/:meetingId', authenticated, meetingController.getMeetingDetailsPage)
 router.post('/meetings', authenticated, meetingController.createMeeting)
 router.delete('/meetings/:meetingId', authenticatedAdmin, meetingController.deleteMeeting)
-router.delete('/diaries/:diaryId', authenticatedAdmin, diaryController.deleteDiaryFromList)
+router.delete('/diaries/:diaryId', authenticated, diaryController.deleteDiary)
 router.get('/diaries', authenticated, diaryController.getDiaryListPage)
 router.get('/courses/:courseId/diaries', authenticated, diaryController.getCourseDiariesPage)
 router.get('/courses/:courseId/diaries/create', authenticated, diaryController.getCreateDiaryPage)
