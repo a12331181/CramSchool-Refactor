@@ -2,6 +2,8 @@ const { Router } = require('express')
 const { authenticatedAdmin } = require('../middlewares/auth')
 const adminExtraFeeController = require('../controllers/adminExtraFeeController')
 
+const { InvalidExtraFeePrice } = require('../utils/extraFeePrice')
+
 const router = Router()
 
 router.get('/', authenticatedAdmin, adminExtraFeeController.getExtraFeeListPage)
@@ -9,5 +11,10 @@ router.get('/create', authenticatedAdmin, adminExtraFeeController.getCreateExtra
 router.post('/', authenticatedAdmin, adminExtraFeeController.createExtraFee)
 router.get('/:extraFeeId/edit', authenticatedAdmin, adminExtraFeeController.getEditExtraFeePage)
 router.put('/:extraFeeId', authenticatedAdmin, adminExtraFeeController.updateExtraFee)
+
+router.use((error, _req, res, next) => {
+  if (error instanceof InvalidExtraFeePrice) return res.status(400).send(error.message)
+  return next(error)
+})
 
 module.exports = router

@@ -1,4 +1,5 @@
 const extraFeeService = require('../services/extraFeeService')
+const { MAX_EXTRA_FEE_PRICE } = require('../utils/extraFeePrice')
 
 const adminExtraFeeController = {
   getExtraFeeListPage: async (_req, res) => {
@@ -7,14 +8,14 @@ const adminExtraFeeController = {
   },
 
   getCreateExtraFeePage: (_req, res) => {
-    return res.render('admin/extra-fees/form')
+    return res.render('admin/extra-fees/form', { maxPrice: MAX_EXTRA_FEE_PRICE })
   },
 
   getEditExtraFeePage: async (req, res) => {
     const extrafee = await extraFeeService.getExtraFeeDetails(req.params.extraFeeId)
     if (!extrafee) return res.redirect('/admin/extrafees')
 
-    return res.render('admin/extra-fees/form', { extrafee })
+    return res.render('admin/extra-fees/form', { extrafee, maxPrice: MAX_EXTRA_FEE_PRICE })
   },
 
   createExtraFee: async (req, res) => {
