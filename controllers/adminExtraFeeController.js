@@ -1,5 +1,5 @@
 const extraFeeService = require('../services/extraFeeService')
-const { MAX_EXTRA_FEE_PRICE } = require('../utils/extraFeePrice')
+const { MAX_EXTRA_FEE_PRICE } = require('../constants/extraFeeLimits')
 
 const adminExtraFeeController = {
   getExtraFeeListPage: async (_req, res) => {

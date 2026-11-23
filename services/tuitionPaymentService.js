@@ -1,10 +1,10 @@
 const { MAX_TUITION_BILL_VERSION } = require('../constants/tuitionBillLimits')
 const { AuditLog, Payment, TuitionBill, TuitionBillItem, sequelize } = require('../models')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
-const { MAX_PAYMENT_AMOUNT } = require('../constants/tuitionPayment')
+const { MAX_PAYMENT_AMOUNT, MAX_PAYMENT_ITEMS } = require('../constants/tuitionPayment')
 const { getTaipeiDate, isTaipeiDateKey } = require('../utils/date')
 const { getPaidTuitionBillPayments, summarizeTuitionBillPayments } = require('./tuitionPaymentStateService')
-const { MAX_PAYMENT_ITEMS, getAllocationState, createAllocations } = require('./tuitionPaymentAllocationService')
+const { getAllocationState, createAllocations } = require('./tuitionPaymentAllocationService')
 
 const isPositiveInteger = n => Number.isSafeInteger(n) && n > 0
 const isPaymentVersion = n => Number.isSafeInteger(n) && n >= 0 && n < MAX_TUITION_BILL_VERSION

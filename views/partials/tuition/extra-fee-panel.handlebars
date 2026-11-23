@@ -15,7 +15,7 @@
   </select>
 
   <label for="bill-extra-quantity">數量:</label>
-  <input id="bill-extra-quantity" name="quantity" type="number" class="form-control mb-2" value="1" min="1" max="999"
+  <input id="bill-extra-quantity" name="quantity" type="number" class="form-control mb-2" value="1" min="1" max="{{maxExtraFeeQuantity}}"
     step="1" required>
 
   <button type="submit" class="btn btn-primary">加入帳單</button>

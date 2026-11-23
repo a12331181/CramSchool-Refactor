@@ -1,3 +1,4 @@
+const { MAX_EXTRA_FEE_QUANTITY } = require('../constants/extraFeeLimits')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
 const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
 const { MAX_PAYMENT_AMOUNT, MAX_REFUND_AMOUNT } = require('../constants/tuitionPayment')
@@ -421,6 +422,7 @@ const tuitionBillController = {
       issueForm,
       voidForm,
       extraFees, 
+      maxExtraFeeQuantity: MAX_EXTRA_FEE_QUANTITY,
       extraFeeFormToken
     })
   },
@@ -451,7 +453,7 @@ const tuitionBillController = {
     }
 
     const errors = {
-      INVALID_INPUT: '請選擇費用項目，數量須為 1 到 999 的整數。',
+      INVALID_INPUT: `請選擇費用項目，數量須為 1 到 ${MAX_EXTRA_FEE_QUANTITY} 的整數。`,
       BILL_NOT_DRAFT: '只有草稿可以加入額外費用。',
       BILL_VERSION_CONFLICT: '帳單已更新，請核對目前明細後再試。',
       EXTRA_FEE_ALREADY_ADDED: '這個費用項目已經在帳單上。',

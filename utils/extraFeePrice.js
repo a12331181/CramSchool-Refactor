@@ -1,6 +1,5 @@
 const { readUnsignedInteger } = require('./formNumbers')
-
-const MAX_EXTRA_FEE_PRICE = 10_000
+const { MAX_EXTRA_FEE_PRICE } = require('../constants/extraFeeLimits')
 
 class InvalidExtraFeePrice extends Error {
   constructor() {

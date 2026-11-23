@@ -1,12 +1,12 @@
 const { MAX_TUITION_BILL_VERSION } = require('../constants/tuitionBillLimits')
-const { MAX_REFUND_AMOUNT } = require('../constants/tuitionPayment')
+const { MAX_REFUND_AMOUNT, MAX_PAYMENT_ITEMS } = require('../constants/tuitionPayment')
 const { Op, Transaction, json } = require('sequelize')
 const { TuitionBill, TuitionBillItem, TuitionBillRefund, TuitionBillRefundAllocation, AuditLog, sequelize } = require('../models')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const { isTaipeiDateKey, getTaipeiDate } = require('../utils/date')
 const { getPaidTuitionBillPayments, summarizeTuitionBillPayments } = require('./tuitionPaymentStateService')
-const { MAX_PAYMENT_ITEMS, getAllocationState } = require('./tuitionPaymentAllocationService')
+const { getAllocationState } = require('./tuitionPaymentAllocationService')
 const { getRefundLedger } = require('./tuitionRefundLedgerService')
 
 async function hasTuitionBillRefund(billId, transaction) {

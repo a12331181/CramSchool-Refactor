@@ -1,8 +1,8 @@
+const { MAX_PAYMENT_ITEMS } = require('../constants/tuitionPayment')
 const { Op } = require('sequelize')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const { TuitionPaymentAllocation } = require('../models')
 
-const MAX_PAYMENT_ITEMS = 500
 
 function buildPayableItems(items, totalAmount) {
   const payableItems = []

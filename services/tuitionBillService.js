@@ -1,3 +1,4 @@
+const { MAX_EXTRA_FEE_QUANTITY } = require('../constants/extraFeeLimits')
 const { allocateTuitionDocumentNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
 const { MAX_TUITION_BILL_VERSION, MAX_TUITION_BILL_ITEM_AMOUNT } = require('../constants/tuitionBillLimits')
 const { Op, Transaction, UniqueConstraintError, ValidationError } = require('sequelize')
@@ -766,7 +767,7 @@ async function getTuitionBillHistoryData(billId, transaction) {
 async function addTuitionBillExtraFee({ billId, extraFeeId, quantity, billVersion }) {
   if (
     ![billId, extraFeeId, quantity].every(n => Number.isSafeInteger(n) && n > 0) ||
-    quantity > 999 ||
+    quantity > MAX_EXTRA_FEE_QUANTITY ||
     !Number.isSafeInteger(billVersion) ||
     billVersion < 0
   ) {
