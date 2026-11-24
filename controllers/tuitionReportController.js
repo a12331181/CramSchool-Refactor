@@ -27,7 +27,12 @@ const tuitionReportController = {
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
     const viewData = { listUrl, billingMonth: typeof billingMonth === 'string' ? billingMonth : '' }
     res.set('Cache-Control', 'no-store')
-    const result = await tuitionReportService.getCoursePaymentOverview({ billingMonth })
+    const position = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
+    const filter = req.query.filter ?? 'all'
+    const includeTotals = req.query.totals === '1'
+    if (!position || !['all', 'unpaid', 'review'].includes(filter)) return sendPageError(res, 400, '頁碼或收費篩選不正確。')
+    const result = await tuitionReportService.getCoursePaymentOverview({ billingMonth, page: position.page,
+      pageSize: DIRECTORY_PAGE_SIZE, filter, includeTotals })
     if (!result.ok) {
       if (result.code === 'INVALID_BILLING_MONTH') {
         return res.status(400).render('tuition/course-overview', {
@@ -38,13 +43,16 @@ const tuitionReportController = {
       return sendPageError(res, 500, '無法取得課程收費資料。')
     }
 
-    const monthQuery = new URLSearchParams({ billingMonth })
+    const pagination = getPagination({ page: position.page, pageSize: DIRECTORY_PAGE_SIZE, totalCount: result.totalCount })
+    const pageUrl = page => listUrl + '?' + new URLSearchParams({ billingMonth, filter, page, ...(includeTotals && { totals: '1' }) })
+    if (position.page > pagination.totalPages) return res.redirect(pageUrl(pagination.totalPages))
+    const monthQuery = new URLSearchParams({ billingMonth, fromPage: position.page, fromFilter: filter, ...(includeTotals && { fromTotals: '1' }) })
 
     const formatAmount = amount => amount === null ? '待核對' : `NT$ ${amountFormat.format(amount)}`
     const courses = result.courses.map((course, index) => {
       const [collectionText, collectionClass] = COURSE_COLLECTION_LABELS[course.collectionStatus]
       return {
-        rowNumber: index + 1,
+        rowNumber: position.offset + index + 1,
         courseLabel: formatReferenceLabel(course.courseNo, course.name),
         isClosed: Number(course.isActive) === 0,
         receivableText: formatAmount(course.receivableAmount),
@@ -58,7 +66,9 @@ const tuitionReportController = {
       }
     })
 
-    return res.render('tuition/course-overview', { ...viewData, courses })
+    return res.render('tuition/course-overview', { ...viewData, courses, filter, includeTotals,
+      totals: result.totals && Object.fromEntries(Object.entries(result.totals).map(([k, v]) => [k, formatAmount(v)])),
+      ...getPaginationLinks(pagination, pageUrl) })
   },
 
   getStudentTuitionHistoryPage: async (req, res) => {
@@ -248,7 +258,10 @@ const tuitionReportController = {
     const viewData = {
       listUrl,
       billingMonth: typeof billingMonth === 'string' ? billingMonth : '',
-      backUrl: withQuery('/cramschool/payment', getTuitionNavigationParams({ billingMonth }))
+      backUrl: '/cramschool/payment?' + new URLSearchParams({ billingMonth,
+        page: getPageOffset(req.query.fromPage, DIRECTORY_PAGE_SIZE)?.page ?? 1,
+        filter: ['unpaid', 'review'].includes(req.query.fromFilter) ? req.query.fromFilter : 'all',
+        ...(req.query.fromTotals === '1' && { totals: '1' }) })
     }
 
     res.set('Cache-Control', 'no-store')
@@ -271,7 +284,7 @@ const tuitionReportController = {
     }
 
     const pagination = getPagination({ page, pageSize, totalCount: result.totalCount })
-    const pageUrl = targetPage => `${listUrl}?${new URLSearchParams({ billingMonth, page: String(targetPage) })}`
+    const pageUrl = targetPage => `${listUrl}?${new URLSearchParams({ billingMonth, page: String(targetPage), fromPage: String(getPageOffset(req.query.fromPage, DIRECTORY_PAGE_SIZE)?.page ?? 1), fromFilter: ['unpaid','review'].includes(req.query.fromFilter) ? req.query.fromFilter : 'all', ...(req.query.fromTotals === '1' && { fromTotals: '1' }) })}`
     if (page > pagination.totalPages) return res.redirect(pageUrl(pagination.totalPages))
 
     const rows = result.rows.map(({

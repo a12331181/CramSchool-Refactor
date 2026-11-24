@@ -1,7 +1,18 @@
 {{> workspace/page-heading}}
 
 <div class="ws-content">
-{{> tuition/billing-month-filter formAction=listUrl monthLabel="計費月份：" submitText="查看月份"}}
+<form method="get" action="{{listUrl}}" class="ws-filter">
+  <label for="billing-month">計費月份</label><input id="billing-month" type="month" name="billingMonth" value="{{billingMonth}}" required>
+  <label for="collection-filter">收費狀態</label><select id="collection-filter" name="filter">
+    <option value="all">全部課程</option><option value="unpaid" {{#ifCond filter "unpaid"}}selected{{/ifCond}}>只看有未收</option>
+    <option value="review" {{#ifCond filter "review"}}selected{{/ifCond}}>只看待核對</option>
+  </select>
+  <label><input type="checkbox" name="totals" value="1" {{#if includeTotals}}checked{{/if}}> 顯示整月合計</label>
+  <button class="btn btn-primary">查看</button>
+</form>
+{{#if totals}}<dl class="ws-stats" aria-label="全部課程整月合計">
+<div><dt>整月應收</dt><dd>{{totals.receivableAmount}}</dd></div><div><dt>整月實收</dt><dd>{{totals.netReceivedAmount}}</dd></div>
+<div><dt>整月已退</dt><dd>{{totals.refundedAmount}}</dd></div><div><dt>整月未收</dt><dd>{{totals.remainingAmount}}</dd></div></dl>{{/if}}
 
 {{#if errorMessage}}
 <p class="alert alert-warning" role="alert">{{errorMessage}}</p>
@@ -12,7 +23,7 @@
 </p>
 
 <div class="table-responsive">
-  <table class="table table-bordered">
+  <table class="table table-bordered ws-money-table">
     <thead>
       <tr>
         <th scope="col">編號</th>
@@ -36,10 +47,10 @@
         <td>{{this.refundedText}}</td>
         <td>{{this.netReceivedText}}</td>
         <td>{{this.remainingText}}</td>
-        <td><span class="font-weight-bold {{this.collectionClass}}">{{this.collectionText}}</span></td>
+        <td><span class="font-weight-bold {{this.collectionClass}}">{{this.collectionText}}</span><details class="ws-money-breakdown"><summary>金額明細</summary><p>應收 {{receivableText}}<br>已收 {{receivedText}}<br>已退 {{refundedText}}<br>實收 {{netReceivedText}}</p></details></td>
         <td>
           <a href="{{this.detailUrl}}" class="btn btn-sm btn-primary">
-            每月學費明細
+            查看明細
           </a>
         </td>
       </tr>
@@ -49,5 +60,6 @@
     </tbody>
   </table>
 </div>
+{{> pagination ariaLabel="課程收費分頁"}}
 {{/if}}
 </div>

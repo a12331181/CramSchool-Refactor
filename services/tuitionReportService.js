@@ -290,87 +290,120 @@ function readTuitionSnapshot(read) {
   }, read)
 }
 
-async function getCoursePaymentOverview({ billingMonth } = {}) {
+async function summarizeCoursePage(courses, billingMonth, range, transaction) {
+  if (!courses.length) return []
+  const courseIds = courses.map(course => course.id)
+  const courseFeeItems = await getCourseFeeItemsForMonth({ courseIds, billingMonth }, transaction)
+  const enrollments = await getCourseEnrollments(courseIds, transaction)
+  const summaries = new Map(courses.map(({ id }) => [id, {
+    studentIds: new Set(),
+    issuedStudentIds: new Set(),
+    issuedBillIds: new Set()
+  }]))
+
+  for (const enrollment of enrollments) {
+    const { StudentId: studentId, CourseId: courseId } = enrollment
+    if (!Number.isSafeInteger(studentId) || studentId < 1) continue
+    if (getTuitionEnrollmentStateForMonth(enrollment, range) === 'outside_month') continue
+    summaries.get(courseId).studentIds.add(studentId)
+  }
+
+  const issuedBills = new Map()
+  for (const { CourseId: courseId, TuitionBill: bill } of courseFeeItems) {
+    const summary = summaries.get(courseId)
+    if (!summary) continue
+    summary.studentIds.add(bill.StudentId)
+    if (bill.status !== TUITION_BILL_STATUS.ISSUED) continue
+
+    summary.issuedStudentIds.add(bill.StudentId)
+    summary.issuedBillIds.add(bill.id)
+    issuedBills.set(bill.id, bill)
+  }
+
+  const paymentStatuses = await getIssuedCoursePaymentStatuses([...issuedBills.values()], transaction)
+  const rows = courses.map(course => {
+    const { studentIds, issuedStudentIds, issuedBillIds } = summaries.get(course.id)
+    const statuses = [...issuedBillIds].map(id => paymentStatuses.get(id)?.get(course.id))
+    const totalOf = field => statuses.length === 0 ? 0 : sumCourseFeeAmounts(statuses.map(status => status?.[field]))
+    const receivableAmount = totalOf('totalAmount')
+    const receivedAmount = totalOf('paidAmount')
+    const refundedAmount = totalOf('refundedAmount')
+    const netReceivedAmount = totalOf('netReceivedAmount')
+    const remainingAmount = totalOf('remainingAmount')
+
+    let collectionStatus = COURSE_COLLECTION_STATUS.PAID
+    if (studentIds.size === 0) {
+      collectionStatus = COURSE_COLLECTION_STATUS.EMPTY
+    } else if (issuedStudentIds.size < studentIds.size) {
+      collectionStatus = COURSE_COLLECTION_STATUS.UNISSUED
+    } else if (
+      statuses.some(status => !status?.ok) ||
+      [receivableAmount, receivedAmount, refundedAmount, netReceivedAmount, remainingAmount].some(amount => amount === null)
+    ) {
+      collectionStatus = COURSE_COLLECTION_STATUS.REVIEW
+    } else if (receivableAmount === 0) {
+      collectionStatus = COURSE_COLLECTION_STATUS.NO_PAYMENT
+    } else if (remainingAmount > 0) {
+      collectionStatus = COURSE_COLLECTION_STATUS.UNPAID
+    } else if (refundedAmount > 0) {
+      collectionStatus = netReceivedAmount === 0
+        ? COURSE_COLLECTION_STATUS.REFUNDED
+        : COURSE_COLLECTION_STATUS.PARTIALLY_REFUNDED
+    }
+
+    return { ...course, receivableAmount, receivedAmount, refundedAmount, netReceivedAmount, remainingAmount, collectionStatus }
+  })
+
+  return rows
+}
+
+async function getCoursePaymentOverview({ billingMonth, page = 1, pageSize = 12, filter = 'all', includeTotals = false } = {}) {
   const range = getTaipeiMonthRange(billingMonth)
   if (!range) return { ok: false, code: 'INVALID_BILLING_MONTH' }
-
+  if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(pageSize) || pageSize < 1 ||
+    !['all', 'unpaid', 'review'].includes(filter)) return { ok: false, code: 'INVALID_INPUT' }
+  const offset = (page - 1) * pageSize
+  if (!Number.isSafeInteger(offset)) return { ok: false, code: 'INVALID_PAGE' }
   return readTuitionSnapshot(async transaction => {
-    const courseFeeItems = await getCourseFeeItemsForMonth({ billingMonth }, transaction)
-    const billedCourseIds = [...new Set(courseFeeItems
-      .map(item => item.CourseId)
-      .filter(id => Number.isSafeInteger(id) && id > 0))]
-    const courses = await Course.findAll({
-      attributes: ['id', 'courseNo', 'name', 'isActive'],
-      where: billedCourseIds.length > 0
-        ? { [Op.or]: [{ isActive: true }, { id: { [Op.in]: billedCourseIds } }] }
-        : { isActive: true },
-      order: [['id', 'ASC']],
-      raw: true,
-      transaction
-    })
-    if (courses.length === 0) return { ok: true, courses: [] }
-
-    const enrollments = await getCourseEnrollments(courses.map(course => course.id), transaction)
-    const summaries = new Map(courses.map(({ id }) => [id, {
-      studentIds: new Set(),
-      issuedStudentIds: new Set(),
-      issuedBillIds: new Set()
-    }]))
-
-    for (const enrollment of enrollments) {
-      const { StudentId: studentId, CourseId: courseId } = enrollment
-      if (!Number.isSafeInteger(studentId) || studentId < 1) continue
-      if (getTuitionEnrollmentStateForMonth(enrollment, range) === 'outside_month') continue
-      summaries.get(courseId).studentIds.add(studentId)
+    // 已關課但當月有草稿或正式帳單的課程也要出現在列表。
+    const billed = sequelize.literal('EXISTS (SELECT 1 FROM TuitionBillItems i JOIN TuitionBills b ON b.id = i.TuitionBillId ' +
+      'WHERE i.CourseId = ' + sequelize.getQueryInterface().queryGenerator.quoteIdentifier(Course.name) + '.id AND i.kind = ' + sequelize.escape(TUITION_BILL_ITEM_KIND.COURSE_FEE) +
+      ' AND b.billingMonth = ' + sequelize.escape(billingMonth) + " AND b.status IN ('draft','issued'))")
+    const query = { attributes: ['id', 'courseNo', 'name', 'isActive'], where: { [Op.or]: [{ isActive: true }, billed] },
+      order: [['id', 'ASC']], raw: true, transaction }
+    if (filter === 'all' && !includeTotals) {
+      const rows = await Course.findAll({
+        ...query, attributes: [...query.attributes, [sequelize.literal('COUNT(*) OVER ()'), 'matchingCount']],
+        limit: pageSize, offset
+      })
+      const totalCount = rows.length ? Number(rows[0].matchingCount) :
+        (offset ? await Course.count({ where: query.where, transaction }) : 0)
+      const pageCourses = rows.map(({ matchingCount, ...course }) => course)
+      return { ok: true, totalCount, courses: await summarizeCoursePage(pageCourses, billingMonth, range, transaction) }
     }
 
-    const issuedBills = new Map()
-    for (const { CourseId: courseId, TuitionBill: bill } of courseFeeItems) {
-      const summary = summaries.get(courseId)
-      if (!summary) continue
-      summary.studentIds.add(bill.StudentId)
-      if (bill.status !== TUITION_BILL_STATUS.ISSUED) continue
-
-      summary.issuedStudentIds.add(bill.StudentId)
-      summary.issuedBillIds.add(bill.id)
-      issuedBills.set(bill.id, bill)
-    }
-
-    const paymentStatuses = await getIssuedCoursePaymentStatuses([...issuedBills.values()], transaction)
-    const rows = courses.map(course => {
-      const { studentIds, issuedStudentIds, issuedBillIds } = summaries.get(course.id)
-      const statuses = [...issuedBillIds].map(id => paymentStatuses.get(id)?.get(course.id))
-      const totalOf = field => statuses.length === 0 ? 0 : sumCourseFeeAmounts(statuses.map(status => status?.[field]))
-      const receivableAmount = totalOf('totalAmount')
-      const receivedAmount = totalOf('paidAmount')
-      const refundedAmount = totalOf('refundedAmount')
-      const netReceivedAmount = totalOf('netReceivedAmount')
-      const remainingAmount = totalOf('remainingAmount')
-
-      let collectionStatus = COURSE_COLLECTION_STATUS.PAID
-      if (studentIds.size === 0) {
-        collectionStatus = COURSE_COLLECTION_STATUS.EMPTY
-      } else if (issuedStudentIds.size < studentIds.size) {
-        collectionStatus = COURSE_COLLECTION_STATUS.UNISSUED
-      } else if (
-        statuses.some(status => !status?.ok) ||
-        [receivableAmount, receivedAmount, refundedAmount, netReceivedAmount, remainingAmount].some(amount => amount === null)
-      ) {
-        collectionStatus = COURSE_COLLECTION_STATUS.REVIEW
-      } else if (receivableAmount === 0) {
-        collectionStatus = COURSE_COLLECTION_STATUS.NO_PAYMENT
-      } else if (remainingAmount > 0) {
-        collectionStatus = COURSE_COLLECTION_STATUS.UNPAID
-      } else if (refundedAmount > 0) {
-        collectionStatus = netReceivedAmount === 0
-          ? COURSE_COLLECTION_STATUS.REFUNDED
-          : COURSE_COLLECTION_STATUS.PARTIALLY_REFUNDED
+    // 過濾與整月合計需要完整的帳務判定。按主鍵分段，只保留當頁資料。
+    let cursor = 0
+    let totalCount = 0
+    const courses = []
+    const totals = { receivableAmount: 0, receivedAmount: 0, refundedAmount: 0, netReceivedAmount: 0, remainingAmount: 0 }
+    for (;;) {
+      const group = await Course.findAll({ ...query, where: { ...query.where, id: { [Op.gt]: cursor } }, limit: 60 })
+      if (!group.length) break
+      for (const row of await summarizeCoursePage(group, billingMonth, range, transaction)) {
+        if (includeTotals) for (const key of Object.keys(totals)) {
+          totals[key] = totals[key] === null || row[key] === null ? null : totals[key] + row[key]
+        }
+        if (filter === 'unpaid' && !(row.remainingAmount > 0)) continue
+        if (filter === 'review' && row.collectionStatus !== COURSE_COLLECTION_STATUS.REVIEW &&
+            Object.keys(totals).every(key => row[key] !== null)) continue
+        if (totalCount >= offset && courses.length < pageSize) courses.push(row)
+        totalCount++
       }
-
-      return { ...course, receivableAmount, receivedAmount, refundedAmount, netReceivedAmount, remainingAmount, collectionStatus }
-    })
-
-    return { ok: true, courses: rows }
+      cursor = group[group.length - 1].id
+      if (group.length < 60) break
+    }
+    return { ok: true, courses, totalCount, totals: includeTotals ? totals : null }
   })
 }
 

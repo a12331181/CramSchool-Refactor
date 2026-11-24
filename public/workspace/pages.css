@@ -136,3 +136,11 @@
   .ws-mobile-cards .ws-cell-actions .ws-tools { gap: .45rem .85rem; }
   .ws-mobile-cards .ws-cell-actions form:not(.ws-inline) { max-width: 100%; }
 }
+
+.ws-money-table :is(th, td):nth-child(n+3):nth-child(-n+7) { text-align: right; font-variant-numeric: tabular-nums; }
+.ws-money-table td:nth-child(7) { font-weight: 700; }
+.ws-money-breakdown { display: none; }
+@media (max-width: 700px) {
+  .ws-money-table :is(th, td):is(:first-child,:nth-child(n+3):nth-child(-n+6)) { display: none; }
+  .ws-money-breakdown { display: block; margin-top: .3rem; }
+}
