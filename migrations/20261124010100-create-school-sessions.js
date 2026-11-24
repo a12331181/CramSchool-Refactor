@@ -11,5 +11,7 @@ module.exports = {
     })
     await queryInterface.addIndex('SchoolSessions', ['expires'])
   },
-  async down(queryInterface) { await queryInterface.dropTable('SchoolSessions') }
+  async down(queryInterface) {
+    await queryInterface.dropTable('SchoolSessions')
+  }
 }

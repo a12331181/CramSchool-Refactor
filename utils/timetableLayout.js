@@ -2,23 +2,28 @@
 const { parseTaipeiDateTime } = require('./date')
 
 function layoutTimetable(columns) {
-  let firstHour = 9, lastHour = 18
+  let firstHour = 24,
+    lastHour = 0
   const groups = columns.map(column => {
     const midnight = parseTaipeiDateTime(column.date + 'T00:00').getTime()
-    const rows = column.rows.map(row => {
-      const from = Math.max(0, (row.startAt.getTime() - midnight) / 60000)
-      const until = Math.min(1440, (row.endAt.getTime() - midnight) / 60000)
-      firstHour = Math.min(firstHour, Math.floor(from / 60))
-      lastHour = Math.max(lastHour, Math.ceil(until / 60))
-      return { ...row, from, until }
-    }).sort((a,b) => a.from - b.from || a.until - b.until || a.id - b.id)
-    let cluster = [], ends = []
+    const rows = column.rows
+      .map(row => {
+        const from = Math.max(0, (row.startAt.getTime() - midnight) / 60000)
+        const until = Math.min(1440, (row.endAt.getTime() - midnight) / 60000)
+        firstHour = Math.min(firstHour, Math.floor(from / 60))
+        lastHour = Math.max(lastHour, Math.ceil(until / 60))
+        return { ...row, from, until }
+      })
+      .sort((a, b) => a.from - b.from || a.until - b.until || a.id - b.id)
+    let cluster = [],
+      ends = []
     function closeCluster() {
       for (const row of cluster) {
-        row.leftPercent = row.lane / ends.length * 100
+        row.leftPercent = (row.lane / ends.length) * 100
         row.widthPercent = 100 / ends.length
       }
-      cluster = []; ends = []
+      cluster = []
+      ends = []
     }
     for (const row of rows) {
       if (cluster.length && ends.every(end => end <= row.from)) closeCluster()
@@ -31,11 +36,22 @@ function layoutTimetable(columns) {
     closeCluster()
     return { ...column, rows }
   })
-  const hours = Array.from({ length:lastHour-firstHour }, (_,index) => String(firstHour+index).padStart(2,'0') + ':00')
-  for (const column of groups) for (const row of column.rows) {
-    row.offset = row.from - firstHour * 60
-    row.duration = row.until - row.from
+  if (lastHour === 0) {
+    firstHour = 9
+    lastHour = 18
+  } else {
+    firstHour = Math.max(0, firstHour - 1)
+    lastHour = Math.min(24, lastHour + 1)
   }
-  return { columns:groups, hours }
+  const hours = Array.from(
+    { length: lastHour - firstHour },
+    (_, index) => String(firstHour + index).padStart(2, '0') + ':00'
+  )
+  for (const column of groups)
+    for (const row of column.rows) {
+      row.offset = row.from - firstHour * 60
+      row.duration = row.until - row.from
+    }
+  return { columns: groups, hours }
 }
 module.exports = { layoutTimetable }

@@ -9,10 +9,13 @@ module.exports = {
       id: { type: S.INTEGER, primaryKey: true, autoIncrement: true },
       DiaryId: { type: S.INTEGER, references: { model: 'Diaries', key: 'id' }, onDelete: 'CASCADE' },
       MeetingId: { type: S.INTEGER, references: { model: 'Meetings', key: 'id' }, onDelete: 'CASCADE' },
-      name: { type: S.STRING(180), allowNull: false }, mime: { type: S.STRING(100), allowNull: false },
+      name: { type: S.STRING(180), allowNull: false },
+      mime: { type: S.STRING(100), allowNull: false },
       data: { type: S.BLOB('medium'), allowNull: false }
     })
-    await q.sequelize.query('ALTER TABLE RecordAttachments ADD CONSTRAINT ck_record_owner CHECK ((DiaryId IS NULL) <> (MeetingId IS NULL))')
+    await q.sequelize.query(
+      'ALTER TABLE RecordAttachments ADD CONSTRAINT ck_record_owner CHECK ((DiaryId IS NULL) <> (MeetingId IS NULL))'
+    )
   },
   async down(q) {
     await q.dropTable('RecordAttachments')

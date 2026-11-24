@@ -20,9 +20,14 @@ function protectForms(req, res, next) {
   if (req.is('multipart/form-data')) {
     // 瀏覽器的上傳先檢查來源，再由上傳路由檢查解析後的表單 token。
     try {
-      if (new URL(req.get('Origin')).host !== req.get('host') ||
-          new URL(req.get('Origin')).protocol !== req.protocol + ':') return deny(res)
-    } catch { return deny(res) }
+      if (
+        new URL(req.get('Origin')).host !== req.get('host') ||
+        new URL(req.get('Origin')).protocol !== req.protocol + ':'
+      )
+        return deny(res)
+    } catch {
+      return deny(res)
+    }
     return next()
   }
   return verifyForm(req, res, next)

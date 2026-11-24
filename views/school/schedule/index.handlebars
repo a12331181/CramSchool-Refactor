@@ -19,7 +19,7 @@
   {{#each columns}}<section class="ws-timeline-column"><h2>{{name}}</h2>
     <div class="ws-hours">
     {{#each rows}}<article tabindex="0" aria-label="{{time}} {{courseName}} {{roomName}} {{label}}" class="ws-session{{#if cancelled}} ws-cancelled{{/if}}" style="--offset:{{offset}};--duration:{{duration}};--left:{{leftPercent}}%;--width:{{widthPercent}}%">
-      <time>{{time}}</time><strong>{{courseName}}</strong><span>{{teacherName}} · {{roomName}}</span><small>{{label}}</small>
+      <div class="ws-session-meta"><time>{{time}}</time><small>{{label}}</small></div><strong>{{courseName}}</strong><span>{{teacherName}} · {{roomName}}</span>
       {{#if @root.user.isAdmin}}{{#if canMove}}<a href="/admin/courses/{{CourseId}}/sessions/{{id}}/move">調整課堂</a>{{/if}}{{/if}}
     </article>{{else}}<p class="ws-timeline-empty">無已排課堂</p>{{/each}}
     </div></section>{{/each}}
