@@ -24,6 +24,7 @@
     <input type="datetime-local" class="form-control" id="endAt" name="endAt" value="{{values.endAt}}" step="60" required>
   </div>
 
+  {{> admin/calendar/room-select}}
   <div class="mb-3">
     <label for="teacherId">授課教師</label>
     <select class="form-control" id="teacherId" name="teacherId" required>

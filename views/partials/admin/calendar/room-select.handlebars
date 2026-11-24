@@ -1,0 +1,3 @@
+<div class="mb-3"><label for="classroomId">教室</label>
+<select class="form-select" id="classroomId" name="classroomId"><option value="">尚未指定</option>
+{{#each rooms}}<option value="{{id}}" {{#ifCond id ../selectedRoom}}selected{{/ifCond}}>{{name}}</option>{{/each}}</select></div>

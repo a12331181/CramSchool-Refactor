@@ -1,0 +1,8 @@
+{{> workspace/page-heading}}
+<section class="ws-content ws-sheet"><h2>以下學生已有其他課堂</h2>
+<table class="table"><thead><tr><th>學生</th><th>預定時間</th><th>衝突課程</th><th>原時段</th></tr></thead><tbody>
+{{#each conflicts}}<tr><td>{{name}}</td><td>{{requested}}</td><td>{{course}}</td><td>{{start}} ～ {{end}}</td></tr>{{/each}}</tbody></table>
+<form method="post" action="{{action}}"><input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
+{{#each fields}}<input type="hidden" name="{{name}}" value="{{value}}">{{/each}}
+<input type="hidden" name="conflictKey" value="{{key}}"><button class="btn btn-warning">已核對學生，確認排課</button>
+<a class="btn btn-secondary" href="{{back}}">返回排課</a></form></section>

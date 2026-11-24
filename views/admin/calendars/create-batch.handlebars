@@ -21,7 +21,8 @@
 <form class="ws-form" action="/admin/courses/{{course.id}}/sessions/batch" method="POST">
       <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <input type="hidden" name="batchToken" value="{{batchToken}}">
-  <div class="form-row">
+  {{> admin/calendar/room-select}}
+  <div class="row g-3">
     <div class="mb-3 col-md-3">
       <label for="batch-start-time">開始時間（台北）</label>
       <input type="time" class="form-control" id="batch-start-time" name="startTime" value="{{values.startTime}}" step="60" required>

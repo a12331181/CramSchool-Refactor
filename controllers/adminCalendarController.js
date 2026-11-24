@@ -18,7 +18,7 @@ const BATCH_ERRORS = Object.freeze({
   INVALID_TEACHER_ID: [400, '請選擇有效的授課老師。'],
   INVALID_CONTENT: [400, '課堂內容必須是文字，且不能超過 40 個字。'],
   TEACHER_UNAVAILABLE: [409, '所選老師目前無法授課，請重新選擇。'],
-  TIME_CONFLICT: [409, '以下日期與本課程或所選老師的既有課堂重疊；本批未建立。'],
+  TIME_CONFLICT: [409, '以下日期與本課程、教室或所選老師的既有課堂重疊；本批未建立。'],
   UTC_TIMEZONE_REQUIRED: [500, '系統時間設定異常，暫時無法新增課堂。']
 })
 
@@ -33,7 +33,7 @@ function renderBatchForm(req, res, form, { status = 200, error, body = {}, confl
   req.session.courseSessionBatchToken ??= createSessionFormToken()
   res.set('Cache-Control', 'no-store')
   return res.status(status).render('admin/calendars/create-batch', {
-    course: form.course,
+    course: form.course, rooms: form.rooms, selectedRoom: roomId(body),
     teachers: form.teachers.map(teacher => ({ ...teacher, isSelected: teacher.id === selectedTeacher })),
     canSubmit: form.teachers.length > 0,
     batchToken: req.session.courseSessionBatchToken,
@@ -51,7 +51,19 @@ function redirectFromUnavailableCourse(req, res, code) {
   return res.redirect(303, '/admin/courses')
 }
 
+function roomId(body) {
+  return body.classroomId === undefined || body.classroomId === '' ? null : Number(body.classroomId)
+}
+
+function showWarnings(req, res, result) {
+  const allowed = ['dates','startTime','endTime','startAt','endAt','teacherId','classroomId','content','batchToken','version']
+  const fields = allowed.flatMap(name => [req.body[name]].flat().filter(value => typeof value === 'string').map(value => ({ name, value })))
+  return res.status(409).render('school/schedule/conflicts', { workspaceTitle: '學生撞堂提醒',
+    fields, ...result, action: req.originalUrl, back: '/admin/courses/' + req.params.courseId + '/calendar' })
+}
+
 const adminCalendarController = {
+  showWarnings,
   getCreateCourseSessionBatchPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     if (!Number.isSafeInteger(courseId) || courseId < 1) return sendPageError(res, 400, '課程 ID 必須是正整數')
@@ -75,8 +87,11 @@ const adminCalendarController = {
       startTime: body.startTime,
       endTime: body.endTime,
       teacherId: typeof body.teacherId === 'string' ? Number(body.teacherId) : NaN,
+      classroomId: roomId(body), conflictKey: body.conflictKey,
       content: body.content
     })
+    if (result.code === 'STUDENT_CONFLICT') return showWarnings(req, res, result)
+    if (result.code === 'INVALID_ROOM') return sendPageError(res, 400, '請選擇有效的教室。')
     if (result.ok) {
       const { createdCount, totalCount } = result.data
       const { totalPages } = getPagination({ page: 1, pageSize: DIRECTORY_PAGE_SIZE, totalCount })
@@ -199,7 +214,7 @@ const adminCalendarController = {
     }))
 
     return res.render('admin/calendars/create', {
-      course: result.course,
+      course: result.course, rooms: result.rooms,
       teachers,
       values: {},
       canSubmit: teachers.length > 0
@@ -224,8 +239,11 @@ const adminCalendarController = {
       startAt: body.startAt,
       endAt: body.endAt,
       teacherId,
+      classroomId: roomId(body), conflictKey: body.conflictKey,
       content: body.content
     })
+    if (result.code === 'STUDENT_CONFLICT') return showWarnings(req, res, result)
+    if (result.code === 'INVALID_ROOM') return sendPageError(res, 400, '請選擇有效的教室。')
 
     if (result.ok) {
       const pagination = getPagination({
@@ -252,7 +270,7 @@ const adminCalendarController = {
       COURSE_NOT_FOUND: [404, '找不到課程資料'],
       COURSE_CLOSED: [409, '課程已關閉，無法新增課堂'],
       TEACHER_UNAVAILABLE: [409, '所選教師目前無法授課，請重新選擇'],
-      TIME_CONFLICT: [409, '此課程或授課教師已有重疊課堂，請調整時間'],
+      TIME_CONFLICT: [409, '此課程、教室或授課教師已有重疊課堂，請調整時間'],
       UTC_TIMEZONE_REQUIRED: [500, '系統時間設定異常，暫時無法儲存課堂']
     }
 

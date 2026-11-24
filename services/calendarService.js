@@ -1,9 +1,10 @@
+const { findStudentConflicts } = require('./scheduleConflictService')
 const { getTeacherAccountInclude } = require('./teacherService')
 const { getCandidateEnrollmentWhere, isConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
 const { Op, col, fn, literal, where } = require('sequelize')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
-const { Course, Calendar, Teacher, Enrollment, Attend, TuitionBill, TuitionBillItem, sequelize } = require('../models')
+const { Classroom, Course, Calendar, Teacher, Enrollment, Attend, TuitionBill, TuitionBillItem, sequelize } = require('../models')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const COURSE_SESSION_BATCH_LIMIT = require('../constants/courseSessionBatchLimit')
@@ -71,6 +72,7 @@ async function getCreateCourseSessionFormData(courseId) {
   return {
     ok: true,
     course: course.toJSON(),
+    rooms: await Classroom.findAll({ order: [['name', 'ASC']], raw: true }),
     teachers
   }
 }
@@ -84,10 +86,10 @@ async function createCourseSession(courseId, sessionData = {}) {
   if (!prepared.ok) return prepared
 
   const slot = { ...prepared.data, date: getTaipeiDate(prepared.data.startAt) }
-  return saveCourseSessions(courseId, [slot], { batch: false })
+  return saveCourseSessions(courseId, [slot], { batch: false, conflictKey: sessionData.conflictKey, editing: sessionData.editing })
 }
 
-async function createCourseSessionBatch(courseId, { dates, startTime, endTime, teacherId, content } = {}) {
+async function createCourseSessionBatch(courseId, { dates, startTime, endTime, teacherId, content, classroomId, conflictKey } = {}) {
   if (!Number.isSafeInteger(courseId) || courseId < 1) {
     return { ok: false, code: 'INVALID_COURSE_ID' }
   }
@@ -108,17 +110,17 @@ async function createCourseSessionBatch(courseId, { dates, startTime, endTime, t
     const prepared = prepareCourseSessionData({
       startAt: typeof startTime === 'string' ? `${date}T${startTime}` : null,
       endAt: typeof endTime === 'string' ? `${date}T${endTime}` : null,
-      teacherId,
+      teacherId, classroomId,
       content
     })
     if (!prepared.ok) return prepared
     slots.push({ ...prepared.data, date })
   }
 
-  return saveCourseSessions(courseId, slots, { batch: true })
+  return saveCourseSessions(courseId, slots, { batch: true, conflictKey })
 }
 
-async function saveCourseSessions(courseId, slots, { batch }) {
+async function saveCourseSessions(courseId, slots, { batch, conflictKey, editing }) {
   const driverTimezone = sequelize.options.dialectOptions?.timezone
 
   if (
@@ -128,7 +130,7 @@ async function saveCourseSessions(courseId, slots, { batch }) {
     return { ok: false, code: 'UTC_TIMEZONE_REQUIRED' }
   }
 
-  const { teacherId } = slots[0]
+  const { teacherId, classroomId } = slots[0]
 
   return sequelize.transaction(async transaction => {
     const locked = { transaction, lock: transaction.LOCK.UPDATE }
@@ -147,12 +149,21 @@ async function saveCourseSessions(courseId, slots, { batch }) {
       return { ok: false, code: 'TEACHER_UNAVAILABLE' }
     }
 
+    if (classroomId && !await Classroom.findByPk(classroomId, locked)) return { ok: false, code: 'INVALID_ROOM' }
+    let current
+    if (editing) {
+      current = await Calendar.findOne({ where: { id: editing.id, CourseId: courseId }, ...locked })
+      if (!current || current.status !== COURSE_SESSION_STATUS.SCHEDULED || current.version !== editing.version ||
+          await Attend.count({ where: { CalendarId: current.id }, transaction }) ||
+          await findIssuedSessionBill(courseId, current.id, transaction)) return { ok: false, code: 'SESSION_CHANGED' }
+    }
     const conflicts = await Calendar.findAll({
       attributes: ['startAt', 'endAt'],
       where: {
         status: { [Op.in]: [COURSE_SESSION_STATUS.SCHEDULED, COURSE_SESSION_STATUS.COMPLETED] },
         [Op.and]: [
-          { [Op.or]: [{ CourseId: courseId }, { TeacherId: teacherId }] },
+          { [Op.or]: [{ CourseId: courseId }, { TeacherId: teacherId }, ...(classroomId ? [{ ClassroomId: classroomId }] : [])] },
+          ...(editing ? [{ id: { [Op.ne]: editing.id } }] : []),
           {
             [Op.or]: slots.map(slot => ({
               startAt: { [Op.lt]: slot.endAt },
@@ -176,9 +187,12 @@ async function saveCourseSessions(courseId, slots, { batch }) {
       }
     }
 
+    const warnings = await findStudentConflicts(courseId, slots, transaction)
+    if (warnings && warnings.key !== conflictKey) return { ok: false, code: 'STUDENT_CONFLICT', ...warnings }
+
     const rows = slots.map(({ startAt, endAt, content }) => ({
       CourseId: courseId,
-      TeacherId: teacherId,
+      TeacherId: teacherId, ClassroomId: classroomId,
       startAt,
       endAt,
       status: COURSE_SESSION_STATUS.SCHEDULED,
@@ -189,7 +203,10 @@ async function saveCourseSessions(courseId, slots, { batch }) {
     }))
 
     let id
-    if (batch) {
+    if (current) {
+      await current.update({ ...rows[0], version: current.version + 1 }, { transaction })
+      id = current.id
+    } else if (batch) {
       await Calendar.bulkCreate(rows, { transaction, validate: true })
     } else {
       const calendar = await Calendar.create(rows[0], { transaction })
@@ -199,6 +216,25 @@ async function saveCourseSessions(courseId, slots, { batch }) {
     const totalCount = await Calendar.count({ where: { CourseId: courseId }, transaction })
     return { ok: true, data: batch ? { createdCount: rows.length, totalCount } : { id, totalCount } }
   })
+}
+
+function findIssuedSessionBill(courseId, calendarId, transaction) {
+  return TuitionBillItem.findOne({
+      attributes: ['TuitionBillId'],
+      where: {
+        CourseId: courseId,
+        kind: TUITION_BILL_ITEM_KIND.COURSE_FEE,
+        [Op.and]: where(fn(
+          'JSON_CONTAINS',
+          col('TuitionBillItem.sourceSnapshot'),
+          JSON.stringify({ calendarId }),
+          literal("'$.calendars'")
+        ), 1)
+      },
+      include: [{ model: TuitionBill, attributes: [], where: { status: TUITION_BILL_STATUS.ISSUED }, required: true }],
+      raw: true,
+      transaction
+    })
 }
 
 async function cancelCourseSession(courseId, calendarId) {
@@ -244,22 +280,7 @@ async function cancelCourseSession(courseId, calendarId) {
     }
 
     // 正式出帳也會鎖定課程。取得鎖之後，再查是否有帳單包含這個課堂 ID。
-    const billedItem = await TuitionBillItem.findOne({
-      attributes: ['TuitionBillId'],
-      where: {
-        CourseId: courseId,
-        kind: TUITION_BILL_ITEM_KIND.COURSE_FEE,
-        [Op.and]: where(fn(
-          'JSON_CONTAINS',
-          col('TuitionBillItem.sourceSnapshot'),
-          JSON.stringify({ calendarId }),
-          literal("'$.calendars'")
-        ), 1)
-      },
-      include: [{ model: TuitionBill, attributes: [], where: { status: TUITION_BILL_STATUS.ISSUED }, required: true }],
-      raw: true,
-      transaction
-    })
+    const billedItem = await findIssuedSessionBill(courseId, calendarId, transaction)
     if (billedItem) {
       return { ok: false, code: 'CALENDAR_ALREADY_BILLED', billId: billedItem.TuitionBillId }
     }
@@ -562,7 +583,8 @@ async function updateLegacyCalendar(courseId, calendarId, { date, content }) {
   })
 }
 
-function prepareCourseSessionData({ startAt, endAt, teacherId, content = '' }) {
+function prepareCourseSessionData({ startAt, endAt, teacherId, classroomId = null, content = '' }) {
+  if (classroomId !== null && (!Number.isSafeInteger(classroomId) || classroomId < 1)) return { ok: false, code: 'INVALID_ROOM' }
   const parsedStartAt = parseTaipeiDateTime(startAt)
   const parsedEndAt = parseTaipeiDateTime(endAt)
 
@@ -591,7 +613,7 @@ function prepareCourseSessionData({ startAt, endAt, teacherId, content = '' }) {
     data: {
       startAt: parsedStartAt,
       endAt: parsedEndAt,
-      teacherId,
+      teacherId, classroomId,
       content: content.trim()
     }
   }
