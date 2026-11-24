@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
   };
   Meeting.init({
     date: DataTypes.STRING,
+    richText: DataTypes.BOOLEAN,
     subject: DataTypes.STRING,
     content: DataTypes.TEXT,
     TeacherId: DataTypes.INTEGER

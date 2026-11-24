@@ -1,3 +1,4 @@
+const { createSchoolRecord } = require('./recordAttachmentService')
 const { getTeacherAccountInclude } = require('./teacherService')
 const { Meeting, Teacher } = require('../models')
 
@@ -30,11 +31,11 @@ function getMeetingAuthor(userId) {
   return Teacher.findOne({ attributes: ['id', 'name'], raw: true, nest: true, where: { UserId: userId }, include: [getTeacherAccountInclude()] })
 }
 
-async function createMeeting({ userId, date, subject, content }) {
+async function createMeeting({ userId, date, subject, content, attachments = [], richText = false }) {
   const teacher = await getMeetingAuthor(userId)
   if (!teacher) return false
 
-  return Meeting.create({ date, subject, content, TeacherId: teacher.id })
+  return createSchoolRecord(Meeting, { date, subject, content, richText, TeacherId: teacher.id }, attachments)
 }
 
 async function deleteMeeting(meetingId) {

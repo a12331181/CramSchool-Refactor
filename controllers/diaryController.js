@@ -1,3 +1,4 @@
+const { validateUploads, recordContents } = require('../services/recordAttachmentService')
 const { sendPageError } = require('../utils/pageError')
 const diaryService = require('../services/diaryService')
 const { getPagination, getPaginationLinks, getPageOffset } = require('../utils/pagination')
@@ -63,7 +64,7 @@ const diaryController = {
     const diary = await diaryService.getDiaryDetails({ courseId, diaryId })
     if (!diary) return res.redirect('/cramschool/courses')
 
-    return res.render('school/diaries/detail', { diary })
+    return res.render('school/diaries/detail', { diary, ...await recordContents(diary, 'diary', req.baseUrl + req.path) })
   },
 
   getCreateDiaryPage: async (req, res) => {
@@ -76,12 +77,18 @@ const diaryController = {
   createDiary: async (req, res) => {
     const courseId = req.params.courseId
     const { date, subject, content } = req.body ?? {}
-    const created = await diaryService.createDiary({ courseId, userId: req.user.id, date, subject, content })
+    if (![date, subject, content].every(value => typeof value === 'string' && value.trim()) ||
+        subject.length > 40 || Buffer.byteLength(content) > 60_000 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return sendPageError(res, 400, '請填寫日期、40 字內的主題及有效內文。')
+    }
+    const attachments = await validateUploads(req.files)
+    if (!attachments) return sendPageError(res, 400, '附件內容須與 JPG、PNG、PDF 或 Word 檔案格式相符。')
+    const created = await diaryService.createDiary({ courseId, userId: req.user.id, date, subject, content, attachments, richText: req.body.format === 'simple' })
     req.flash(
       created ? 'success_messages' : 'error_messages',
       created ? '已成功建立教師日誌' : '找不到可建立日誌的課程或教師資料'
     )
-    return res.redirect(created ? `/cramschool/courses/${courseId}/diaries` : '/cramschool/courses')
+    return res.redirect(303, created ? `/cramschool/courses/${courseId}/diaries/${created.id}` : '/cramschool/courses')
   },
 
   deleteDiary: async (req, res) => {

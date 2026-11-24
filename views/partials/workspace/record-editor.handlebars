@@ -1,0 +1,10 @@
+<div class="ws-tools" aria-label="內文編輯工具">
+  <button type="button" class="ws-btn" data-record-style="bold">粗體</button>
+  <button type="button" class="ws-btn" data-record-style="list">項目清單</button>
+  <label for="record-picture">內文圖片</label><select id="record-picture" class="form-select w-auto"><option value="">選擇圖片</option></select>
+  <button type="button" class="ws-btn" data-record-style="image">插入圖片</button>
+</div>
+<label for="attachments">圖片或文件（最多 3 個，每檔 3 MB）</label>
+<input type="file" class="form-control" id="attachments" name="attachments" multiple accept=".jpg,.jpeg,.png,.pdf,.docx">
+<input type="hidden" name="format" value="simple">
+<script defer src="/assets/workspace/record-editor.js"></script>

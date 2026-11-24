@@ -4,7 +4,7 @@
 <article class="ws-sheet">
   <h2>{{diary.subject}}</h2>
   <p class="text-muted"><time>{{diary.date}}</time> · 教師　{{referenceLabel diary.Teacher.User.userNo diary.Teacher.name}}</p>
-  <p class="ws-record">{{diary.content}}</p>
+  {{> workspace/record-content content=diary.content}}
 </article>
 <a href="/cramschool/diaries">返回列表</a>
 </div>

@@ -1,0 +1,6 @@
+{{#if blocks}}<div class="ws-record-body">{{#each blocks}}
+  <div {{#if list}}class="ws-record-item"{{/if}}>{{#each parts}}{{#if bold}}<strong>{{bold}}</strong>{{else if picture}}<img loading="lazy" src="{{picture.url}}" alt="{{picture.name}}">{{else}}{{text}}{{/if}}{{/each}}</div>
+{{/each}}</div>{{else}}<p class="ws-record">{{content}}</p>{{/if}}
+{{#if attachments}}<section class="ws-record-files"><h3>附件</h3><ul>{{#each attachments}}
+<li>{{#if image}}<a href="{{url}}"><img loading="lazy" src="{{url}}" alt="{{name}}"></a>{{/if}} <a href="{{url}}?download=1">{{name}}</a></li>
+{{/each}}</ul></section>{{/if}}

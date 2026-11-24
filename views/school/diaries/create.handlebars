@@ -2,7 +2,7 @@
 
 <div class="ws-content">
 <p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
-<form class="ws-form" action="/cramschool/courses/{{course.id}}/diaries" method="POST">
+<form class="ws-form" action="/cramschool/courses/{{course.id}}/diaries" method="POST" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <div class="mb-3">
     <label for="date" class="form-label">日期:</label>
@@ -17,6 +17,7 @@
 
   <div class="mb-3">
     <label for="content" class="form-label">內容: </label>
+    {{> workspace/record-editor}}
     <textarea class="form-control" id="content" rows="3" name="content" placeholder="...輸入內容" required></textarea>
   </div>
 

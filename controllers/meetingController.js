@@ -1,3 +1,4 @@
+const { validateUploads, recordContents } = require('../services/recordAttachmentService')
 const { sendPageError } = require('../utils/pageError')
 const meetingService = require('../services/meetingService')
 const { getPagination, getPaginationLinks, getPageOffset } = require('../utils/pagination')
@@ -31,7 +32,7 @@ const meetingController = {
     const meeting = await meetingService.getMeetingDetails(req.params.meetingId)
     if (!meeting) return res.redirect('/cramschool/meetings')
 
-    return res.render('school/meetings/detail', { meeting })
+    return res.render('school/meetings/detail', { meeting, ...await recordContents(meeting, 'meeting', req.baseUrl + req.path) })
   },
 
   getCreateMeetingPage: async (req, res) => {
@@ -41,7 +42,13 @@ const meetingController = {
 
   createMeeting: async (req, res) => {
     const { date, subject, content } = req.body ?? {}
-    const created = await meetingService.createMeeting({ userId: req.user.id, date, subject, content })
+    if (![date, subject, content].every(value => typeof value === 'string' && value.trim()) ||
+        subject.length > 40 || Buffer.byteLength(content) > 60_000 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return sendPageError(res, 400, '請填寫日期、40 字內的主題及有效內文。')
+    }
+    const attachments = await validateUploads(req.files)
+    if (!attachments) return sendPageError(res, 400, '附件內容須與 JPG、PNG、PDF 或 Word 檔案格式相符。')
+    const created = await meetingService.createMeeting({ userId: req.user.id, date, subject, content, attachments, richText: req.body.format === 'simple' })
     if (!created) {
       req.flash('error_messages', '找不到教師資料，無法建立會議紀錄')
       return res.redirect('/cramschool/meetings')

@@ -151,3 +151,10 @@
 .ws-course-section h2, .ws-meeting-detail h1 { margin: 0 0 .9rem; font-size: clamp(1.2rem, 2vw, 1.55rem); font-weight: 650; line-height: 1.4; }
 .ws-meeting-detail { max-width: 52rem; margin-inline: auto; }
 .ws-meeting-detail .ws-record { line-height: 1.85; }
+
+.ws-record-body { line-height: 1.85; overflow-wrap: anywhere; }
+.ws-record-body > div { min-height: 1em; }
+.ws-record-item { display: list-item; margin-inline-start: 1.5rem; }
+.ws-record-body img { max-width: 100%; max-height: 28rem; }
+.ws-record-files { margin-block-start: 1.5rem; }
+.ws-record-files img { max-width: 7rem; max-height: 5rem; object-fit: contain; }

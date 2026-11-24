@@ -1,3 +1,4 @@
+const { createSchoolRecord } = require('./recordAttachmentService')
 const { getTeacherAccountInclude } = require('./teacherService')
 const { Course, Diary, Teacher, sequelize } = require('../models')
 
@@ -73,15 +74,14 @@ async function getCreateDiaryFormData({ courseId, userId }) {
   return course && teacher ? course : null
 }
 
-async function createDiary({ courseId, userId, date, subject, content }) {
+async function createDiary({ courseId, userId, date, subject, content, attachments = [], richText = false }) {
   const [course, teacher] = await Promise.all([
     Course.findOne({ attributes: ['id'], raw: true, where: { id: courseId, isActive: true } }),
     Teacher.findOne({ attributes: ['id'], raw: true, where: { UserId: userId } })
   ])
   if (!course || !teacher) return false
 
-  await Diary.create({ date, subject, content, TeacherId: teacher.id, CourseId: course.id })
-  return true
+  return createSchoolRecord(Diary, { date, subject, content, richText, TeacherId: teacher.id, CourseId: course.id }, attachments)
 }
 
 async function deleteDiary({ diaryId, courseId, viewer }) {

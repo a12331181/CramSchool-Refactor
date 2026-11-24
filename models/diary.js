@@ -11,6 +11,7 @@ module.exports = (sequelize, DataTypes) => {
   };
   Diary.init({
     date: DataTypes.STRING,
+    richText: DataTypes.BOOLEAN,
     subject: DataTypes.STRING,
     content: DataTypes.TEXT,
     TeacherId: DataTypes.INTEGER,

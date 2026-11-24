@@ -2,7 +2,7 @@
 <article class="ws-sheet ws-meeting-detail">
   <h1>{{meeting.subject}}</h1>
   <p class="text-muted"><time>{{meeting.date}}</time> · 主持人　{{referenceLabel meeting.Teacher.User.userNo meeting.Teacher.name}}</p>
-  <p class="ws-record">{{meeting.content}}</p>
+  {{> workspace/record-content content=meeting.content}}
 </article>
 <a href="/cramschool/meetings">返回列表</a>
 </div>
