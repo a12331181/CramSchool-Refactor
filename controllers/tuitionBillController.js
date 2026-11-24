@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/tuitionBill')
 const { sendPageError } = require('../utils/pageError')
 const { MAX_EXTRA_FEE_QUANTITY } = require('../constants/extraFeeLimits')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
@@ -114,12 +115,12 @@ const tuitionBillController = {
       typeof billingMonth !== 'string' ||
       !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)
     ) {
-      return sendPageError(res, 400, '學生 ID 或計費月份不正確。')
+      return sendPageError(res, 400, responses.createTuitionBillDraftInvalidMonthStudent)
     }
 
     const expectedToken = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(tuitionFormToken, expectedToken)) {
-      return sendPageError(res, 403, '表單已失效，請重新開啟合併預覽再試。')
+      return sendPageError(res, 403, responses.createTuitionBillDraftInvalid)
     }
 
     const result = await tuitionBillService.createTuitionBillDraft({
@@ -128,21 +129,9 @@ const tuitionBillController = {
     })
 
     if (!result.ok) {
-      const errors = {
-        DRAFT_NUMBER_EXHAUSTED: '今年的帳單草稿編號已用完，暫時無法開單。',
-        DRAFT_REQUIRES_REVIEW: '有課程還無法試算，請核對後再儲存草稿。',
-        NO_COURSES_IN_BILLING_MONTH: '本月沒有可儲存的課程明細。',
-        NO_UNBILLED_COURSE_FEES: '本月沒有尚未出帳的課程費用。',
-        ISSUED_COURSE_FEES_REQUIRE_REVIEW: '既有帳單的課程明細需要核對。',
-        INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
-        UTC_TIMEZONE_REQUIRED: '系統時間設定異常，暫時無法儲存。',
-        STUDENT_NOT_FOUND: '找不到學生。',
-        STUDENT_NAME_UNCONFIRMED: '請先核對學生姓名。',
-        COURSE_NAME_UNCONFIRMED: '請先核對課程名稱。',
-        INVALID_AMOUNT: `金額超出每張單據的金額範圍（上限 ${MAX_PAYMENT_AMOUNT} 元）。`
-      }
+      const errors = responses.createTuitionBillDraftErrors
 
-      req.flash('error_messages', errors[result.code] ?? '目前無法儲存草稿。')
+      req.flash('error_messages', errors[result.code] ?? responses.createTuitionBillDraftUnavailable)
 
       const previewUrl = `/cramschool/tuition/students/${studentId}/preview?` +
         new URLSearchParams({ billingMonth })
@@ -152,7 +141,7 @@ const tuitionBillController = {
 
     req.flash(
       'success_messages',
-      result.created ? '已儲存帳單草稿。' : '本月已有主帳單，已開啟原單。'
+      result.created ? responses.createTuitionBillDraftSavedBill : responses.createTuitionBillDraftUnchangedBill
     )
 
     return res.redirect(303, `/cramschool/tuition/bills/${result.bill.id}`)
@@ -161,7 +150,7 @@ const tuitionBillController = {
   createSupplementalTuitionBillDraft: async (req, res) => {
     const { courseId: rawCourseId, billingMonth, tuitionFormToken, page, status } = req.body ?? {}
     if (!isValidSessionFormToken(tuitionFormToken, req.session?.tuitionFormToken)) {
-      return sendPageError(res, 403, '表單已失效，請重新開啟月度總覽再試。')
+      return sendPageError(res, 403, responses.createSupplementalTuitionBillDraftInvalid)
     }
 
     const parseId = value => typeof value === 'string' && /^[1-9]\d*$/.test(value) ? Number(value) : NaN
@@ -169,29 +158,21 @@ const tuitionBillController = {
     const courseId = parseId(rawCourseId)
     if (![studentId, courseId].every(Number.isSafeInteger) ||
         typeof billingMonth !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)) {
-      return sendPageError(res, 400, '學生、課程或計費月份不正確。')
+      return sendPageError(res, 400, responses.createSupplementalTuitionBillDraftInvalidMonthStudentCourse)
     }
 
     const result = await tuitionBillService.createSupplementalTuitionBillDraft({
       studentId, billingMonth, courseId, actorId: req.user.id
     })
     if (!result.ok) {
-      const errors = {
-        SUPPLEMENT_REQUIRES_ISSUED_BILL: '本月尚未正式出帳，請先使用主帳單草稿。',
-        NO_COURSES_IN_BILLING_MONTH: '這位學生本月沒有選修這門課。',
-        NO_UNBILLED_COURSE_FEES: '這門課本月沒有尚未出帳的費用或堂次。',
-        ISSUED_COURSE_FEES_REQUIRE_REVIEW: '既有帳單的課程明細需要核對，暫時不能補開。',
-        DRAFT_NUMBER_EXHAUSTED: '今年的帳單草稿編號已用完，暫時無法開單。',
-        DRAFT_REQUIRES_REVIEW: '這門課的選課或計費資料需要核對。',
-        INVALID_AMOUNT: `應收金額超出每張單據的金額範圍（上限 ${MAX_PAYMENT_AMOUNT} 元）。`
-      }
-      req.flash('error_messages', errors[result.code] ?? '目前無法補開帳單。')
+      const errors = responses.createSupplementalTuitionBillDraftErrors
+      req.flash('error_messages', errors[result.code] ?? responses.createSupplementalTuitionBillDraftUnavailableBill)
       const target = withQuery(`/cramschool/tuition/students/${studentId}/preview`,
         getTuitionNavigationParams({ billingMonth, page, status }))
       return res.redirect(303, target + '#course-supplement-heading')
     }
 
-    req.flash('success_messages', result.created ? '已建立課程補單草稿。' : '已開啟現有課程補單草稿。')
+    req.flash('success_messages', result.created ? responses.createSupplementalTuitionBillDraftSavedCourseSupplement : responses.createSupplementalTuitionBillDraftMessageCourseSupplement)
     return res.redirect(303, `/cramschool/tuition/bills/${result.bill.id}`)
   },
 
@@ -203,7 +184,7 @@ const tuitionBillController = {
     if (!result.ok) {
       const invalidId = result.code === 'INVALID_BILL_ID'
 
-      return sendPageError(res, invalidId ? 400 : 404, invalidId ? '帳單 ID 不正確。' : '找不到這張帳單。')
+      return sendPageError(res, invalidId ? 400 : 404, invalidId ? responses.getTuitionBillDetailsPageInvalidBill : responses.getTuitionBillDetailsPageNotFoundBill)
     }
 
     const { bill, extraFees, leaveCreditData, canVoidIssuedBill } = result
@@ -263,7 +244,7 @@ const tuitionBillController = {
     if (isDraft && leaveCreditData) {
       if (!leaveCreditData.ok) {
         leaveCreditPanel = {
-          errorMessage: creditMessages[leaveCreditData.code] ?? '暫時無法取得折抵清單。'
+          errorMessage: creditMessages[leaveCreditData.code] ?? responses.getTuitionBillDetailsPageUnavailable
         }
       } else {
         const blocked = leaveCreditData.blocked.map(row => {
@@ -342,12 +323,12 @@ const tuitionBillController = {
             }))
           }
         } else if (allocation?.ok === false) {
-          paymentSummary.allocationMessage = '分項收款紀錄需要核對，暫時不能再登記收款。'
+          paymentSummary.allocationMessage = responses.allocationReview
         } else if (remainingAmount > 0 && remainingAmount <= MAX_PAYMENT_AMOUNT) {
           req.session.tuitionFormToken ??= createSessionFormToken()
           paymentSummary.allocationMessage = allocation?.reason === 'LEGACY_UNALLOCATED_PAYMENT'
-            ? '先前收款沒有記錄對應項目，剩餘金額可整筆登記。'
-            : '這張帳單的明細無法拆分，剩餘金額可整筆登記。'
+            ? responses.unallocatedPayment
+            : responses.unallocatedBill
           paymentSummary.paymentForm = {
             action: `/cramschool/tuition/bills/${bill.id}/payments`,
             amount: remainingAmount,
@@ -357,16 +338,11 @@ const tuitionBillController = {
           }
         }
       } else {
-        const paymentMessages = {
-          INVALID_BILL_AMOUNT: '帳單金額需要核對。',
-          PAYMENT_LINK_CONFLICT: '收款同時連到新舊帳單，請核對。',
-          INVALID_PAYMENT_AMOUNT: '收款紀錄的金額需要核對。',
-          PAYMENT_TOTAL_EXCEEDS_BILL: '收款總額超過帳單金額，請核對。'
-        }
+        const paymentMessages = responses.financialReview
 
         paymentSummary = {
           statusText: '待核對',
-          errorMessage: paymentMessages[paymentStatus?.code] ?? '暫時無法確認收款資料，請重新開啟帳單。'
+          errorMessage: paymentMessages[paymentStatus?.code] ?? responses.getTuitionBillDetailsPageUnavailableBillPaymentProfile
         }
       }
     }
@@ -374,7 +350,7 @@ const tuitionBillController = {
     const refund = result.refundSummary
     if (refund) {
       if (!refund.ok) {
-        refundSummary = { errorMessage: REFUND_MESSAGES[refund.code] ?? '暫時無法核對退費資料。' }
+        refundSummary = { errorMessage: REFUND_MESSAGES[refund.code] ?? responses.getTuitionBillDetailsPageUnavailableProfile }
       } else {
         refundSummary = {
           rows: refund.rows,
@@ -430,14 +406,14 @@ const tuitionBillController = {
   addTuitionBillExtraFee: async (req, res) => {
     const billId = Number(req.params.billId)
     if (!Number.isSafeInteger(billId) || billId < 1) {
-      return sendPageError(res, 400, '帳單 ID 不正確。')
+      return sendPageError(res, 400, responses.addTuitionBillExtraFeeInvalidBill)
     }
 
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, responses.addTuitionBillExtraFeeInvalidBill2)
     }
 
 
@@ -449,21 +425,14 @@ const tuitionBillController = {
     })
 
     if (result.code === 'BILL_NOT_FOUND') {
-      return sendPageError(res, 404, '找不到這張帳單。')
+      return sendPageError(res, 404, responses.addTuitionBillExtraFeeNotFoundBill)
     }
 
-    const errors = {
-      INVALID_INPUT: `請選擇費用項目，數量須為 1 到 ${MAX_EXTRA_FEE_QUANTITY} 的整數。`,
-      BILL_NOT_DRAFT: '只有草稿可以加入額外費用。',
-      BILL_VERSION_CONFLICT: '帳單已更新，請核對目前明細後再試。',
-      EXTRA_FEE_ALREADY_ADDED: '這個費用項目已經在帳單上。',
-      EXTRA_FEE_UNAVAILABLE: '這個費用項目目前無法使用。',
-      INVALID_AMOUNT: `加入後的總額超出每張單據的金額範圍（上限 ${MAX_PAYMENT_AMOUNT} 元）。`
-    }
+    const errors = responses.addTuitionBillExtraFeeErrors
 
     req.flash(
       result.ok ? 'success_messages' : 'error_messages',
-      result.ok ? '已加入額外費用。' : errors[result.code] ?? '無法加入額外費用。'
+      result.ok ? responses.addTuitionBillExtraFeeMessage : errors[result.code] ?? responses.addTuitionBillExtraFeeUnavailable
     )
 
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
@@ -474,7 +443,7 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, responses.setTuitionBillDraftDiscountInvalidBill)
     }
 
     const billId = readUnsignedInteger(req.params.billId)
@@ -487,27 +456,16 @@ const tuitionBillController = {
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return sendPageError(res, 400, '帳單 ID 或草稿版本不正確，請重新開啟帳單再試。')
+      return sendPageError(res, 400, responses.setTuitionBillDraftDiscountInvalidBillVersion)
     }
     if (result.code === 'BILL_NOT_FOUND') {
-      return sendPageError(res, 404, '找不到這張帳單。')
+      return sendPageError(res, 404, responses.setTuitionBillDraftDiscountNotFoundBill)
     }
 
-    const errors = {
-      BILL_NOT_DRAFT: '只有草稿可以修改帳單折扣。',
-      BILL_VERSION_CONFLICT: '帳單已更新，請核對目前明細後再試。',
-      BILL_HAS_NO_ITEMS: '草稿沒有明細，請先核對。',
-      INVALID_BILL_AMOUNT: '草稿明細的金額需要核對。',
-      DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不符，請先核對。',
-      INVALID_DISCOUNT_AMOUNT: '折扣金額須為大於 0 且在可儲存範圍內的台幣整數。',
-      INVALID_DISCOUNT_REASON: '請填寫折扣原因，最多 255 字元。',
-      DISCOUNT_EXCEEDS_DRAFT_TOTAL: '折扣後的應收金額不能低於 NT$ 0。',
-      DISCOUNT_REQUIRES_REVIEW: '草稿裡已有需要核對的折扣明細。',
-      INVALID_AMOUNT: `折扣後的總額超出金額上限 ${MAX_PAYMENT_AMOUNT} 元。`
-    }
+    const errors = responses.setTuitionBillDraftDiscountErrors
     const message = result.ok
-      ? (result.changed ? '已儲存帳單折扣，請核對更新後的金額。' : '折扣沒有變動。')
-      : errors[result.code] ?? '暫時無法儲存帳單折扣。'
+      ? (result.changed ? responses.setTuitionBillDraftDiscountSavedAmountDiscountBill : responses.setTuitionBillDraftDiscountMessageDiscount)
+      : errors[result.code] ?? responses.setTuitionBillDraftDiscountUnavailableDiscountBill
 
     req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
@@ -518,13 +476,13 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, responses.addLeaveCreditToDraftInvalidBill)
     }
 
 
     const billId = readUnsignedInteger(req.params.billId)
     if (!Number.isSafeInteger(billId) || billId < 1) {
-      return sendPageError(res, 400, '帳單 ID 不正確。')
+      return sendPageError(res, 400, responses.addLeaveCreditToDraftInvalidBill2)
     }
 
     const result = await tuitionBillService.addLeaveCreditToDraft({
@@ -534,43 +492,21 @@ const tuitionBillController = {
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return sendPageError(res, 400, '折抵資料格式不正確，請重新開啟帳單再試。')
+      return sendPageError(res, 400, responses.addLeaveCreditToDraftInvalidBillProfile)
     }
 
     if (result.code === 'BILL_NOT_FOUND') {
-      return sendPageError(res, 404, '找不到要核對的帳單。')
+      return sendPageError(res, 404, responses.addLeaveCreditToDraftNotFoundBill)
     }
 
-    const errors = {
-      BILL_NOT_DRAFT: '只有草稿可以加入折抵。',
-      BILL_VERSION_CONFLICT: '草稿已更新，請核對目前明細後再試。',
-      LEAVE_UNAVAILABLE: '找不到這筆可折抵的請假紀錄。',
-      LEAVE_NOT_APPROVED: '這筆請假尚未核准，或點名更正後需要重審。',
-      BILL_NOT_ISSUED: '原帳單目前不在已出帳狀態。',
-      SOURCE_BILL_NOT_FOUND: '找不到上期原帳單。',
-      SOURCE_BILL_AMBIGUOUS: '找到多張上期帳單，請先核對原單。',
-      SOURCE_ITEM_NOT_FOUND: '原帳單沒有這堂課的計費明細。',
-      SOURCE_ITEM_AMBIGUOUS: '這堂課對到多筆原明細，請先核對。',
-      SOURCE_SNAPSHOT_UNCONFIRMED: '上期帳單的計費堂次需要核對。',
-      SOURCE_LESSON_HAS_NO_CHARGE: '這堂課原本沒有收費。',
-      SOURCE_BILL_NOT_FULLY_PAID: '原帳單尚未收清，暫時不能折抵。',
-      SOURCE_BILL_HAS_REFUND: '原帳單已有退費，不能再作為請假折抵來源。',
-      PAYMENT_LINK_CONFLICT: '原帳單的收款連結需要核對。',
-      INVALID_PAYMENT_AMOUNT: '原帳單的收款金額需要核對。',
-      PAYMENT_TOTAL_EXCEEDS_BILL: '原帳單的收款超過帳單金額，請先核對。',
-      CREDIT_SOURCE_CHANGED: '折抵來源已變動，請重新核對。',
-      LEAVE_CREDIT_COURSE_MISMATCH: '這份補單只能加入同一門課的請假折抵。',
-      INVALID_BILL_AMOUNT: '帳單金額需要核對。',
-      CREDIT_EXCEEDS_DRAFT_TOTAL: '折抵金額超過目前草稿總額。',
-      LEAVE_CREDIT_VALIDATION_FAILED: '折抵明細未通過資料檢查。'
-    }
+    const errors = responses.addLeaveCreditToDraftErrors
 
-    let message = errors[result.code] ?? '暫時無法加入折抵。'
+    let message = errors[result.code] ?? responses.addLeaveCreditToDraftUnavailable
 
     if (result.ok) {
-      message = '已加入請假折抵。'
+      message = responses.leaveCreditAdded
     } else if (result.code === 'LEAVE_CREDIT_ALREADY_IN_USE') {
-      message = `這筆請假已由帳單 #${result.usedByBillId} 使用。`
+      message = responses.leaveCreditUsed(result.usedByBillId)
     }
 
     req.flash(result.ok ? 'success_messages' : 'error_messages', message)
@@ -582,13 +518,13 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, responses.issueTuitionBillInvalidBill)
     }
 
 
     const billId = readUnsignedInteger(req.params.billId)
     if (!Number.isSafeInteger(billId) || billId < 1) {
-      return sendPageError(res, 400, '帳單 ID 不正確。')
+      return sendPageError(res, 400, responses.issueTuitionBillInvalidBill2)
     }
 
     const result = await tuitionBillService.issueTuitionBill({
@@ -600,38 +536,23 @@ const tuitionBillController = {
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return sendPageError(res, 400, '出帳資料格式不正確，請重新開啟帳單再試。')
+      return sendPageError(res, 400, responses.issueTuitionBillInvalidBillProfile)
     }
 
     if (result.code === 'BILL_NOT_FOUND') {
-      return sendPageError(res, 404, '找不到這張帳單。')
+      return sendPageError(res, 404, responses.issueTuitionBillNotFoundBill)
     }
 
-    const errors = {
-      BILL_NUMBER_EXHAUSTED: '今年的正式帳單編號已用完，暫時無法出帳。',
-      BILL_NOT_DRAFT: '只有草稿可以正式出帳。',
-      BILL_VERSION_CONFLICT: '草稿已更新，請核對目前明細後再出帳。',
-      BILL_HAS_NO_ITEMS: '帳單沒有明細，暫時不能出帳。',
-      INVALID_BILL_AMOUNT: '帳單明細的金額需要核對。',
-      DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不一致，請先核對。',
-      DRAFT_COURSE_FEES_REQUIRE_REVIEW: '草稿的課程明細已變動或無法核對，請更新草稿後再試。',
-      NO_UNBILLED_COURSE_FEES: '本張課程費已出帳或不再適用，請核對後捨棄草稿。',
-      SUPPLEMENT_REQUIRES_ISSUED_BILL: '本月已無正式帳單，請先核對主帳單。',
-      DISCOUNT_REQUIRES_REVIEW: '草稿裡有帳單折扣需要核對，暫時不能出帳。',
-      LEAVE_REVIEW_UNAVAILABLE: '目前無法核對上月請假，暫時不能出帳。',
-      LEAVE_CREDIT_REQUIRES_REVIEW: '草稿裡有折抵需要重新核對，暫時不能出帳。',
-      LEAVE_CREDIT_OPTIONS_CHANGED: '可折抵項目已變更，請核對重新載入的明細後再出帳。',
-      INVALID_LEAVE_CREDIT_SKIP_REASON: '請填寫本張帳單不折抵的原因，最多 255 字元。'
-    }
+    const errors = responses.issueTuitionBillErrors
 
-    let message = errors[result.code] ?? '暫時無法正式出帳。'
+    let message = errors[result.code] ?? responses.issueTuitionBillUnavailable
 
     if (result.ok) {
-      message = result.changed ? '已正式出帳。' : '這張帳單已經出帳。'
+      message = result.changed ? responses.issued : responses.alreadyIssued
     } else if (result.code === 'PENDING_LEAVE_REVIEWS') {
-      message = `上月還有 ${result.pendingCount} 筆請假待審核，請回到合併預覽處理後再出帳。`
+      message = responses.pendingLeaveApproval(result.pendingCount)
     } else if (result.code === 'UNAPPLIED_LEAVE_CREDITS') {
-      message = `還有 ${result.creditCount} 筆可加入的請假折抵，請加入折抵或確認本張不折抵後再出帳。`
+      message = responses.pendingLeaveCredit(result.creditCount)
     }
 
     req.flash(result.ok ? 'success_messages' : 'error_messages', message)
@@ -643,13 +564,13 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, responses.refreshTuitionBillDraft_invalidBill)
     }
 
 
     const billId = readUnsignedInteger(req.params.billId)
     const billVersion = readUnsignedInteger(body.billVersion)
-    const invalidInput = '帳單 ID 或草稿版本不正確，請重新開啟帳單再試。'
+    const invalidInput = responses.invalidDraftVersion
 
     if (
       !Number.isSafeInteger(billId) || billId < 1 ||
@@ -668,31 +589,14 @@ const tuitionBillController = {
       return sendPageError(res, 400, invalidInput)
     }
     if (result.code === 'BILL_NOT_FOUND') {
-      return sendPageError(res, 404, '找不到這張帳單。')
+      return sendPageError(res, 404, responses.refreshTuitionBillDraft_notFoundBill)
     }
 
-    const errors = {
-      BILL_NOT_DRAFT: '只有草稿可以更新課程明細。',
-      BILL_VERSION_CONFLICT: '草稿已變更，請核對重新載入的帳單後再試。',
-      STUDENT_NOT_FOUND: '找不到學生資料，無法更新草稿。',
-      BILL_HAS_NO_ITEMS: '草稿沒有明細，請先核對。',
-      INVALID_BILL_AMOUNT: '草稿明細的金額需要核對。',
-      DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不符，請先核對。',
-      INVALID_BILLING_MONTH: '帳單的計費月份需要核對。',
-      UTC_TIMEZONE_REQUIRED: '系統時間設定異常，暫時無法更新。',
-      DRAFT_REQUIRES_REVIEW: '仍有課程資料待核對，請回到月度總覽確認。',
-      NO_UNBILLED_COURSE_FEES: '已無未計費的課程費，請核對後捨棄草稿。',
-      ISSUED_COURSE_FEES_REQUIRE_REVIEW: '既有帳單的課程明細需要核對。',
-      SUPPLEMENT_REQUIRES_ISSUED_BILL: '本月已無正式帳單，請先核對主帳單。',
-      NO_COURSES_IN_BILLING_MONTH: '本月沒有可建立明細的課程，草稿未更新。',
-      COURSE_NAME_UNCONFIRMED: '課程名稱需要核對，草稿未更新。',
-      INVALID_AMOUNT: `更新後的金額超出金額上限 ${MAX_PAYMENT_AMOUNT} 元，草稿未更新。`,
-      DRAFT_CREDITS_EXCEED_UPDATED_TOTAL: '更新後的金額不足以扣除原有折抵或折扣，草稿未更新。'
-    }
+    const errors = responses.refreshTuitionBillDraft_errors
 
     const message = result.ok
-      ? (result.changed ? '已更新課程明細，請核對金額後再出帳。' : '課程明細沒有變動，草稿維持原樣。')
-      : errors[result.code] ?? '暫時無法更新草稿。'
+      ? (result.changed ? responses.refreshTuitionBillDraft_savedAmountCourse : responses.refreshTuitionBillDraft_messageCourse)
+      : errors[result.code] ?? responses.refreshTuitionBillDraft_unavailable
 
     req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
@@ -703,14 +607,14 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, responses.removeTuitionBillDraftAdjustmentInvalidBill)
     }
 
 
     const billId = readUnsignedInteger(req.params.billId)
     const billItemId = readUnsignedInteger(req.params.billItemId)
     const billVersion = readUnsignedInteger(body.billVersion)
-    const invalidInput = '帳單、明細 ID 或草稿版本不正確，請重新開啟帳單再試。'
+    const invalidInput = responses.invalidItemVersion
 
     if (
       ![billId, billItemId].every(id => Number.isSafeInteger(id) && id > 0) ||
@@ -730,23 +634,14 @@ const tuitionBillController = {
       return sendPageError(res, 400, invalidInput)
     }
     if (result.code === 'BILL_NOT_FOUND') {
-      return sendPageError(res, 404, '找不到這張帳單。')
+      return sendPageError(res, 404, responses.removeTuitionBillDraftAdjustmentNotFoundBill)
     }
 
-    const errors = {
-      BILL_NOT_DRAFT: '只有草稿可以移除額外費用、折抵或折扣。',
-      BILL_VERSION_CONFLICT: '草稿已變更，請核對重新載入的帳單後再試。',
-      BILL_ITEM_NOT_FOUND: '找不到這張帳單的該筆明細，可能已經移除。',
-      BILL_ITEM_NOT_REMOVABLE: '只能移除額外費用、請假折抵或帳單折扣。課程費用請使用「更新草稿」。',
-      INVALID_BILL_AMOUNT: '草稿明細的金額需要核對。',
-      DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不符，請先核對。',
-      INVALID_AMOUNT: `移除後的金額超出金額上限 ${MAX_PAYMENT_AMOUNT} 元，草稿未變更。`,
-      DRAFT_CREDITS_EXCEED_UPDATED_TOTAL: '移除後的金額不足以扣除原有折抵或折扣，草稿未變更。'
-    }
+    const errors = responses.removeTuitionBillDraftAdjustmentErrors
 
     req.flash(
       result.ok ? 'success_messages' : 'error_messages',
-      result.ok ? '已移除這筆明細，請核對更新後的金額。' : errors[result.code] ?? '暫時無法移除明細。'
+      result.ok ? responses.removeTuitionBillDraftAdjustmentInvalidAmount : errors[result.code] ?? responses.removeTuitionBillDraftAdjustmentUnavailable
     )
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
   },
@@ -756,13 +651,13 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, responses.discardTuitionBillDraft_invalidBill)
     }
 
 
     const billId = readUnsignedInteger(req.params.billId)
     const billVersion = readUnsignedInteger(body.billVersion)
-    const invalidInput = '帳單 ID 或草稿版本不正確，請重新開啟帳單再試。'
+    const invalidInput = responses.invalidDraftVersion
 
     if (
       !Number.isSafeInteger(billId) || billId < 1 ||
@@ -782,20 +677,14 @@ const tuitionBillController = {
       return sendPageError(res, 400, invalidInput)
     }
     if (result.code === 'BILL_NOT_FOUND') {
-      return sendPageError(res, 404, '找不到這張帳單。')
+      return sendPageError(res, 404, responses.discardTuitionBillDraft_notFoundBill)
     }
 
-    const errors = {
-      INVALID_DISCARD_REASON: '請填寫捨棄草稿的原因，最多 255 字元。',
-      BILL_NOT_DRAFT: '只有尚未出帳的草稿可以捨棄。',
-      BILL_VERSION_CONFLICT: '草稿已變更，請核對重新載入的帳單後再試。',
-      DRAFT_HAS_PAYMENT: '這張草稿已有收款紀錄，請先核對。草稿未捨棄。',
-      LEAVE_CREDIT_REQUIRES_REVIEW: '有請假折抵來源需要核對，草稿未捨棄。'
-    }
+    const errors = responses.discardTuitionBillDraft_errors
 
     const message = result.ok
-      ? (result.changed ? '已捨棄草稿，原帳單紀錄已保留。' : '這張草稿已經捨棄，沒有重複處理。')
-      : errors[result.code] ?? '暫時無法捨棄草稿。'
+      ? (result.changed ? responses.discardTuitionBillDraft_messageBillRecord : responses.discardTuitionBillDraft_unchanged)
+      : errors[result.code] ?? responses.discardTuitionBillDraft_unavailable
 
     req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)
@@ -806,13 +695,13 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, responses.voidIssuedTuitionBillInvalidBill)
     }
 
 
     const billId = readUnsignedInteger(req.params.billId)
     const billVersion = readUnsignedInteger(body.billVersion)
-    const invalidInput = '帳單 ID 或版本不正確，請重新開啟帳單再試。'
+    const invalidInput = responses.invalidBillVersion
 
     if (
       !Number.isSafeInteger(billId) || billId < 1 ||
@@ -829,19 +718,13 @@ const tuitionBillController = {
     })
 
     if (result.code === 'INVALID_INPUT') return sendPageError(res, 400, invalidInput)
-    if (result.code === 'BILL_NOT_FOUND') return sendPageError(res, 404, '找不到這張帳單。')
+    if (result.code === 'BILL_NOT_FOUND') return sendPageError(res, 404, responses.voidIssuedTuitionBillNotFoundBill)
 
-    const errors = {
-      INVALID_VOID_REASON: '請填寫作廢原因，最多 255 字元。',
-      BILL_NOT_ISSUED: '這張帳單目前無法作廢，請核對帳單狀態。',
-      BILL_VERSION_CONFLICT: '帳單已變更，請核對重新載入的明細後再試。',
-      BILL_HAS_PAYMENT: '這張帳單已有收款紀錄，帳單未作廢。',
-      LEAVE_CREDIT_REQUIRES_REVIEW: '有請假折抵來源需要核對，帳單未作廢。'
-    }
+    const errors = responses.voidIssuedTuitionBillErrors
 
     const message = result.ok
-      ? (result.changed ? '已作廢帳單，原明細已保留。' : '這張帳單已作廢，本次沒有重複處理。')
-      : errors[result.code] ?? '暫時無法作廢帳單。'
+      ? (result.changed ? responses.voidIssuedTuitionBillMessageBill : responses.voidIssuedTuitionBillUnchangedBill)
+      : errors[result.code] ?? responses.voidIssuedTuitionBillUnavailableBill
 
     req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(303, `/cramschool/tuition/bills/${billId}`)

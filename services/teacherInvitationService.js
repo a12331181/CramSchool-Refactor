@@ -2,7 +2,7 @@ const { createHash, randomBytes } = require('node:crypto')
 const { Transaction, Validator } = require('sequelize')
 const { TeacherInvitation, User, sequelize } = require('../models')
 
-const INVITATION_HOURS = 48
+const { INVITATION_HOURS } = require('../constants/teacherInvitation')
 
 function hashToken(token) {
   return createHash('sha256').update(token).digest('hex')

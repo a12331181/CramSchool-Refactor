@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/enrollment')
 const { sendPageError } = require('../utils/pageError')
 const enrollmentService = require('../services/enrollmentService')
 
@@ -6,7 +7,7 @@ const enrollmentController = {
     const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
-      return sendPageError(res, 400, '學生 ID 必須是正整數')
+      return sendPageError(res, 400, responses.getEnrollmentPageInvalidStudent)
     }
 
     const result = await enrollmentService.getEnrollmentPage(studentId)
@@ -27,7 +28,7 @@ const enrollmentController = {
       !Number.isSafeInteger(courseId) ||
       courseId < 1
     ) {
-      return sendPageError(res, 400, '學生與課程 ID 必須是正整數')
+      return sendPageError(res, 400, responses.addEnrollmentInvalidStudentCourse)
     }
 
     const { allowed, created, reason } = await enrollmentService.addEnrollment({
@@ -36,15 +37,11 @@ const enrollmentController = {
     })
     
     if (!allowed) {
-      const errorMessages = {
-        COURSE_UNAVAILABLE: '課程不存在或已停止開課，無法註冊',
-        STUDENT_UNAVAILABLE: '找不到在學學生，無法註冊課程',
-        ENROLLMENT_HISTORY_REQUIRES_REVIEW: '舊選課期間尚未結束或日期不完整，請先核對紀錄'
-      }
+      const errorMessages = responses.addEnrollmentErrors
 
       req.flash(
         'error_messages',
-        errorMessages[reason] ?? '無法註冊課程'
+        errorMessages[reason] ?? responses.addEnrollmentUnavailableCourse
       )
 
       const redirectUrl = reason === 'STUDENT_UNAVAILABLE'
@@ -56,7 +53,7 @@ const enrollmentController = {
 
     req.flash(
       'success_messages',
-      created ? '成功註冊課程' : '學生已經註冊此課程'
+      created ? responses.addEnrollmentSavedCourse : responses.addEnrollmentUnchangedStudentCourse
     )
 
     return res.redirect(
@@ -74,11 +71,11 @@ const enrollmentController = {
       !Number.isSafeInteger(courseId) ||
       courseId < 1
     ) {
-      return sendPageError(res, 400, '學生與課程 ID 必須是正整數')
+      return sendPageError(res, 400, responses.removeEnrollmentInvalidStudentCourse)
     }
 
     if (!Number.isSafeInteger(enrollmentId) || enrollmentId < 1) {
-      return sendPageError(res, 400, '選課表單已過期或不完整，請重新整理選課頁後再試')
+      return sendPageError(res, 400, responses.removeEnrollmentInvalidEnrollment)
     }
 
     const { removed, reason } = await enrollmentService.removeEnrollment({
@@ -87,18 +84,13 @@ const enrollmentController = {
       enrollmentId
     })
 
-    const errorMessages = {
-      STUDENT_UNAVAILABLE: '找不到學生資料',
-      COURSE_UNAVAILABLE: '找不到課程資料，請先核對選課紀錄',
-      ENROLLMENT_NOT_ACTIVE: '這筆選課已失效，請重新確認目前的選課狀態',
-      INVALID_END_DATE: '選課開始日晚於今天，請先核對參加期間'
-    }
+    const errorMessages = responses.removeEnrollmentErrors
 
     req.flash(
       removed ? 'success_messages' : 'error_messages',
       removed
-        ? '成功退選，原選課紀錄已保留'
-        : errorMessages[reason] ?? '無法退選課程'
+        ? responses.removeEnrollmentSavedRecordEnrollment
+        : errorMessages[reason] ?? responses.removeEnrollmentUnavailableCourseEnrollment
     )
 
     return res.redirect(

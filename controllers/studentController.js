@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/student')
 const { studentDirectoryQuery } = require('../utils/studentDirectory')
 const { sendPageError } = require('../utils/pageError')
 const studentService = require('../services/studentService')
@@ -19,7 +20,7 @@ const studentController = {
     const courseId = Number(req.params.courseId)
     const studentId = Number(req.params.studentId)
     if (![courseId, studentId].every(id => Number.isSafeInteger(id) && id > 0)) {
-      return sendPageError(res, 400, '課程與學生 ID 必須是正整數')
+      return sendPageError(res, 400, responses.getStudentAttendanceHistoryPageInvalidStudentCourse)
     }
 
     const result = await studentService.getStudentAttendanceHistory({ courseId, studentId })

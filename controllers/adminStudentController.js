@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/adminStudent')
 const { studentDirectoryQuery } = require('../utils/studentDirectory')
 const { sendPageError } = require('../utils/pageError')
 const { SEX_OPTIONS, GRADE_OPTIONS, STUDENT_STATUS_OPTIONS } = require('../constants/profileOptions')
@@ -37,14 +38,14 @@ const adminStudentController = {
 
       if (!result.created) {
         if (result.reason === 'STUDENT_NUMBER_EXHAUSTED') {
-          return sendPageError(res, 409, '今年的學生編號已用完，請聯繫管理員。')
+          return sendPageError(res, 409, responses.createStudentInvalidStudent)
         }
-        return sendPageError(res, 400, '學生狀態不正確')
+        return sendPageError(res, 400, responses.createStudentInvalidStudentStatus)
       }
 
       createCompleted = true
 
-      req.flash('success_messages', `成功建立學生資料｜${result.studentNo}`)
+      req.flash('success_messages', responses.createStudentSavedStudentProfile(result.studentNo))
       return res.redirect('/admin/students')
     } finally {
       if (uploadedImage && !createCompleted) {
@@ -63,7 +64,7 @@ const adminStudentController = {
     const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
-      return sendPageError(res, 400, '學生 ID 必須是正整數')
+      return sendPageError(res, 400, responses.getStudentDetailsPageInvalidStudent)
     }
 
     const student = await studentService.getAdminStudentDetails(
@@ -83,7 +84,7 @@ const adminStudentController = {
     const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
-      return sendPageError(res, 400, '學生 ID 必須是正整數')
+      return sendPageError(res, 400, responses.getEditStudentPageInvalidStudent)
     }
 
     const student = await studentService.getAdminStudentDetails(
@@ -105,7 +106,7 @@ const adminStudentController = {
       const studentId = Number(req.params.studentId)
 
       if (!Number.isSafeInteger(studentId) || studentId < 1) {
-        return sendPageError(res, 400, '學生 ID 必須是正整數')
+        return sendPageError(res, 400, responses.updateStudentInvalidStudent)
       }
 
       const body = req.body ?? {}
@@ -130,21 +131,21 @@ const adminStudentController = {
 
       if (!result.updated) {
         if (result.reason === 'INVALID_STATUS') {
-          return sendPageError(res, 400, '學生狀態不正確')
+          return sendPageError(res, 400, responses.updateStudentInvalidStudentStatus)
         }
 
         if (result.reason === 'FUTURE_ENROLLMENT') {
-          req.flash('error_messages', '學生有尚未開始的選課，請先核對參加期間')
+          req.flash('error_messages', responses.updateStudentUnavailableStudentEnrollment)
           return res.redirect(`/admin/students/${studentId}/edit`)
         }
 
-        req.flash('error_messages', '找不到學生資料')
+        req.flash('error_messages', responses.updateStudentNotFoundStudentProfile)
         return res.redirect('/admin/students')
       }
 
       updateCompleted = true
 
-      req.flash('success_messages', '成功更新學生資料')
+      req.flash('success_messages', responses.updateStudentSavedStudentProfile)
       return res.redirect('/admin/students')
     } finally {
       if (uploadedImage && !updateCompleted) {
@@ -163,29 +164,23 @@ const adminStudentController = {
     const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
-      return sendPageError(res, 400, '學生 ID 必須是正整數')
+      return sendPageError(res, 400, responses.deleteStudentInvalidStudent)
     }
 
     const result = await studentService.deleteStudent(studentId)
 
     if (!result.deleted) {
-      const errorMessages = {
-        STUDENT_NOT_FOUND: '找不到學生資料',
-        HAS_TUITION_BILLS: '學生已有月帳單紀錄，無法刪除。請改用「離開」保留歷史資料。',
-        HAS_ENROLLMENTS: '已有選課紀錄，無法刪除學生，請改用離開狀態',
-        HAS_ATTENDANCE: '已有出席紀錄，無法刪除學生，請改用離開狀態',
-        HAS_TUITION: '已有學費紀錄，無法刪除學生，請改用離開狀態'
-      }
+      const errorMessages = responses.deleteStudentErrors
 
       req.flash(
         'error_messages',
-        errorMessages[result.reason] ?? '無法刪除學生資料'
+        errorMessages[result.reason] ?? responses.deleteStudentUnavailableStudentProfile
       )
 
       return res.redirect('/admin/students')
     }
 
-    req.flash('success_messages', '成功刪除學生資料')
+    req.flash('success_messages', responses.deleteStudentSavedStudentProfile)
     return res.redirect('/admin/students')
   },
 }

@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/adminCalendar')
 const { sendPageError } = require('../utils/pageError')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const calendarService = require('../services/calendarService')
@@ -9,18 +10,7 @@ const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLa
 const COURSE_SESSION_BATCH_LIMIT = require('../constants/courseSessionBatchLimit')
 const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
 
-const BATCH_ERRORS = Object.freeze({
-  INVALID_DATES: [400, `請選擇 1 到 ${COURSE_SESSION_BATCH_LIMIT} 個有效日期。`],
-  DUPLICATE_DATES: [400, '日期不能重複，請重新選擇。'],
-  INVALID_START_AT: [400, '開始時間不正確。'],
-  INVALID_END_AT: [400, '結束時間不正確。'],
-  INVALID_TIME_RANGE: [400, '同一天的結束時間必須晚於開始時間。'],
-  INVALID_TEACHER_ID: [400, '請選擇有效的授課老師。'],
-  INVALID_CONTENT: [400, '課堂內容必須是文字，且不能超過 40 個字。'],
-  TEACHER_UNAVAILABLE: [409, '所選老師目前無法授課，請重新選擇。'],
-  TIME_CONFLICT: [409, '以下日期與本課程、教室或所選老師的既有課堂重疊；本批未建立。'],
-  UTC_TIMEZONE_REQUIRED: [500, '系統時間設定異常，暫時無法新增課堂。']
-})
+const BATCH_ERRORS = responses.batchErrors
 
 function renderBatchForm(req, res, form, { status = 200, error, body = {}, conflictDates = [] } = {}) {
   const readText = key => typeof body[key] === 'string' ? body[key] : ''
@@ -47,7 +37,7 @@ function renderBatchForm(req, res, form, { status = 200, error, body = {}, confl
 }
 
 function redirectFromUnavailableCourse(req, res, code) {
-  req.flash('error_messages', code === 'COURSE_CLOSED' ? '課程已關閉，無法新增課堂。' : '找不到課程資料。')
+  req.flash('error_messages', code === 'COURSE_CLOSED' ? responses.redirectFromUnavailableCourse_unavailableCourseSession : responses.redirectFromUnavailableCourse_notFoundCourseProfile)
   return res.redirect(303, '/admin/courses')
 }
 
@@ -66,7 +56,7 @@ const adminCalendarController = {
   showWarnings,
   getCreateCourseSessionBatchPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
-    if (!Number.isSafeInteger(courseId) || courseId < 1) return sendPageError(res, 400, '課程 ID 必須是正整數')
+    if (!Number.isSafeInteger(courseId) || courseId < 1) return sendPageError(res, 400, responses.getCreateCourseSessionBatchPageInvalidCourse)
 
     const form = await calendarService.getCreateCourseSessionFormData(courseId)
     if (!form.ok) return redirectFromUnavailableCourse(req, res, form.code)
@@ -75,11 +65,11 @@ const adminCalendarController = {
 
   createCourseSessionBatch: async (req, res) => {
     const courseId = Number(req.params.courseId)
-    if (!Number.isSafeInteger(courseId) || courseId < 1) return sendPageError(res, 400, '課程 ID 必須是正整數')
+    if (!Number.isSafeInteger(courseId) || courseId < 1) return sendPageError(res, 400, responses.createCourseSessionBatchInvalidCourse)
 
     const body = req.body ?? {}
     if (!isValidSessionFormToken(body.batchToken, req.session?.courseSessionBatchToken)) {
-      return sendPageError(res, 403, '表單已失效，請重新開啟批次排課頁。')
+      return sendPageError(res, 403, responses.createCourseSessionBatchInvalid)
     }
 
     const result = await calendarService.createCourseSessionBatch(courseId, {
@@ -91,11 +81,11 @@ const adminCalendarController = {
       content: body.content
     })
     if (result.code === 'STUDENT_CONFLICT') return showWarnings(req, res, result)
-    if (result.code === 'INVALID_ROOM') return sendPageError(res, 400, '請選擇有效的教室。')
+    if (result.code === 'INVALID_ROOM') return sendPageError(res, 400, responses.createCourseSessionBatchInvalidRoom)
     if (result.ok) {
       const { createdCount, totalCount } = result.data
       const { totalPages } = getPagination({ page: 1, pageSize: DIRECTORY_PAGE_SIZE, totalCount })
-      req.flash('success_messages', `已新增 ${createdCount} 堂課。`)
+      req.flash('success_messages', responses.createCourseSessionBatchMessage(createdCount))
       return res.redirect(303, `/admin/courses/${courseId}/calendar?page=${totalPages}`)
     }
     if (['COURSE_NOT_FOUND', 'COURSE_CLOSED'].includes(result.code)) {
@@ -104,7 +94,7 @@ const adminCalendarController = {
 
     const form = await calendarService.getCreateCourseSessionFormData(courseId)
     if (!form.ok) return redirectFromUnavailableCourse(req, res, form.code)
-    const [status, error] = BATCH_ERRORS[result.code] ?? [500, '目前無法批次新增課堂。']
+    const [status, error] = BATCH_ERRORS[result.code] ?? [500, responses.batchSaveFailed]
     return renderBatchForm(req, res, form, { status, error, body, conflictDates: result.conflictDates })
   },
 
@@ -112,12 +102,12 @@ const adminCalendarController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return sendPageError(res, 400, '課程 ID 必須是正整數')
+      return sendPageError(res, 400, responses.getCourseCalendarPageInvalidCourse)
     }
 
     const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
     if (!listPage) {
-      return sendPageError(res, 400, '頁碼不正確或超出可處理範圍')
+      return sendPageError(res, 400, responses.getCourseCalendarPageInvalidPage)
     }
     const { page } = listPage
 
@@ -128,14 +118,11 @@ const adminCalendarController = {
     })
 
     if (!result.ok) {
-      const errorMessages = {
-        COURSE_NOT_FOUND: '找不到課程資料',
-        COURSE_CLOSED: '課程已關閉，暫不提供此操作頁面'
-      }
+      const errorMessages = responses.getCourseCalendarPageErrors
 
       req.flash(
         'error_messages',
-        errorMessages[result.code] ?? '無法取得課程行事曆'
+        errorMessages[result.code] ?? responses.getCourseCalendarPageUnavailableCourse
       )
 
       return res.redirect('/admin/courses')
@@ -189,20 +176,17 @@ const adminCalendarController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return sendPageError(res, 400, '課程 ID 必須是正整數')
+      return sendPageError(res, 400, responses.getCreateCourseSessionPageInvalidCourse)
     }
 
     const result = await calendarService.getCreateCourseSessionFormData(courseId)
 
     if (!result.ok) {
-      const errorMessages = {
-        COURSE_NOT_FOUND: '找不到課程資料',
-        COURSE_CLOSED: '課程已關閉，無法新增課堂'
-      }
+      const errorMessages = responses.getCreateCourseSessionPageErrors
 
       req.flash(
         'error_messages',
-        errorMessages[result.code] ?? '無法開啟新增課堂頁面'
+        errorMessages[result.code] ?? responses.getCreateCourseSessionPageUnavailableSession
       )
 
       return res.redirect('/admin/courses')
@@ -225,7 +209,7 @@ const adminCalendarController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return sendPageError(res, 400, '課程 ID 必須是正整數')
+      return sendPageError(res, 400, responses.createCourseSessionInvalidCourse)
     }
 
     const body = req.body ?? {}
@@ -243,7 +227,7 @@ const adminCalendarController = {
       content: body.content
     })
     if (result.code === 'STUDENT_CONFLICT') return showWarnings(req, res, result)
-    if (result.code === 'INVALID_ROOM') return sendPageError(res, 400, '請選擇有效的教室。')
+    if (result.code === 'INVALID_ROOM') return sendPageError(res, 400, responses.createCourseSessionInvalidRoom)
 
     if (result.ok) {
       const pagination = getPagination({
@@ -252,7 +236,7 @@ const adminCalendarController = {
         totalCount: result.data.totalCount
       })
 
-      req.flash('success_messages', `已新增課堂 #${result.data.id}`)
+      req.flash('success_messages', responses.createCourseSessionMessageSession(result.data.id))
 
       return res.redirect(
         303,
@@ -260,22 +244,10 @@ const adminCalendarController = {
       )
     }
 
-    const errors = {
-      INVALID_COURSE_ID: [400, '課程 ID 必須是正整數'],
-      INVALID_START_AT: [400, '開始日期或時間不正確'],
-      INVALID_END_AT: [400, '結束日期或時間不正確'],
-      INVALID_TIME_RANGE: [400, '結束時間必須晚於開始時間'],
-      INVALID_TEACHER_ID: [400, '請選擇有效的授課教師'],
-      INVALID_CONTENT: [400, '課堂內容必須是文字，且不可超過 40 個字元'],
-      COURSE_NOT_FOUND: [404, '找不到課程資料'],
-      COURSE_CLOSED: [409, '課程已關閉，無法新增課堂'],
-      TEACHER_UNAVAILABLE: [409, '所選教師目前無法授課，請重新選擇'],
-      TIME_CONFLICT: [409, '此課程、教室或授課教師已有重疊課堂，請調整時間'],
-      UTC_TIMEZONE_REQUIRED: [500, '系統時間設定異常，暫時無法儲存課堂']
-    }
+    const errors = responses.createCourseSessionErrors
 
     const [status, errorMessage] =
-      errors[result.code] ?? [500, '無法新增課堂']
+      errors[result.code] ?? [500, responses.sessionSaveFailed]
 
     if (['COURSE_NOT_FOUND', 'COURSE_CLOSED'].includes(result.code)) {
       req.flash('error_messages', errorMessage)
@@ -285,7 +257,7 @@ const adminCalendarController = {
     const formData = await calendarService.getCreateCourseSessionFormData(courseId)
 
     if (!formData.ok) {
-      req.flash('error_messages', '課程狀態已變動，請重新確認')
+      req.flash('error_messages', responses.createCourseSessionInvalidCourseStatus)
       return res.redirect(303, '/admin/courses')
     }
 
@@ -315,7 +287,7 @@ const adminCalendarController = {
       ![courseId, calendarId]
         .every(id => Number.isSafeInteger(id) && id > 0)
     ) {
-      return sendPageError(res, 400, '課程與課堂 ID 必須是正整數')
+      return sendPageError(res, 400, responses.completeCourseSessionInvalidCourseSession)
     }
 
     const page = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)?.page ?? 1
@@ -327,22 +299,11 @@ const adminCalendarController = {
     )
 
     if (!result.ok) {
-      const errors = {
-        COURSE_NOT_FOUND: '找不到課程資料。',
-        COURSE_CLOSED: '課程已關閉，目前無法完成課堂。',
-        CALENDAR_NOT_FOUND: '找不到這門課程的課堂。',
-        CALENDAR_NOT_COMPLETABLE: '只有已排定的正式課堂可以標記完成。',
-        CALENDAR_REQUIRES_REVIEW: '課堂的教師或時間資料需要先核對。',
-        CALENDAR_NOT_ENDED: '尚未到這堂課的結束時間。',
-        ENROLLMENT_UNCONFIRMED: '學生的選課期間有缺漏或重疊，請先核對。',
-        ATTEND_REQUIRES_REVIEW: '點名紀錄與選課資料需要先核對。',
-        ATTEND_INCOMPLETE:
-          `尚有 ${result.unmarkedCount} 位學生未點名，請先完成點名。`
-      }
+      const errors = responses.completeCourseSessionErrors(result)
 
       req.flash(
         'error_messages',
-        errors[result.code] ?? '目前無法完成課堂。'
+        errors[result.code] ?? responses.completeCourseSessionUnavailableSession
       )
 
       const redirectUrl = [
@@ -358,8 +319,8 @@ const adminCalendarController = {
     req.flash(
       'success_messages',
       result.changed
-        ? '已將課堂標記為已完成。'
-        : '這堂課原本就已完成。'
+        ? responses.completeCourseSessionMessageSession
+        : responses.completeCourseSessionMessage
     )
 
     return res.redirect(303, listUrl)
@@ -371,22 +332,16 @@ const adminCalendarController = {
     const result = await calendarService.cancelCourseSession(courseId, calendarId)
 
     if (['INVALID_COURSE_ID', 'INVALID_CALENDAR_ID'].includes(result.code)) {
-      return sendPageError(res, 400, '課程與課堂 ID 必須是正整數')
+      return sendPageError(res, 400, responses.cancelCourseSessionInvalidCourseSession)
     }
 
     const page = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)?.page ?? 1
     const listUrl = `/admin/courses/${courseId}/calendar?page=${page}`
 
     if (!result.ok) {
-      const errors = {
-        COURSE_NOT_FOUND: '找不到課程資料',
-        COURSE_CLOSED: '課程已關閉，無法取消課堂',
-        CALENDAR_NOT_FOUND: '找不到這門課程的課堂',
-        CALENDAR_ALREADY_BILLED: `這堂課已列入正式帳單 #${result.billId}，未取消。請先核對相關帳單。`,
-        CALENDAR_NOT_CANCELLABLE: '只有已排定的課堂可以取消'
-      }
+      const errors = responses.cancelCourseSessionErrors(result)
 
-      req.flash('error_messages', errors[result.code] ?? '無法取消課堂')
+      req.flash('error_messages', errors[result.code] ?? responses.cancelCourseSessionUnavailableSession)
 
       if (['COURSE_NOT_FOUND', 'COURSE_CLOSED'].includes(result.code)) {
         return res.redirect(303, '/admin/courses')
@@ -397,7 +352,7 @@ const adminCalendarController = {
 
     req.flash(
       'success_messages',
-      result.changed ? '已取消課堂' : '這堂課已經取消'
+      result.changed ? responses.cancelCourseSessionMessageSession : responses.cancelCourseSessionUnchanged
     )
 
     return res.redirect(303, listUrl)
@@ -411,7 +366,7 @@ const adminCalendarController = {
       !Number.isSafeInteger(courseId) || courseId < 1 ||
       !Number.isSafeInteger(calendarId) || calendarId < 1
     ) {
-      return sendPageError(res, 400, '課程與課堂 ID 必須是正整數')
+      return sendPageError(res, 400, responses.getLegacyCalendarEditPageInvalidCourseSession)
     }
 
     const calendar = await calendarService.getLegacyCalendarEditData(
@@ -421,7 +376,7 @@ const adminCalendarController = {
 
     if (!calendar) {
       return sendPageError(res, 409,
-        '此課堂目前無法使用舊日期表單修改，請返回課堂列表確認')
+        responses.getLegacyCalendarEditPageUnavailableDateSession)
     }
 
     return res.render('admin/calendars/edit', { calendar })
@@ -439,24 +394,13 @@ const adminCalendarController = {
     )
 
     if (!result.ok) {
-      const errors = {
-        INVALID_COURSE_ID: [400, '課程 ID 必須是正整數'],
-        INVALID_CALENDAR_ID: [400, '課堂 ID 必須是正整數'],
-        INVALID_LEGACY_DATE: [400, '日期格式不正確'],
-        INVALID_CONTENT: [400, '上課內容必須填寫，且不能超過 40 個字元'],
-        COURSE_NOT_FOUND: [404, '找不到課程'],
-        COURSE_CLOSED: [409, '課程已關閉，無法修改課堂'],
-        LEGACY_CALENDAR_UNAVAILABLE: [
-          409,
-          '此課堂目前無法使用舊表單修改，請返回列表確認'
-        ]
-      }
+      const errors = responses.updateLegacyCalendarErrors
 
-      const [status, message] = errors[result.code] ?? [500, '更新課堂失敗']
+      const [status, message] = errors[result.code] ?? [500, responses.sessionUpdateFailed]
       return sendPageError(res, status, message)
     }
 
-    req.flash('success_messages', '已成功更新課堂資料')
+    req.flash('success_messages', responses.updateLegacyCalendarSavedSessionProfile)
     return res.redirect(303, `/admin/courses/${courseId}/calendar`)
   },
 }

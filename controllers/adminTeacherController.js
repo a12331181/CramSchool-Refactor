@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/adminTeacher')
 const { sendPageError } = require('../utils/pageError')
 const { SEX_OPTIONS, TEACHER_STATUS_OPTIONS } = require('../constants/profileOptions')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
@@ -8,7 +9,7 @@ const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/p
 const adminTeacherController = {
   getTeacherListPage: async (req, res) => {
     const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
-    if (!listPage) return sendPageError(res, 400, '頁碼必須是正整數')
+    if (!listPage) return sendPageError(res, 400, responses.getTeacherListPageInvalidPage)
     const { page } = listPage
     const status = req.query.status
       ? Number(req.query.status)
@@ -18,7 +19,7 @@ const adminTeacherController = {
       status !== undefined &&
       !Object.values(TEACHER_STATUS).includes(status)
     ) {
-      return sendPageError(res, 400, '教師狀態不正確')
+      return sendPageError(res, 400, responses.getTeacherListPageInvalidTeacherStatus)
     }
 
     const result = await teacherService.getTeachersPage({
@@ -57,7 +58,7 @@ const adminTeacherController = {
     const teacherId = Number(req.params.teacherId)
 
     if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
-      return sendPageError(res, 400, '教師 ID 必須是正整數')
+      return sendPageError(res, 400, responses.getTeacherDetailsPageInvalidTeacher)
     }
 
     const teacher = await teacherService.getTeacherDetails(teacherId)
@@ -75,7 +76,7 @@ const adminTeacherController = {
     const teacherId = Number(req.params.teacherId)
 
     if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
-      return sendPageError(res, 400, '教師 ID 必須是正整數')
+      return sendPageError(res, 400, responses.getEditTeacherPageInvalidTeacher)
     }
 
     const teacher = await teacherService.getTeacherDetails(teacherId)
@@ -95,7 +96,7 @@ const adminTeacherController = {
     const teacherId = Number(req.params.teacherId)
 
     if (!Number.isSafeInteger(teacherId) || teacherId < 1) {
-      return sendPageError(res, 400, '教師 ID 必須是正整數')
+      return sendPageError(res, 400, responses.updateTeacherInvalidTeacher)
     }
 
     const body = req.body ?? {}
@@ -113,14 +114,14 @@ const adminTeacherController = {
 
     if (!result.updated) {
       if (result.reason === 'INVALID_STATUS') {
-        return sendPageError(res, 400, '教師狀態不正確')
+        return sendPageError(res, 400, responses.updateTeacherInvalidTeacherStatus)
       }
 
-      req.flash('error_messages', '找不到教師資料')
+      req.flash('error_messages', responses.updateTeacherNotFoundTeacherProfile)
       return res.redirect('/admin/teachers')
     }
 
-    req.flash('success_messages', '成功修改教師資料')
+    req.flash('success_messages', responses.updateTeacherSavedTeacherProfile)
     return res.redirect('/admin/teachers')
   },
 }

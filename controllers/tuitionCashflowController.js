@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/tuitionCashflow')
 const { CASHFLOW_PAGE_SIZE } = require('../constants/pagination')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
 const { getTuitionCashflow } = require('../services/tuitionCashflowService')
@@ -9,12 +10,7 @@ const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/p
 const CASHFLOW_URL = '/cramschool/tuition/cashflow'
 const CSV_URL = '/cramschool/tuition/cashflow.csv'
 const amountFormat = new Intl.NumberFormat('zh-TW')
-const REVIEW_LABELS = Object.freeze({
-  [CASH_REVIEW.DATE]: '實際日期未填或不正確',
-  [CASH_REVIEW.BILL]: '帳單關聯或狀態待核對',
-  [CASH_REVIEW.AMOUNT]: '金額待核對',
-  [CASH_REVIEW.GROUP]: '匯款與帳單分配待核對'
-})
+const REVIEW_LABELS = responses.reviewLabels
 
 function formatAmount(amount) {
   if (!Number.isSafeInteger(amount)) return '—'
@@ -54,11 +50,11 @@ const tuitionCashflowController = {
     res.set('Cache-Control', 'no-store')
     const view = req.query.view ?? 'verified'
     if (view !== 'verified' && view !== 'review') {
-      return res.status(400).render('tuition/cashflow', { ...viewData, error: '請選擇有效的對帳清單。' })
+      return res.status(400).render('tuition/cashflow', { ...viewData, error: responses.invalidCashflowFilter })
     }
     const listPage = getPageOffset(req.query.page, CASHFLOW_PAGE_SIZE)
     if (!listPage) {
-      return res.status(400).render('tuition/cashflow', { ...viewData, error: '頁碼需為正整數。' })
+      return res.status(400).render('tuition/cashflow', { ...viewData, error: responses.invalidCashflowPage })
     }
     const { page, offset } = listPage
     const ledger = await getTuitionCashflow(cashMonth)
@@ -66,7 +62,7 @@ const tuitionCashflowController = {
       const badMonth = ledger.code === 'INVALID_CASH_MONTH'
       return res.status(badMonth ? 400 : 422).render('tuition/cashflow', {
         ...viewData,
-        error: badMonth ? '請選擇有效的收退費月份。' : '金額無法加總，請核對收退費資料。'
+        error: badMonth ? responses.invalidCashflowMonth : responses.invalidCashflowTotals
       })
     }
 
@@ -104,8 +100,8 @@ const tuitionCashflowController = {
     const ledger = await getTuitionCashflow(cashMonth)
     if (!ledger.ok) {
       return ledger.code === 'INVALID_CASH_MONTH'
-        ? res.status(400).type('text/plain').send('請選擇有效的收退費月份。')
-        : res.status(422).type('text/plain').send('金額無法加總，請核對收退費資料。')
+        ? res.status(400).type('text/plain').send(responses.getCashflowCsvInvalidMonth)
+        : res.status(422).type('text/plain').send(responses.getCashflowCsvUnavailableAmountProfile)
     }
     return res.attachment(`cramschool-cashflow-${cashMonth}.csv`)
       .type('text/csv')

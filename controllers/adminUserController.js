@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/adminUser')
 const { sendPageError } = require('../utils/pageError')
 const userService = require('../services/userService')
 const invitationService = require('../services/teacherInvitationService')
@@ -16,12 +17,12 @@ const adminUserController = {
   createTeacherInvitation: async (req, res) => {
     const { email, inviteFormToken } = req.body ?? {}
     if (!isValidSessionFormToken(inviteFormToken, req.session.inviteFormToken)) {
-      return sendPageError(res, 403, '邀請表單已失效，請重新開啟使用者管理。')
+      return sendPageError(res, 403, responses.createTeacherInvitationInvalidInvitation)
     }
     const result = await invitationService.createTeacherInvitation({ email, actorId: req.user.id })
     if (result.code === 'FORBIDDEN') return sendPageError(res, 403)
     if (!result.ok) {
-      req.flash('error_messages', result.code === 'EMAIL_EXISTS' ? '這個信箱已有帳號。' : '請輸入有效的教師信箱。')
+      req.flash('error_messages', result.code === 'EMAIL_EXISTS' ? responses.createTeacherInvitationUnchangedEmailAccount : responses.createTeacherInvitationInvalidEmailTeacher)
       return res.redirect(303, '/admin/users')
     }
     res.set({ 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' })
@@ -32,22 +33,19 @@ const adminUserController = {
 
   toggleUserAdmin: async (req, res) => {
     const userId = Number(req.params.userId)
-    if (!Number.isSafeInteger(userId) || userId < 1) return sendPageError(res, 400, '帳號 ID 必須是正整數')
+    if (!Number.isSafeInteger(userId) || userId < 1) return sendPageError(res, 400, responses.toggleUserAdminInvalidAccount)
 
     const requestedRole = req.body?.isAdmin
     if (!['true', 'false'].includes(requestedRole)) {
-      req.flash('error_messages', '請重新載入使用者列表，再選擇要設定的權限。')
+      req.flash('error_messages', responses.toggleUserAdminInvalid)
       return res.redirect(303, '/admin/users')
     }
     const result = await userService.setUserAdmin({
       userId, actorId: req.user.id, isAdmin: requestedRole === 'true'
     })
     if (result.code === 'FORBIDDEN') return sendPageError(res, 403)
-    const errors = {
-      LAST_ADMIN: '至少要保留一位管理員。請先指定另一位管理員，再變更這個帳號。',
-      USER_NOT_FOUND: '找不到使用者'
-    }
-    req.flash(result.ok ? 'success_messages' : 'error_messages', result.ok ? '使用者權限已更新' : errors[result.code])
+    const errors = responses.toggleUserAdminErrors
+    req.flash(result.ok ? 'success_messages' : 'error_messages', result.ok ? responses.toggleUserAdminSaved : errors[result.code])
     return res.redirect(303, '/admin/users')
   }
 }

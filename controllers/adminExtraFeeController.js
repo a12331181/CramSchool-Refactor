@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/adminExtraFee')
 const extraFeeService = require('../services/extraFeeService')
 const { MAX_EXTRA_FEE_PRICE } = require('../constants/extraFeeLimits')
 
@@ -20,7 +21,7 @@ const adminExtraFeeController = {
 
   createExtraFee: async (req, res) => {
     await extraFeeService.createExtraFee(req.body ?? {})
-    req.flash('success_messages', '額外費用已成功建立')
+    req.flash('success_messages', responses.createExtraFeeSaved)
     return res.redirect(303, '/admin/extrafees')
   },
 
@@ -28,7 +29,7 @@ const adminExtraFeeController = {
     const updated = await extraFeeService.updateExtraFee(req.params.extraFeeId, req.body ?? {})
     req.flash(
       updated ? 'success_messages' : 'error_messages',
-      updated ? '已成功更新額外費用' : '找不到額外費用'
+      updated ? responses.updateExtraFeeSaved : responses.updateExtraFeeNotFound
     )
     return res.redirect(303, '/admin/extrafees')
   }

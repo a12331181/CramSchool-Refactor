@@ -23,18 +23,7 @@ const { getTuitionBillPaymentStatus, getPaidTuitionBillPayments, summarizeTuitio
 const { getStudentTuitionPreview } = require('./tuitionPricingService')
 const { readTuitionSnapshot } = require('./tuitionReportService')
 
-const DRAFT_ADJUSTMENT_REMOVAL_REASONS = Object.freeze({
-  [TUITION_BILL_ITEM_KIND.EXTRA_FEE]: '移除草稿額外費用',
-  [TUITION_BILL_ITEM_KIND.LEAVE_CREDIT]: '移除草稿請假折抵',
-  [TUITION_BILL_ITEM_KIND.DISCOUNT]: '移除草稿帳單折扣'
-})
-const DRAFT_NON_BLOCKING_REVIEW_CODES = new Set([
-  'NO_BILLABLE_CALENDARS',
-  'CALENDAR_REVIEW_UNAVAILABLE',
-  'CALENDARS_REQUIRE_REVIEW',
-  'ATTENDANCE_SUMMARY_UNAVAILABLE',
-  'ATTENDANCE_REQUIRES_REVIEW'
-])
+const { DRAFT_ADJUSTMENT_REMOVAL_REASONS, DRAFT_NON_BLOCKING_REVIEW_CODES } = require('../constants/tuitionDraftReview')
 
 function buildDraftCourseFeeItems(preview) {
   if (!preview.ok) return preview

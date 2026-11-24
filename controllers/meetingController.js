@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/meeting')
 const { validateUploads, recordContents } = require('../services/recordAttachmentService')
 const { sendPageError } = require('../utils/pageError')
 const meetingService = require('../services/meetingService')
@@ -8,7 +9,7 @@ const meetingController = {
   getMeetingListPage: async (req, res) => {
     const listPage = getPageOffset(req.query.page, SCHOOL_RECORDS_PAGE_SIZE)
     if (!listPage) {
-      return sendPageError(res, 400, '頁碼不正確或超出可處理範圍')
+      return sendPageError(res, 400, responses.getMeetingListPageInvalidPage)
     }
     const { page, offset } = listPage
 
@@ -44,17 +45,17 @@ const meetingController = {
     const { date, subject, content } = req.body ?? {}
     if (![date, subject, content].every(value => typeof value === 'string' && value.trim()) ||
         subject.length > 40 || Buffer.byteLength(content) > 60_000 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return sendPageError(res, 400, '請填寫日期、40 字內的主題及有效內文。')
+      return sendPageError(res, 400, responses.createMeetingInvalidDateContent)
     }
     const attachments = await validateUploads(req.files)
-    if (!attachments) return sendPageError(res, 400, '附件內容須與 JPG、PNG、PDF 或 Word 檔案格式相符。')
+    if (!attachments) return sendPageError(res, 400, responses.createMeetingMessageAttachment)
     const created = await meetingService.createMeeting({ userId: req.user.id, date, subject, content, attachments, richText: req.body.format === 'simple' })
     if (!created) {
-      req.flash('error_messages', '找不到教師資料，無法建立會議紀錄')
+      req.flash('error_messages', responses.createMeetingNotFoundTeacherRecordProfile)
       return res.redirect('/cramschool/meetings')
     }
 
-    req.flash('success_messages', '已成功建立會議紀錄')
+    req.flash('success_messages', responses.createMeetingSavedRecordMeeting)
     return res.redirect(303, '/cramschool/meetings/' + created.id)
   },
 
@@ -62,7 +63,7 @@ const meetingController = {
     const deleted = await meetingService.deleteMeeting(req.params.meetingId)
     req.flash(
       deleted ? 'success_messages' : 'error_messages',
-      deleted ? '已成功刪除會議紀錄' : '找不到會議紀錄'
+      deleted ? responses.deleteMeetingSavedRecordMeeting : responses.deleteMeetingNotFoundRecordMeeting
     )
     return res.redirect('/cramschool/meetings')
   }

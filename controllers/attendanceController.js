@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/attendance')
 const { sendPageError } = require('../utils/pageError')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
 const attendanceService = require('../services/attendanceService')
@@ -13,7 +14,7 @@ const attendanceController = {
   getAttendanceHomePage: async (req, res) => {
     const pageSize = DIRECTORY_PAGE_SIZE
     const listPage = getPageOffset(req.query.page, pageSize)
-    if (!listPage) return sendPageError(res, 400, '頁碼必須是有效的正整數。')
+    if (!listPage) return sendPageError(res, 400, responses.getAttendanceHomePageInvalidPage)
 
     const { page, offset } = listPage
     const { courses, count, isAdmin } = await attendanceService.getAttendanceHome({
@@ -36,12 +37,12 @@ const attendanceController = {
   getCourseAttendanceSessionsPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return sendPageError(res, 400, '課程 ID 必須是正整數。')
+      return sendPageError(res, 400, responses.getCourseAttendanceSessionsPageInvalidCourse)
     }
 
     const listPage = getPageOffset(req.query.page, ATTENDANCE_SESSION_PAGE_SIZE)
     if (!listPage) {
-      return sendPageError(res, 400, '頁碼必須是有效的正整數。')
+      return sendPageError(res, 400, responses.getCourseAttendanceSessionsPageInvalidPage)
     }
     const { page } = listPage
 
@@ -51,9 +52,9 @@ const attendanceController = {
     })
     res.set('Cache-Control', 'no-store')
     if (!result.ok) {
-      if (result.code === 'INVALID_MONTH') return sendPageError(res, 400, '月份格式必須為 YYYY-MM。')
-      if (result.code === 'INVALID_STATUS') return sendPageError(res, 400, '請選擇有效的課堂狀態。')
-      return sendPageError(res, 404, '找不到可查看的課程。')
+      if (result.code === 'INVALID_MONTH') return sendPageError(res, 400, responses.getCourseAttendanceSessionsPageInvalidMonth)
+      if (result.code === 'INVALID_STATUS') return sendPageError(res, 400, responses.getCourseAttendanceSessionsPageInvalidSessionStatus)
+      return sendPageError(res, 404, responses.getCourseAttendanceSessionsPageNotFoundCourse)
     }
 
     const pagination = getPagination({ page, pageSize: ATTENDANCE_SESSION_PAGE_SIZE, totalCount: result.count })
@@ -93,7 +94,7 @@ const attendanceController = {
       !Number.isSafeInteger(courseId) || courseId < 1 ||
       !Number.isSafeInteger(calendarId) || calendarId < 1
     ) {
-      return sendPageError(res, 400, '課程與課堂 ID 必須是正整數')
+      return sendPageError(res, 400, responses.getAttendanceRosterPageInvalidCourseSession)
     }
 
     const result = await attendanceService.getAttendanceRoster({
@@ -103,7 +104,7 @@ const attendanceController = {
     })
 
     if (!result) {
-      req.flash('error_messages', '找不到可查看的課堂')
+      req.flash('error_messages', responses.getAttendanceRosterPageNotFoundSession)
       return res.redirect('/cramschool/attend')
     }
 
@@ -155,7 +156,7 @@ const attendanceController = {
       ![courseId, calendarId, studentId].every(id => Number.isSafeInteger(id) && id > 0) ||
       typeof calendarStartAt !== 'string' || typeof calendarEndAt !== 'string'
     ) {
-      return sendPageError(res, 400, '課程、課堂、學生或時間格式不正確')
+      return sendPageError(res, 400, responses.recordAttendanceInvalidStudentCourseSession)
     }
 
     const result = await attendanceService.recordAttendance({
@@ -169,19 +170,11 @@ const attendanceController = {
       userId: req.user.id
     })
 
-    const errors = {
-      INVALID_INPUT: '資料格式不正確。',
-      CALENDAR_UNAVAILABLE: '找不到可登記的課堂。',
-      CALENDAR_CHANGED: '上課時間已變更，請核對後再登記。',
-      ENROLLMENT_UNCONFIRMED: '學生當天的選課期間無法確認，請先核對。',
-      INVALID_STATUS: '請選擇出席、缺席或請假。',
-      INVALID_REASON: '原因／備註必須是 255 字以內的文字。',
-      REASON_REQUIRED: '請填寫請假原因。'
-    }
+    const errors = responses.recordAttendanceErrors
 
     const message = result.ok
-        ? (result.created ? '已儲存點名。' : '已有點名紀錄，本次未修改。')
-        : errors[result.code] ?? '目前無法登記。'
+        ? (result.created ? responses.recordAttendanceSavedAttendance : responses.recordAttendanceUnchangedRecordAttendance)
+        : errors[result.code] ?? responses.recordAttendanceUnavailable
     if (req.get('Accept') === 'application/json') {
       return res.status(result.ok ? 200 : 409).json({ ok: result.ok, message })
     }
@@ -210,7 +203,7 @@ const attendanceController = {
       typeof body.calendarStartAt !== 'string' ||
       typeof body.calendarEndAt !== 'string'
     ) {
-      return sendPageError(res, 400, '課程、課堂、學生或點名版本格式不正確')
+      return sendPageError(res, 400, responses.updateAttendanceInvalidStudentCourseSession)
     }
 
     const result = await attendanceService.updateAttendance({
@@ -227,23 +220,11 @@ const attendanceController = {
       correctionReason: body.correctionReason
     })
 
-    const errors = {
-      INVALID_INPUT: '資料格式不正確。',
-      INVALID_STATUS: '請選擇出席、缺席或請假。',
-      INVALID_REASON: '原因／備註必須是 255 字以內的文字。',
-      REASON_REQUIRED: '請填寫請假原因。',
-      CORRECTION_REASON_REQUIRED: '請填寫 255 字以內的更正原因。',
-      CALENDAR_UNAVAILABLE: '這堂課目前無法更正，請回首頁確認。',
-      CALENDAR_CHANGED: '上課時間已變更，請重新核對。',
-      ATTEND_NOT_FOUND: '找不到這筆點名紀錄。',
-      ATTEND_REQUIRES_REVIEW: '這筆舊紀錄需要先核對。',
-      VERSION_CONFLICT: '其他分頁已修改這筆點名，請核對重新載入的結果。',
-      ENROLLMENT_UNCONFIRMED: '選課期間無法確認，請先核對。'
-    }
+    const errors = responses.updateAttendanceErrors
 
     const message = result.ok
-        ? (result.changed ? '已更正點名並保存操作紀錄。' : '內容相同，沒有變更。')
-        : errors[result.code] ?? '目前無法更正。'
+        ? (result.changed ? responses.updateAttendanceSavedRecordAttendance : responses.updateAttendanceUnchanged)
+        : errors[result.code] ?? responses.updateAttendanceUnavailable
     if (req.get('Accept') === 'application/json') {
       return res.status(result.ok ? 200 : 409).json({ ok: result.ok, message })
     }
@@ -263,7 +244,7 @@ const attendanceController = {
       ![courseId, calendarId, studentId]
         .every(id => Number.isSafeInteger(id) && id > 0)
     ) {
-      return sendPageError(res, 400, '課程、課堂與學生 ID 必須是正整數')
+      return sendPageError(res, 400, responses.getAttendanceHistoryPageInvalidStudentCourseSession)
     }
 
     const result = await attendanceService.getAttendanceHistory({
@@ -274,7 +255,7 @@ const attendanceController = {
     })
 
     if (!result) {
-      req.flash('error_messages', '找不到可查看的點名紀錄')
+      req.flash('error_messages', responses.getAttendanceHistoryPageNotFoundRecordAttendance)
       return res.redirect('/cramschool/attend')
     }
 

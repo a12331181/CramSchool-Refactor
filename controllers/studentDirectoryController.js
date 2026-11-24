@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/studentDirectory')
 const { sendPageError } = require('../utils/pageError')
 const studentService = require('../services/studentService')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
@@ -6,15 +7,15 @@ const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/p
 
 async function renderDirectory(req, res, manageStudents) {
   const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
-  if (!listPage) return sendPageError(res, 400, '頁碼必須是正整數')
+  if (!listPage) return sendPageError(res, 400, responses.renderDirectoryInvalidPage)
 
   const courseId = req.query.courseId ? Number(req.query.courseId) : undefined
   if (courseId !== undefined && (!Number.isSafeInteger(courseId) || courseId < 1)) {
-    return sendPageError(res, 400, '課程 ID 必須是正整數')
+    return sendPageError(res, 400, responses.renderDirectoryInvalidCourse)
   }
 
   if (req.query.q !== undefined && (typeof req.query.q !== 'string' || req.query.q.length > 80)) {
-    return sendPageError(res, 400, '請輸入 80 字以內的姓名或學號。')
+    return sendPageError(res, 400, responses.renderDirectoryInvalid)
   }
   const query = req.query.q?.trim() || ''
   const { page, offset } = listPage

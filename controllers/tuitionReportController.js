@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/tuitionReport')
 const { sendPageError } = require('../utils/pageError')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
@@ -10,16 +11,7 @@ const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
 const tuitionReportService = require('../services/tuitionReportService')
 const { amountFormat, getTuitionNavigationParams, withQuery, getTuitionBillPaymentStatusText, getRefundAmountText, getRefundStatusText, getCoursePaymentStatusText } = require('../utils/tuitionViewData.js')
 
-const COURSE_COLLECTION_LABELS = {
-  [COURSE_COLLECTION_STATUS.PAID]: ['已收齊', 'text-success'],
-  [COURSE_COLLECTION_STATUS.UNPAID]: ['未收齊', 'text-danger'],
-  [COURSE_COLLECTION_STATUS.REFUNDED]: ['已全額退費', 'text-info'],
-  [COURSE_COLLECTION_STATUS.PARTIALLY_REFUNDED]: ['已部分退費', 'text-info'],
-  [COURSE_COLLECTION_STATUS.UNISSUED]: ['部分未出帳', 'alert-warning px-1 rounded'],
-  [COURSE_COLLECTION_STATUS.EMPTY]: ['本月無收費資料', 'text-muted'],
-  [COURSE_COLLECTION_STATUS.NO_PAYMENT]: ['無須收款', 'text-muted'],
-  [COURSE_COLLECTION_STATUS.REVIEW]: ['待核對', 'text-muted']
-}
+const COURSE_COLLECTION_LABELS = responses.collectionLabels
 
 const tuitionReportController = {
   getCoursePaymentOverviewPage: async (req, res) => {
@@ -30,17 +22,17 @@ const tuitionReportController = {
     const position = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
     const filter = req.query.filter ?? 'all'
     const includeTotals = req.query.totals === '1'
-    if (!position || !['all', 'unpaid', 'review'].includes(filter)) return sendPageError(res, 400, '頁碼或收費篩選不正確。')
+    if (!position || !['all', 'unpaid', 'review'].includes(filter)) return sendPageError(res, 400, responses.getCoursePaymentOverviewPageInvalidPageFilter)
     const result = await tuitionReportService.getCoursePaymentOverview({ billingMonth, page: position.page,
       pageSize: DIRECTORY_PAGE_SIZE, filter, includeTotals })
     if (!result.ok) {
       if (result.code === 'INVALID_BILLING_MONTH') {
         return res.status(400).render('tuition/course-overview', {
           ...viewData,
-          errorMessage: '請選擇有效的計費月份。'
+          errorMessage: responses.getCoursePaymentOverviewPageInvalidMonth
         })
       }
-      return sendPageError(res, 500, '無法取得課程收費資料。')
+      return sendPageError(res, 500, responses.getCoursePaymentOverviewPageUnavailableCourseProfile)
     }
 
     const pagination = getPagination({ page: position.page, pageSize: DIRECTORY_PAGE_SIZE, totalCount: result.totalCount })
@@ -80,9 +72,9 @@ const tuitionReportController = {
 
     if (!result.ok) {
       if (result.code === 'INVALID_INPUT') {
-        return sendPageError(res, 400, courseId === undefined ? '學生 ID 必須是正整數。' : '課程與學生 ID 必須是正整數。')
+        return sendPageError(res, 400, courseId === undefined ? responses.getStudentTuitionHistoryPageInvalidStudent : responses.getStudentTuitionHistoryPageInvalidStudentCourse)
       }
-      return sendPageError(res, 404, result.code === 'COURSE_NOT_FOUND' ? '找不到課程。' : '找不到學生。')
+      return sendPageError(res, 404, result.code === 'COURSE_NOT_FOUND' ? responses.getStudentTuitionHistoryPageNotFoundCourse : responses.getStudentTuitionHistoryPageNotFoundStudent)
     }
 
     const { course, student } = result
@@ -153,7 +145,7 @@ const tuitionReportController = {
     res.set('Cache-Control', 'no-store')
     const listPage = getPageOffset(req.query.page, pageSize)
     if (!listPage) {
-      return res.status(400).render('tuition/student-list', { ...viewData, errorMessage: '頁碼不正確。' })
+      return res.status(400).render('tuition/student-list', { ...viewData, errorMessage: responses.getStudentTuitionListPageInvalidPage })
     }
     const { page } = listPage
     const result = await tuitionReportService.getStudentTuitionList({
@@ -164,15 +156,11 @@ const tuitionReportController = {
     })
 
     if (!result.ok) {
-      const errors = {
-        INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
-        INVALID_PAGE: '頁碼不正確。',
-        INVALID_TUITION_STATUS: '請選擇有效的帳單／收款狀態。'
-      }
+      const errors = responses.getStudentTuitionListPageErrors
 
       return res.render('tuition/student-list', {
         ...viewData,
-        errorMessage: errors[result.code] ?? '目前無法取得學生學費列表。'
+        errorMessage: errors[result.code] ?? responses.getStudentTuitionListPageUnavailableStudent
       })
     }
 
@@ -249,7 +237,7 @@ const tuitionReportController = {
   getCourseMonthlyTuitionPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return sendPageError(res, 400, '課程 ID 必須是正整數。')
+      return sendPageError(res, 400, responses.getCourseMonthlyTuitionPageInvalidCourse)
     }
 
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
@@ -267,19 +255,16 @@ const tuitionReportController = {
     res.set('Cache-Control', 'no-store')
     const listPage = getPageOffset(req.query.page, pageSize)
     if (!listPage) {
-      return res.status(400).render('tuition/course-monthly-list', { ...viewData, errorMessage: '頁碼不正確。' })
+      return res.status(400).render('tuition/course-monthly-list', { ...viewData, errorMessage: responses.getCourseMonthlyTuitionPageInvalidPage })
     }
     const { page } = listPage
     const result = await tuitionReportService.getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageSize })
     if (!result.ok) {
-      if (result.code === 'COURSE_NOT_FOUND') return sendPageError(res, 404, '找不到課程。')
-      const errors = {
-        INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
-        INVALID_PAGE: '頁碼不正確。'
-      }
+      if (result.code === 'COURSE_NOT_FOUND') return sendPageError(res, 404, responses.getCourseMonthlyTuitionPageNotFoundCourse)
+      const errors = responses.getCourseMonthlyTuitionPageErrors
       return res.status(400).render('tuition/course-monthly-list', {
         ...viewData,
-        errorMessage: errors[result.code] ?? '目前無法取得課程月學費。'
+        errorMessage: errors[result.code] ?? responses.getCourseMonthlyTuitionPageUnavailableCourse
       })
     }
 

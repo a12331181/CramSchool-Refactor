@@ -1,3 +1,4 @@
+const responses = require('../constants/messages/user')
 const { sendPageError } = require('../utils/pageError')
 const { SEX_OPTIONS } = require('../constants/profileOptions')
 const { discardUnusedProfileImage } = require('../services/profileImageService')
@@ -5,7 +6,7 @@ const userService = require('../services/userService')
 const imageStorage = require('../utils/imageStorage')
 const { getActiveInvitation } = require('../services/teacherInvitationService')
 
-const unavailableInvite = '這個教師邀請無法使用，請向管理員索取新的註冊連結。'
+const unavailableInvite = responses.invitationUnavailable
 
 const userController = {
   loadTeacherInvitation: async (req, res, next) => {
@@ -27,10 +28,10 @@ const userController = {
 
     const signupPath = '/signup?invite=' + res.locals.inviteToken
     if (typeof body.email !== 'string' || body.email.trim().toLowerCase() !== res.locals.invitedEmail) {
-      return sendPageError(res, 400, '請使用管理員邀請的信箱。')
+      return sendPageError(res, 400, responses.signUpInvalidInvitationEmail)
     }
     if (body.passwordCheck !== body.password) {
-      req.flash('error_messages', '兩次密碼輸入不同！')
+      req.flash('error_messages', responses.signUpMessagePassword)
       return res.redirect(303, signupPath)
     }
 
@@ -45,21 +46,15 @@ const userController = {
 
     if (result.code === 'INVALID_INVITATION') return sendPageError(res, 410, unavailableInvite)
     if (!result.ok) {
-      const errors = {
-        INVALID_INPUT: '請完整填寫姓名、暱稱、信箱與密碼，文字欄位限 255 字以內。',
-        INVALID_EMAIL: 'Email 格式不正確，例如 name@example.com。',
-        INVALID_PHONE: '手機必須是 09 開頭的十位數字，例如 0912345678。',
-        PASSWORD_TOO_LONG: '密碼過長，請縮短後再試。',
-        EMAIL_EXISTS: '信箱重複！'
-      }
+      const errors = responses.signUpErrors
 
-      req.flash('error_messages', errors[result.code] ?? '目前無法註冊。')
+      req.flash('error_messages', errors[result.code] ?? responses.signUpUnavailable)
       return res.redirect(303, signupPath)
     }
 
     req.flash(
       'success_messages',
-      '成功註冊帳號！帳號編號：' + result.userNo
+      responses.signUpSavedAccount + result.userNo
     )
 
     return res.redirect(303, '/signin')
@@ -70,7 +65,7 @@ const userController = {
   },
 
   signIn: (req, res) => {
-    req.flash('success_messages', '成功登入！')
+    req.flash('success_messages', responses.signInSaved)
     res.redirect('/cramschool')
   },
 
@@ -80,7 +75,7 @@ const userController = {
         return next(err)
       }
 
-      req.flash('success_messages', '登出成功！')
+      req.flash('success_messages', responses.logoutSaved)
       return res.redirect('/signin')
     })
   },
@@ -121,7 +116,7 @@ const userController = {
       updated = await userService.updateTeacherProfile(req.user.id, req.body ?? {}, uploadedImage?.url)
       req.flash(
         updated ? 'success_messages' : 'error_messages',
-        updated ? '已更新個人資料' : '找不到教師資料，未更新個人資料'
+        updated ? responses.updateUserProfileSavedProfile : responses.updateUserProfileNotFoundTeacherProfile
       )
       return res.redirect(303, updated ? '/' : '/cramschool/teachers')
     } finally {
