@@ -6,16 +6,16 @@
   {{#if errorMessage}}
   <p class="alert alert-warning" role="alert">{{errorMessage}}</p>
   {{else}}
-  <dl class="row mb-0">
-    <div class="col-sm-4">
+  <dl class="ws-stats">
+    <div>
       <dt>應收金額</dt>
       <dd>NT$ {{totalAmount}}</dd>
     </div>
-    <div class="col-sm-4">
+    <div>
       <dt>已收金額</dt>
       <dd>NT$ {{paidAmount}}</dd>
     </div>
-    <div class="col-sm-4">
+    <div>
       <dt>未收金額</dt>
       <dd>NT$ {{remainingAmount}}</dd>
     </div>
@@ -39,7 +39,7 @@
     <p class="text-muted">整單折扣與請假折抵按各項原價比例分攤，這裡顯示分攤後應收。</p>
     {{/if}}
     {{#if canRecord}}
-    <p>勾選本次已收到款項的課程或費用。</p>
+    <p class="ws-screen-only">勾選本次已收到款項的課程或費用。</p>
     <form method="POST" action="{{action}}" id="tuition-item-payment" data-max-amount="{{maxAmount}}">
       <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
       <input type="hidden" name="billVersion" value="{{billVersion}}">
@@ -52,7 +52,7 @@
             <th scope="col">課程／費用</th>
             <th scope="col">本項應收</th>
             <th scope="col">收款狀態</th>
-            {{#if canRecord}}<th scope="col">本次收款</th>{{/if}}
+            {{#if canRecord}}<th scope="col" class="ws-screen-only">本次收款</th>{{/if}}
           </tr>
         </thead>
         <tbody>
@@ -62,7 +62,7 @@
             <td>NT$ {{amount}}</td>
             <td>{{statusText}}</td>
             {{#if ../canRecord}}
-            <td>
+            <td class="ws-screen-only">
               {{#if canSelect}}
               <input type="checkbox" name="paymentItems" value="{{itemId}}" data-amount="{{amount}}"
                 aria-label="收款 {{description}}">
@@ -75,13 +75,13 @@
       </table>
     </div>
     {{#if canRecord}}
-      <div class="form-group">
+      <div class="form-group ws-screen-only">
         <label for="item-paid-on">實際收款日</label>
         <input id="item-paid-on" name="paidOn" type="date" class="form-control"
           value="{{today}}" max="{{today}}" required>
       </div>
       <button type="button" class="btn btn-sm btn-outline-secondary" id="tuition-select-unpaid">勾選全部未付</button>
-      <p class="mt-2">本次收款：NT$ <output id="tuition-selected-total" aria-live="polite">0</output></p>
+      <p class="mt-2 ws-screen-only">本次收款：NT$ <output id="tuition-selected-total" aria-live="polite">0</output></p>
       <button type="submit" class="btn btn-primary">登記勾選項目</button>
     </form>
     <script>
@@ -116,7 +116,7 @@
     <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
     <input type="hidden" name="billVersion" value="{{billVersion}}">
     <input type="hidden" name="amount" value="{{amount}}">
-    <div class="form-group">
+    <div class="form-group ws-screen-only">
       <label for="bill-paid-on">實際收款日</label>
       <input id="bill-paid-on" name="paidOn" type="date" class="form-control"
         value="{{today}}" max="{{today}}" required>

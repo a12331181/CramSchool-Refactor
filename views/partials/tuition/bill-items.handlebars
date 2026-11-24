@@ -1,3 +1,4 @@
+<div class="table-responsive">
 <table class="table table-bordered">
   <thead class="table-secondary">
     <tr>
@@ -7,7 +8,7 @@
       <th scope="col">金額</th>
       <th scope="col">核對提醒</th>
       {{#if isDraft}}
-      <th scope="col">操作</th>
+      <th scope="col" class="ws-screen-only">操作</th>
       {{/if}}
     </tr>
   </thead>
@@ -23,7 +24,7 @@
         {{#if this.reason}}<div>{{this.reason}}</div>{{/if}}
       </td>
       {{#if ../isDraft}}
-      <td>
+      <td class="ws-screen-only">
         {{#if this.canRemove}}
         <form method="POST" action="/cramschool/tuition/bills/{{../bill.id}}/items/{{this.id}}/remove">
           <input type="hidden" name="tuitionFormToken" value="{{../issueForm.formToken}}">
@@ -44,3 +45,4 @@
     {{/each}}
   </tbody>
 </table>
+</div>

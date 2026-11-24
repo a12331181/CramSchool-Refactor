@@ -1,13 +1,9 @@
-<br>
+{{> workspace/page-heading}}
 
-{{> staff-nav activeTab="cashflow" showBilling=user.isAdmin}}
-
-<br>
-
-<h1 class="h4">收退費對帳</h1>
+<div class="ws-content">
 <p class="text-muted">依實際收款日與退費日對帳。合併收款以一筆匯款列出，可點進去查看帳單分配。</p>
 
-<form method="GET" action="{{formAction}}" class="mb-3">
+<form method="GET" action="{{formAction}}" class="ws-filter">
   <label for="cashflow-month">收退費月份：</label>
   <input id="cashflow-month" type="month" name="cashMonth" value="{{cashMonth}}" required>
   <button type="submit" class="btn btn-sm btn-primary">查看</button>
@@ -16,10 +12,10 @@
 {{#if error}}
 <p class="alert alert-warning" role="alert">{{error}}</p>
 {{else}}
-<dl class="row mb-3">
-  <div class="col-sm-4"><dt>實際收款</dt><dd>{{receivedText}}</dd></div>
-  <div class="col-sm-4"><dt>實際退費</dt><dd>{{refundedText}}</dd></div>
-  <div class="col-sm-4"><dt>淨流入</dt><dd>{{netText}}</dd></div>
+<dl class="ws-stats">
+  <div><dt>實際收款</dt><dd>{{receivedText}}</dd></div>
+  <div><dt>實際退費</dt><dd>{{refundedText}}</dd></div>
+  <div><dt>淨流入</dt><dd>{{netText}}</dd></div>
 </dl>
 
 {{#if reviewCount}}
@@ -36,7 +32,7 @@
 
 <div class="table-responsive">
   <table class="table table-sm table-bordered">
-    <thead class="table-secondary">
+    <thead>
       <tr>
         <th scope="col">實際日期</th>
         <th scope="col">紀錄</th>
@@ -78,3 +74,4 @@
 
 {{> pagination ariaLabel="收退費對帳分頁"}}
 {{/if}}
+</div>

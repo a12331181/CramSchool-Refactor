@@ -1,10 +1,12 @@
-<h1 class="h4 mt-3">合併收款</h1>
+{{> workspace/page-heading}}
+
+<div class="ws-content">
 <p><strong>{{studentName}}</strong>｜{{billingMonth}}</p>
 {{#if canSubmit}}
 <p>一筆匯款可登記到同月多張帳單。請勾選本次會結清的帳單，並輸入實際收到的金額。</p>
 <p class="small text-muted">如果這筆匯款只付其中一張帳單的部分課程，請從該張帳單的「分項收款」登記。</p>
 
-<form method="POST" action="{{action}}" id="tuition-payment-group-form">
+<form method="POST" action="{{action}}" id="tuition-payment-group-form" class="ws-form">
   <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
   <input type="hidden" name="billingMonth" value="{{billingMonth}}">
   <input type="hidden" name="requestKey" value="{{requestKey}}">
@@ -57,3 +59,4 @@
 {{/if}}
 
 <a class="d-inline-block mt-3" href="{{previewUrl}}">回到本月繳費總覽</a>
+</div>

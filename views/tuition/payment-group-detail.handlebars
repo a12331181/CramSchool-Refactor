@@ -1,4 +1,6 @@
-<h1 class="h4 mt-3">合併收款 #{{group.id}}</h1>
+{{> workspace/page-heading}}
+
+<div class="ws-content ws-print-document">
 <p><strong>{{referenceLabel group.Student.studentNo group.studentNameSnapshot}}</strong>｜帳單月份 {{group.billingMonth}}</p>
 
 {{#if requiresReview}}
@@ -13,7 +15,7 @@
 <h2 class="h6">這筆匯款分配到的帳單</h2>
 <div class="table-responsive">
   <table class="table table-sm table-bordered">
-    <thead class="table-secondary">
+    <thead>
       <tr><th scope="col">帳單</th><th scope="col">帳單內的收款紀錄</th><th scope="col">分配金額</th></tr>
     </thead>
     <tbody>
@@ -29,3 +31,4 @@
 {{/if}}
 
 <a href="{{previewUrl}}">回到本月繳費總覽</a>
+</div>

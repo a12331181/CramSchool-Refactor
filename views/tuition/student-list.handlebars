@@ -1,10 +1,6 @@
-<br>
+{{> workspace/page-heading}}
 
-{{> staff-nav activeTab="student-payments" showBilling=user.isAdmin}}
-
-<br>
-
-<h1 class="h4">學生學費列表</h1>
+<div class="ws-content">
 <p class="text-muted">在學學生的本月帳單與收款狀況。尚未開單時顯示基本學費試算。實收已扣除退費；已結清仍可有退費紀錄。</p>
 
 {{#> tuition/billing-month-filter formAction=listUrl monthLabel="計費月份:" submitText="查看月學費" submitClass="mb-1"}}
@@ -19,7 +15,6 @@
   </span>
 {{/tuition/billing-month-filter}}
 
-
 {{#if errorMessage}}
   <p class="alert alert-warning">{{errorMessage}}</p>
 {{else}}
@@ -28,7 +23,7 @@
   <div class="table-responsive">
     <table class="table table-bordered ">
       <thead>
-        <tr class="table-primary">
+        <tr>
           <th scope="col">學生姓名</th>
           <th scope="col">本月金額</th>
           <th scope="col">帳單／收款狀態</th>
@@ -78,3 +73,4 @@
 
   {{> pagination ariaLabel="學生學費列表分頁"}}
 {{/if}}
+</div>

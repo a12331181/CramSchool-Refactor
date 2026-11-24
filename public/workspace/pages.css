@@ -96,3 +96,26 @@
   .ws-content #batch-date-picker td .btn { padding: .3rem 0; min-height: 2rem; }
   .ws-content #batch-date-picker th { white-space: normal; }
 }
+
+.ws-content details { min-width: 0; }
+.ws-content details summary { color: var(--accent); cursor: pointer; font-weight: 620; }
+.ws-content .list-group-item { border-color: var(--line); }
+.ws-content .list-group-item label { font-weight: 500; }
+.ws-content dl.row { margin-inline: 0; }
+.ws-content dl.row > dt, .ws-content dl.row > dd { padding: .3rem .6rem; margin-bottom: 0; }
+.ws-print-document .ws-stats dd { font-size: 1.16rem; }
+@media print {
+  @page { margin: 15mm; }
+  .ws, .ws-frame, .ws-canvas, .ws-main { display: block; min-height: 0; width: 100%; max-width: none; margin: 0; padding: 0; border: 0; background: white; color: #171b18; }
+  .ws-sidebar, .ws-top, .ws-skip, .ws-heading .ws-tile-icon, .ws-tools .ws-btn, .ws-screen-only, .ws-print-document > a, .ws-print-document button, .ws-print-document input, .ws-print-document select, .ws-print-document textarea, .ws-print-document form:not(#tuition-item-payment) { display: none !important; }
+  .ws-heading { margin-bottom: 10pt; }
+  .ws-print-document .table-responsive { overflow: visible; border-radius: 0; }
+  .ws-print-document .table { width: 100%; table-layout: auto; font-size: 9pt; }
+  .ws-print-document .table tr, .ws-print-document .ws-stats { break-inside: avoid; }
+  .ws-print-document .table thead { display: table-header-group; }
+  .ws-print-document .table th, .ws-print-document .table td { padding: 4pt; white-space: normal; overflow-wrap: anywhere; }
+  .ws-print-document .ws-stats { grid-template-columns: repeat(3, 1fr); }
+  .ws-print-document section[aria-labelledby] { padding: 8pt 0; border: 0; }
+  .ws-print-document a[href]::after { content: none !important; }
+  .ws-print-document .ws-stats > div { background: white; border-radius: 0; }
+}

@@ -1,8 +1,9 @@
-{{#if course}}<h2 class="h2">{{referenceLabel course.courseNo course.name}} 學生收費清單</h2>{{/if}}
+{{> workspace/page-heading}}
+
+<div class="ws-content">
+{{#if course}}<p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>{{/if}}
 
 {{> tuition/billing-month-filter formAction=listUrl monthLabel="計費月份:" submitText="查看該月學費"}}
-
-
 
 {{#if errorMessage}}
 <p class="alert alert-warning">{{errorMessage}}</p>
@@ -15,7 +16,7 @@
 <div class="table-responsive">
   <table class="table table-bordered">
     <thead>
-      <tr class="table-secondary">
+      <tr>
         <th scope="col">學生姓名</th>
         <th scope="col">本課金額</th>
         <th scope="col">本課已收</th>
@@ -48,3 +49,4 @@
 {{/if}}
 
 <a class="mr-2" href="{{backUrl}}">回到課程收費列表</a>
+</div>

@@ -1,11 +1,11 @@
-<h1 class="mt-3">學生月學費</h1>
+{{> workspace/page-heading}}
 
+<div class="ws-content">
 {{#> tuition/billing-month-filter formAction=previewUrl monthLabel="計費月份" submitText="查看試算"}}
   {{#if listStatus}}
   <input type="hidden" name="status" value="{{listStatus}}">
   {{/if}}
 {{/tuition/billing-month-filter}}
-
 
 {{> tuition/month-bills-panel}}
 
@@ -45,8 +45,9 @@
 </div>
 {{/if}}
 
+<div class="table-responsive">
 <table class="table table-bordered">
-  <thead class="table-secondary">
+  <thead>
     <tr>
       <th scope="col">課程</th>
       <th scope="col">計費方式</th>
@@ -64,11 +65,12 @@
     </tr>
     {{else}}
     <tr>
-      <td colspan="5">目前沒有可顯示試算的課程。</td>
+      <td colspan="4">目前沒有可顯示試算的課程。</td>
     </tr>
     {{/each}}
   </tbody>
 </table>
+</div>
 
 {{#if hasSubtotal}}
 <p><strong>小計：NT$ {{preview.baseSubtotal}}</strong></p>
@@ -85,3 +87,4 @@
 {{/if}}
 
 <a href="{{backUrl}}">回到學生繳費紀錄</a>
+</div>

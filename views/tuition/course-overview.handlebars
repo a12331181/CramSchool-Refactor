@@ -1,10 +1,6 @@
-<br>
+{{> workspace/page-heading}}
 
-{{> staff-nav activeTab="course-payments" showBilling=user.isAdmin}}
-
-<br>
-
-<h1 class="h4">課程收費列表</h1>
+<div class="ws-content">
 {{> tuition/billing-month-filter formAction=listUrl monthLabel="計費月份：" submitText="查看月份"}}
 
 {{#if errorMessage}}
@@ -18,8 +14,8 @@
 <div class="table-responsive">
   <table class="table table-bordered">
     <thead>
-      <tr class="table-primary">
-        <th scope="col">#</th>
+      <tr>
+        <th scope="col">編號</th>
         <th scope="col">課程名稱</th>
         <th scope="col">本月應收學費總額</th>
         <th scope="col">本課已收</th>
@@ -32,7 +28,7 @@
     </thead>
     <tbody>
       {{#each courses}}
-      <tr class="table-light">
+      <tr>
         <th scope="row">{{this.rowNumber}}</th>
         <td>{{this.courseLabel}}{{#if this.isClosed}} <small class="text-muted">（已關閉）</small>{{/if}}</td>
         <td>{{this.receivableText}}</td>
@@ -54,3 +50,4 @@
   </table>
 </div>
 {{/if}}
+</div>

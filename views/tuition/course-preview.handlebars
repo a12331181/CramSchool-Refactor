@@ -1,7 +1,7 @@
-<h1 class="mt-3">學費預覽</h1>
+{{> workspace/page-heading}}
 
+<div class="ws-content">
 {{> tuition/billing-month-filter formAction=previewUrl monthLabel="計費月份" submitText="查看試算"}}
-
 
 {{#if errorMessage}}
 <p class="alert alert-warning">
@@ -38,3 +38,4 @@
 {{/if}}
 
 <a href="{{backUrl}}">回到歷期學費表</a>
+</div>
