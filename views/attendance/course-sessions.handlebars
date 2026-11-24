@@ -1,9 +1,8 @@
-<br>
-{{> staff-nav activeTab="attendance" showBilling=isAdmin}}
-<br>
+{{> workspace/page-heading}}
 
-<h1 class="h4">{{referenceLabel course.courseNo course.name}}｜課堂點名</h1>
-<form action="{{listUrl}}" method="GET" class="form-inline mb-3">
+<div class="ws-content">
+<p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
+<form action="{{listUrl}}" method="GET" class="ws-filter">
   <label for="attendance-month" class="mr-2">月份（台北）</label>
   <input type="month" class="form-control mr-3 mb-1" id="attendance-month" name="month" value="{{month}}">
 
@@ -21,7 +20,7 @@
 <p class="text-muted">共 {{totalCount}} 堂，按上課開始時間由新到舊排列。</p>
 <div class="table-responsive">
   <table class="table table-bordered">
-    <thead class="table-secondary">
+    <thead>
       <tr>
         <th scope="col">開始時間（台北）</th>
         <th scope="col">結束時間（台北）</th>
@@ -54,3 +53,4 @@
 
 {{> pagination ariaLabel="課堂點名分頁"}}
 <a href="/cramschool/attend">回到點名首頁</a>
+</div>

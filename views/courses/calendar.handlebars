@@ -1,11 +1,10 @@
-<br>
+{{> workspace/page-heading}}
 
-<h1>{{referenceLabel course.courseNo course.name}}</h1>
-<h2 class="h4">課堂時段（台北時間）</h2>
-
+<div class="ws-content">
+<p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
 <div class="table-responsive">
   <table class="table table-bordered">
-    <thead class="table-secondary">
+    <thead>
       <tr>
         <th scope="col">開始時間</th>
         <th scope="col">結束時間</th>
@@ -29,3 +28,4 @@
 </div>
 
 <a href="/cramschool/courses">回課程列表</a>
+</div>

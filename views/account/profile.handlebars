@@ -1,57 +1,21 @@
-<br>
+{{#> workspace/page-heading}}
+  {{#if userIsMatch}}<a class="ws-btn ws-primary" href="/users/{{teacher.User.id}}/edit">{{> workspace/icon name="edit"}}編輯個人資料</a>{{/if}}
+{{/workspace/page-heading}}
 
-<h3 style="color: rgb(77, 136, 212);"><strong>教師基本資料</strong></h3>
-
-<br>
-
-<div class="card mb-3" style="max-width: 1200px">
-  <div class="row g-0">
-    <div class="col-md-4">
-      {{#if teacher.image}}
-      <img src="{{teacher.image}}" class="img-fluid rounded-start" style="width:400px; height:400px">
-      {{/if}}
-    </div>
-    <div class="col-md-8">
-      <div class="card-body">
-        <h4 class="card-title"><strong>{{referenceLabel teacher.User.userNo teacher.name}}</strong></h4>
-        <p class="card-text"><strong>性別 : </strong>{{teacher.sex}}</p>
-        <p class="card-text"><strong>生日 : </strong>{{teacher.birth}}</p>
-        <p class="card-text"><strong>電話 : </strong>{{teacher.phone}}</p>
-        <p class="card-text"><strong>信箱 : </strong>{{teacher.User.email}}</p>
-        <p class="card-text"><strong>地址 : </strong>{{teacher.address}}</p>
-        <p class="card-text"><strong>最高學歷 : </strong>{{teacher.education}}</p>
-        <p class="card-text"><strong>學校 : </strong>{{teacher.school}}</p>
-        {{#if userIsMatch}}
-        <a href="/users/{{teacher.User.id}}/edit">
-          <button type="button" class="btn btn-primary">新增/修改個人資料</button>
-        </a>
-        {{/if}}
-      </div>
-    </div>
-  </div>
-</div>
-
-<br>
+<div class="ws-content">
+{{> workspace/teacher-profile}}
 
 {{#if courses}}
-<h2 style="color: rgb(151, 151, 135);">目前正在教授的課程:</h2>
+<h2>目前正在教授的課程</h2>
+<div class="ws-cards">
+  {{#each courses}}
+  <article class="ws-sheet"><h3>{{referenceLabel courseNo name}}</h3>
+    <div class="ws-tools"><a href="/cramschool/courses/{{id}}/calendar">課程行事曆</a><a href="/cramschool/courses/{{id}}/enrolledstudents">學生名單</a></div>
+  </article>
+  {{/each}}
+</div>
 {{else}}
-<h2 style="color: rgb(151, 151, 135);">目前無正在教授的課程</h2>
+<p class="ws-sheet text-muted">目前無正在教授的課程</p>
 {{/if}}
-<br>
-
-<div class="row">
-{{#each courses}}
-<div class="card col-md-3">
-  <div class="card-body">
-    <h5 class="card-title">{{referenceLabel this.courseNo this.name}}</h5>
-    <a href="/cramschool/courses/{{this.id}}/calendar" class="card-link">課程行事曆</a>
-    <a href="/cramschool/courses/{{this.id}}/enrolledstudents" class="card-link">學生名單</a>
-  </div>
+<a href="/cramschool/teachers">回教師名單</a>
 </div>
-{{/each}}
-</div>
-
-<br />
-<br />
-<a href="javascript:history.back()">回上一頁</a>

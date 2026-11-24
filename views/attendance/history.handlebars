@@ -1,6 +1,7 @@
-<br>
-<h1>{{referenceLabel course.courseNo course.name}}</h1>
-<h5>{{referenceLabel student.studentNo student.name}}的點名更正紀錄</h5>
+{{> workspace/page-heading}}
+
+<div class="ws-content">
+<p class="ws-context">{{referenceLabel course.courseNo course.name}} · {{referenceLabel student.studentNo student.name}}</p>
 <p>台北時間：{{startAtText}} ～ {{endAtText}}</p>
 <p>目前點名結果：{{currentStatusText}}</p>
 <p class="text-muted">顯示最近 50 筆已記錄的更正。</p>
@@ -24,13 +25,13 @@
         <td>
           {{this.beforeStatusText}}
           {{#if this.beforeReason}}
-          <br>備註：{{this.beforeReason}}
+備註：{{this.beforeReason}}
           {{/if}}
         </td>
         <td>
           {{this.afterStatusText}}
           {{#if this.afterReason}}
-          <br>備註：{{this.afterReason}}
+備註：{{this.afterReason}}
           {{/if}}
         </td>
         <td>{{this.correctionReason}}</td>
@@ -45,3 +46,4 @@
 </div>
 
 <a href="/cramschool/attend">回到點名首頁</a>
+</div>

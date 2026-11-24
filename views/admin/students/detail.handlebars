@@ -1,26 +1,6 @@
-<br />
+{{> workspace/page-heading}}
 
-<div class="card">
-  <div class="row g-0">
-    <div class="col-md-4">
-      <img src="{{student.image}}" class="img-fluid rounded-start">
-    </div>
-    <div class="col-md-8">
-      <div class="card-body">
-        <h5 class="card-title">{{referenceLabel student.studentNo student.name}}</h5>
-        <p class="card-text"><strong>性別 : </strong> {{student.sex}}</p>
-        <p class="card-text"><strong>生日 : </strong> {{student.birth}}</p>
-        <p class="card-text"><strong>學校 : </strong> {{student.school}}</p>
-        <p class="card-text"><strong>年級 : </strong> {{student.grade}}</p>
-        <p class="card-text"><strong>聯絡電話 : </strong> {{student.tel}}</p>
-        <p class="card-text"><strong>地址 : </strong> {{student.address}}</p>
-      </div>
-    </div>
-  </div>
+<div class="ws-content">
+{{> workspace/student-profile}}
+<a href="/admin/students">回學生管理</a>
 </div>
-
-<hr>
-
-<br />
-<br />
-<a href="javascript:history.back()">回上一頁</a>

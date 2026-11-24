@@ -1,13 +1,12 @@
-<br>
-{{> staff-nav activeTab="attendance" showBilling=isAdmin}}
-<br>
+{{> workspace/page-heading}}
 
-<h1 class="h4">{{#if isAdmin}}課程點名{{else}}我的授課課程{{/if}}</h1>
+<div class="ws-content">
 <p class="text-muted">先選課程，再查看課堂和點名名單。</p>
 {{#if totalCount}}<p class="text-muted">共 {{totalCount}} 門可查看的課程</p>{{/if}}
 
+<div class="table-responsive">
 <table class="table table-bordered">
-  <thead class="table-secondary">
+  <thead>
     <tr><th scope="col">課程名稱</th><th scope="col">操作</th></tr>
   </thead>
   <tbody>
@@ -21,5 +20,7 @@
     {{/each}}
   </tbody>
 </table>
+</div>
 
 {{#if totalCount}}{{> pagination ariaLabel="點名課程分頁"}}{{/if}}
+</div>

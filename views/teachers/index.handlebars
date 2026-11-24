@@ -1,11 +1,10 @@
-<br>
-{{> staff-nav activeTab="teachers" showBilling=isAdmin}}
+{{> workspace/page-heading}}
 
-<h1 class="h4 mt-3">老師列表</h1>
+<div class="ws-content">
 {{#if totalCount}}<p class="text-muted">共 {{totalCount}} 位老師</p>{{/if}}
 <div class="table-responsive">
   <table class="table table-bordered table-hover">
-    <thead class="table-secondary">
+    <thead>
       <tr>
         <th scope="col">老師編號</th>
         <th scope="col">老師姓名</th>
@@ -31,3 +30,4 @@
 </div>
 
 {{#if totalCount}}{{> pagination ariaLabel="老師列表分頁"}}{{/if}}
+</div>

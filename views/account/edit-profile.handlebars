@@ -1,10 +1,13 @@
-<form action="/users/{{profile.id}}?_method=PUT" method="POST" enctype="multipart/form-data">
+{{> workspace/page-heading}}
+
+<div class="ws-content">
+<form class="ws-form" action="/users/{{profile.id}}?_method=PUT" method="POST" enctype="multipart/form-data">
   <div class="form-group">
     <label for="name">教師名稱</label>
     <input type="text" class="form-control" name="name" id="name" placeholder="輸入教師名稱.." value="{{profile.Teacher.name}}"
       required>
   </div>
-  
+
   <div class="form-group">
     <label for="sex">性別</label>
     <select class="form-control" name="sex" id="sex">
@@ -16,31 +19,31 @@
       {{/each}}
     </select>
   </div>
-  
+
   <div class="form-group">
     <label for="birth">生日</label>
     <input type="date" class="form-control" name="birth" id="birth" value="{{profile.Teacher.birth}}" placeholder="輸入出生年月日.."
       required>
   </div>
-  
+
   <div class="form-group">
     <label for="phone">聯絡方式</label>
     <input type="text" class="form-control" name="phone" id="phone" value="{{profile.Teacher.phone}}" placeholder="輸入聯絡方式.."
       required>
   </div>
-  
+
   <div class="form-group">
     <label for="address">聯絡地址</label>
     <input type="text" class="form-control" name="address" id="address" value="{{profile.Teacher.address}}"
       placeholder="輸入聯絡地址.." required>
   </div>
-  
+
   <div class="form-group">
     <label for="education">最高學歷</label>
     <input type="text" class="form-control" name="education" id="education" value="{{profile.Teacher.education}}"
       placeholder="輸入最高學歷.." required>
   </div>
-  
+
   <div class="form-group">
     <label for="school">學校</label>
     <input type="text" class="form-control" name="school" id="school" value="{{profile.Teacher.school}}" placeholder="輸入學校.."
@@ -48,9 +51,11 @@
   </div>
 
   <div class="form-group">
-    <label for="image">Image</label>
+    <label for="image">教師照片</label>
     <input type="file" class="form-control-file" id="image" name="image" accept="{{imageAccept}}">
   </div>
 
   <button type="submit" class="btn btn-primary">更新個人資料</button>
 </form>
+<a href="/users/{{profile.id}}">回個人資料</a>
+</div>

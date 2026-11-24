@@ -1,27 +1,6 @@
-<br />
+{{> workspace/page-heading}}
 
-<div class="card">
-  <div class="row g-0">
-    <div class="col-md-4">
-      <img src="{{teacher.image}}" class="img-fluid rounded-start">
-    </div>
-    <div class="col-md-8">
-      <div class="card-body">
-        <h5 class="card-title">{{referenceLabel teacher.User.userNo teacher.name}}</h5>
-        <p class="card-text"><strong>性別 : </strong> {{teacher.sex}}</p>
-        <p class="card-text"><strong>生日 : </strong> {{teacher.birth}}</p>
-        <p class="card-text"><strong>信箱 : </strong> {{teacher.User.email}}</p>
-        <p class="card-text"><strong>聯絡電話 : </strong> {{teacher.phone}}</p>
-        <p class="card-text"><strong>聯絡地址 : </strong> {{teacher.address}}</p>
-        <p class="card-text"><strong>最高學歷 : </strong> {{teacher.education}}</p>
-        <p class="card-text"><strong>學校 : </strong> {{teacher.school}}</p>
-      </div>
-    </div>
-  </div>
+<div class="ws-content">
+{{> workspace/teacher-profile}}
+<a href="/admin/teachers">回教師管理</a>
 </div>
-
-<hr>
-
-<br />
-<br />
-<a href="javascript:history.back()">回上一頁</a>

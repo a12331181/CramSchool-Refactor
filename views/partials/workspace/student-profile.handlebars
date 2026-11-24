@@ -1,0 +1,17 @@
+<section class="ws-sheet ws-profile" aria-labelledby="profile-name">
+  {{#if student.image}}
+  <img src="{{student.image}}" alt="{{student.name}}的照片">
+  {{else}}
+  <span class="ws-monogram" aria-hidden="true">{{initial student.name}}</span>
+  {{/if}}
+  <div><h2 id="profile-name">{{referenceLabel student.studentNo student.name}}</h2>
+    <dl class="ws-facts">
+      <div><dt>性別</dt><dd>{{#if student.sex}}{{student.sex}}{{else}}—{{/if}}</dd></div>
+      <div><dt>生日</dt><dd>{{#if student.birth}}{{student.birth}}{{else}}—{{/if}}</dd></div>
+      <div><dt>學校</dt><dd>{{#if student.school}}{{student.school}}{{else}}—{{/if}}</dd></div>
+      <div><dt>年級</dt><dd>{{#if student.grade}}{{student.grade}}{{else}}—{{/if}}</dd></div>
+      <div><dt>聯絡電話</dt><dd>{{#if student.tel}}{{student.tel}}{{else}}—{{/if}}</dd></div>
+      <div><dt>地址</dt><dd>{{#if student.address}}{{student.address}}{{else}}—{{/if}}</dd></div>
+    </dl>
+  </div>
+</section>

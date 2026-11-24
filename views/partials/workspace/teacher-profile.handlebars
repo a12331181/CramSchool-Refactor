@@ -1,0 +1,18 @@
+<section class="ws-sheet ws-profile" aria-labelledby="profile-name">
+  {{#if teacher.image}}
+  <img src="{{teacher.image}}" alt="{{teacher.name}}的照片">
+  {{else}}
+  <span class="ws-monogram" aria-hidden="true">{{initial teacher.name}}</span>
+  {{/if}}
+  <div><h2 id="profile-name">{{referenceLabel teacher.User.userNo teacher.name}}</h2>
+    <dl class="ws-facts">
+      <div><dt>性別</dt><dd>{{#if teacher.sex}}{{teacher.sex}}{{else}}—{{/if}}</dd></div>
+      <div><dt>生日</dt><dd>{{#if teacher.birth}}{{teacher.birth}}{{else}}—{{/if}}</dd></div>
+      <div><dt>聯絡電話</dt><dd>{{#if teacher.phone}}{{teacher.phone}}{{else}}—{{/if}}</dd></div>
+      <div><dt>信箱</dt><dd>{{#if teacher.User.email}}{{teacher.User.email}}{{else}}—{{/if}}</dd></div>
+      <div><dt>地址</dt><dd>{{#if teacher.address}}{{teacher.address}}{{else}}—{{/if}}</dd></div>
+      <div><dt>最高學歷</dt><dd>{{#if teacher.education}}{{teacher.education}}{{else}}—{{/if}}</dd></div>
+      <div><dt>學校</dt><dd>{{#if teacher.school}}{{teacher.school}}{{else}}—{{/if}}</dd></div>
+    </dl>
+  </div>
+</section>

@@ -1,6 +1,7 @@
-<br>
-<h1>{{referenceLabel course.courseNo course.name}}</h1>
-<h5>本堂學生名單</h5>
+{{> workspace/page-heading}}
+
+<div class="ws-content">
+<p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
 <p>台北時間：{{startAtText}} ～ {{endAtText}}</p>
 <p>課堂內容：{{calendar.content}}</p>
 <p class="text-muted">名單以 {{calendarDate}} 的選課期間判定。</p>
@@ -11,6 +12,7 @@
 </p>
 {{/if}}
 
+<div class="table-responsive">
 <table class="table table-bordered">
   <thead>
     <tr>
@@ -43,7 +45,7 @@
           action="/cramschool/attend/courses/{{../course.id}}/calendar/{{../calendar.id}}/students/{{this.id}}">
           <input type="hidden" name="calendarStartAt" value="{{../calendarStartAt}}">
           <input type="hidden" name="calendarEndAt" value="{{../calendarEndAt}}">
-        
+
           <label for="attend-status-{{this.id}}">狀態</label>
           <select id="attend-status-{{this.id}}" name="status" class="form-select form-select-sm" required>
             <option value="" selected disabled>請選擇</option>
@@ -51,40 +53,40 @@
             <option value="absent">缺席</option>
             <option value="excused">請假</option>
           </select>
-        
+
           <label for="attend-reason-{{this.id}}" class="mt-2">原因／備註</label>
           <input id="attend-reason-{{this.id}}" name="reason" type="text" class="form-control form-control-sm" maxlength="255"
             placeholder="請假時必填">
-        
+
           <button type="submit" class="btn btn-sm btn-primary mt-2">送出點名</button>
         </form>
         {{else}}
         {{#if this.canUpdateAttend}}
         <details>
           <summary>更正點名</summary>
-        
+
           <form method="POST"
             action="/cramschool/attend/courses/{{../course.id}}/calendar/{{../calendar.id}}/students/{{this.id}}?_method=PUT">
             <input type="hidden" name="attendId" value="{{this.attendId}}">
             <input type="hidden" name="attendVersion" value="{{this.attendVersion}}">
             <input type="hidden" name="calendarStartAt" value="{{../calendarStartAt}}">
             <input type="hidden" name="calendarEndAt" value="{{../calendarEndAt}}">
-        
+
             <label for="edit-status-{{this.id}}">點名結果</label>
             <select id="edit-status-{{this.id}}" name="status" class="form-select form-select-sm" required>
               <option value="present" {{#if this.isPresent}}selected{{/if}}>出席</option>
               <option value="absent" {{#if this.isAbsent}}selected{{/if}}>缺席</option>
               <option value="excused" {{#if this.isExcused}}selected{{/if}}>請假</option>
             </select>
-        
+
             <label for="edit-reason-{{this.id}}" class="mt-2">原因／備註</label>
             <input id="edit-reason-{{this.id}}" name="reason" value="{{this.attendReason}}" class="form-control form-control-sm"
               maxlength="255">
-        
+
             <label for="correction-reason-{{this.id}}" class="mt-2">更正原因</label>
             <input id="correction-reason-{{this.id}}" name="correctionReason" class="form-control form-control-sm"
               maxlength="255" required>
-        
+
             <button type="submit" class="btn btn-sm btn-warning mt-2">儲存更正</button>
           </form>
         </details>
@@ -108,6 +110,8 @@
     {{/each}}
   </tbody>
 </table>
+</div>
 
 <a class="mr-3" href="/cramschool/attend/courses/{{course.id}}/sessions">回到這門課的課堂列表</a>
 <a href="/cramschool/attend">回到點名首頁</a>
+</div>

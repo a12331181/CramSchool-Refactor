@@ -1,50 +1,19 @@
-<br />
+{{> workspace/page-heading}}
 
-<h2 style="color: rgb(151, 151, 135);"><strong>學生基本資料</strong></h2>
-
-<br />
-
-<div class="card">
-  <div class="row g-0">
-    <div class="col-md-4">
-      {{#if student.image}}
-      <img src="{{student.image}}" class="img-fluid rounded-start" style="height: 20em; width: 20em;">
-      {{/if}}
-    </div>
-    <div class="col-md-8">
-      <div class="card-body">
-        <h4 class="card-title" style="color: rgb(128, 66, 15);">{{referenceLabel student.studentNo student.name}}</h4>
-        <p class="card-text"><strong>性別 : </strong> {{student.sex}}</p>
-        <p class="card-text"><strong>生日 : </strong> {{student.birth}}</p>
-        <p class="card-text"><strong>學校 : </strong> {{student.school}}</p>
-        <p class="card-text"><strong>年級 : </strong> {{student.grade}}</p>
-        <p class="card-text"><strong>聯絡電話 : </strong> {{student.tel}}</p>
-        <p class="card-text"><strong>地址 : </strong> {{student.address}}</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<hr>
+<div class="ws-content">
+{{> workspace/student-profile}}
 
 {{#if enrolledCourses}}
-<h2 style="color: rgb(151, 151, 135);">目前正在進行的課程:</h2>
+<h2>目前正在進行的課程</h2>
+<div class="ws-cards">
+  {{#each enrolledCourses}}
+  <article class="ws-sheet"><h3>{{referenceLabel courseNo name}}</h3>
+    <div class="ws-tools"><a href="/cramschool/courses/{{id}}/calendar">課程行事曆</a><a href="/cramschool/students/{{../student.id}}/courses/{{id}}/attend">出缺席狀況</a></div>
+  </article>
+  {{/each}}
+</div>
 {{else}}
-<h2 style="color: rgb(151, 151, 135);">目前無進行中的課程</h2>
+<p class="ws-sheet text-muted">目前無進行中的課程</p>
 {{/if}}
-<br>
-
-<div class="row">
-{{#each enrolledCourses}}
-<div class="card col-md-3">
-  <div class="card-body">
-    <h5 class="card-title">{{referenceLabel this.courseNo this.name}}</h5>
-    <a href="/cramschool/courses/{{this.id}}/calendar" class="card-link">課程行事曆</a>
-    <a href="/cramschool/students/{{../student.id}}/courses/{{this.id}}/attend" class="card-link">出缺席狀況</a>
-  </div>
+<a href="/cramschool/students">回學生名單</a>
 </div>
-{{/each}}
-</div>
-<br />
-<br />
-<a href="javascript:history.back()">回上一頁</a>
