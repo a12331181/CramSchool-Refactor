@@ -8,6 +8,7 @@ module.exports = (sequelize, S) => {
   })
   MakeupLesson.associate = models => {
     MakeupLesson.belongsTo(models.Calendar, { as: 'target', foreignKey: 'TargetCalendarId' })
+    MakeupLesson.belongsTo(models.Attend, { foreignKey: 'AttendId' })
     models.Attend.hasOne(MakeupLesson, { foreignKey: 'AttendId' })
   }
   return MakeupLesson

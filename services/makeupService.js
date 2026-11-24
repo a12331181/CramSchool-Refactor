@@ -136,4 +136,47 @@ async function update({ attendId, version, state, targetId, actorId }) {
     return true
   })
 }
-module.exports = { list, update }
+// 在目的課堂顯示核准的補課學生，保留原課堂的選課、點名及帳務資料。
+async function getMakeupRoster(calendarId) {
+  const rows = await MakeupLesson.findAll({
+    where: { TargetCalendarId: calendarId, state: { [Op.in]: ['scheduled', 'completed'] } },
+    include: [
+      {
+        model: Attend,
+        required: true,
+        where: { status: 'excused' },
+        include: [{ model: Student, attributes: ['name', 'studentNo'] }]
+      }
+    ],
+    order: [['id', 'ASC']],
+    raw: true,
+    nest: true
+  })
+  return rows.map(row => ({
+    name: row.Attend.Student.name,
+    studentNo: row.Attend.Student.studentNo,
+    status: STATES[row.state],
+    attendId: row.AttendId
+  }))
+}
+
+async function getStudentMakeupIds(studentId, startAt, endAt) {
+  const rows = await MakeupLesson.findAll({
+    attributes: ['TargetCalendarId'],
+    where: { state: { [Op.in]: ['scheduled', 'completed'] } },
+    include: [
+      { model: Attend, attributes: [], required: true, where: { StudentId: studentId, status: 'excused' } },
+      {
+        model: Calendar,
+        as: 'target',
+        required: true,
+        attributes: [],
+        where: { startAt: { [Op.lt]: endAt }, endAt: { [Op.gt]: startAt } }
+      }
+    ],
+    raw: true
+  })
+  return new Set(rows.map(row => row.TargetCalendarId))
+}
+
+module.exports = { list, update, getMakeupRoster, getStudentMakeupIds }

@@ -8,6 +8,7 @@ const responses = require('../constants/messages/attendance')
 const { DIRECTORY_PAGE_SIZE, ATTENDANCE_SESSION_PAGE_SIZE } = require('../constants/pagination')
 
 const attendanceService = require('../services/attendanceService')
+const { getMakeupRoster } = require('../services/makeupService')
 
 const { formatTaipeiDateTime } = require('../utils/date')
 const { sendPageError } = require('../utils/pageError')
@@ -126,6 +127,7 @@ const attendanceController = {
 
     return res.render('attendance/roster', {
       ...result,
+      makeups: await getMakeupRoster(calendarId),
       remainingCount: result.students.filter(s => !s.hasAttend && !s.needsEnrollmentReview).length,
       startAtText: formatTaipeiDateTime(result.calendar.startAt),
       endAtText: formatTaipeiDateTime(result.calendar.endAt),

@@ -7,7 +7,11 @@ const { Calendar, Course, Classroom, Teacher, Student, Enrollment, Attend } = re
 const STATUS = require('../constants/courseSessionStatus')
 const labels = require('../constants/courseSessionStatusLabels')
 
-const { getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
+const { getStudentMakeupIds } = require('./makeupService')
+const {
+  getCandidateEnrollmentWhere,
+  getConfirmedSessionEnrollment
+} = require('./courseSessionEnrollmentRules')
 
 const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 
@@ -69,6 +73,9 @@ async function getSchedule({ day, mode, courseId, teacherId, classroomId, studen
   const include = associations.map(item =>
     item.model === Teacher && userId ? { ...item, where: { UserId: userId }, required: true } : item
   )
+  const startAt = parseTaipeiDateTime(range.start + 'T00:00')
+  const endAt = parseTaipeiDateTime(range.end + 'T00:00')
+  const makeups = studentId ? await getStudentMakeupIds(studentId, startAt, endAt) : new Set()
   const membership = new Map()
   if (studentId) {
     const rows = await Enrollment.findAll({
@@ -86,12 +93,12 @@ async function getSchedule({ day, mode, courseId, teacherId, classroomId, studen
       if (!membership.has(row.CourseId)) membership.set(row.CourseId, [])
       membership.get(row.CourseId).push(row)
     }
-    scoped.CourseId = [...membership.keys()]
+    scoped[Op.and] = [{ [Op.or]: [{ CourseId: [...membership.keys()] }, { id: [...makeups] }] }]
   }
   const where = {
     ...scoped,
-    startAt: { [Op.lt]: parseTaipeiDateTime(range.end + 'T00:00') },
-    endAt: { [Op.gt]: parseTaipeiDateTime(range.start + 'T00:00') }
+    startAt: { [Op.lt]: endAt },
+    endAt: { [Op.gt]: startAt }
   }
   const rows = await Calendar.findAll({
     where,
@@ -103,8 +110,14 @@ async function getSchedule({ day, mode, courseId, teacherId, classroomId, studen
     raw: true,
     nest: true
   })
-  const visible = (row, date) => !studentId || approvedOn(membership.get(row.CourseId) || [], date)
-  const sessions = rows.filter(row => visible(row, getTaipeiDate(row.startAt))).map(display)
+  const visible = (row, date) =>
+    !studentId || makeups.has(row.id) || approvedOn(membership.get(row.CourseId) || [], date)
+  const sessions = rows
+    .filter(row => visible(row, getTaipeiDate(row.startAt)))
+    .map(row => {
+      const session = display(row)
+      return makeups.has(row.id) ? { ...session, label: '補課 · ' + session.label } : session
+    })
   const legacy = home
     ? []
     : await Calendar.findAll({
@@ -150,7 +163,13 @@ async function getTodaySessions(user) {
   })
   if (!sessions.length) return []
   const [enrollments, attendance] = await Promise.all([
-    Enrollment.findAll({ where: { CourseId: [...new Set(sessions.map(row => row.CourseId))] }, raw: true }),
+    Enrollment.findAll({
+      where: {
+        CourseId: [...new Set(sessions.map(row => row.CourseId))],
+        [Op.or]: [...new Set(sessions.map(row => row.startDay))].map(getCandidateEnrollmentWhere)
+      },
+      raw: true
+    }),
     Attend.findAll({
       attributes: ['CalendarId', 'StudentId'],
       where: { CalendarId: sessions.map(row => row.id) },

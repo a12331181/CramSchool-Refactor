@@ -14,6 +14,10 @@
 </p>
 {{/if}}
 
+{{#if makeups}}<section class="ws-sheet mb-3"><h2>本堂補課學生</h2><ul>
+{{#each makeups}}<li>{{name}} {{#if studentNo}}（{{studentNo}}）{{/if}} · {{status}}
+{{#if @root.user.isAdmin}}<a href="/cramschool/makeups?attendId={{attendId}}">更新補課紀錄</a>{{/if}}</li>{{/each}}</ul></section>{{/if}}
+
 <div class="table-responsive">
 <table class="ws-mobile-cards table table-bordered">
   <thead>
