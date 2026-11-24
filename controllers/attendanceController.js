@@ -121,6 +121,7 @@ const attendanceController = {
 
     return res.render('attendance/roster', {
       ...result,
+      remainingCount: result.students.filter(s => !s.hasAttend && !s.needsEnrollmentReview).length,
       startAtText: formatTaipeiDateTime(result.calendar.startAt),
       endAtText: formatTaipeiDateTime(result.calendar.endAt),
       calendarStartAt: result.calendar.startAt.toISOString(),
@@ -178,16 +179,16 @@ const attendanceController = {
       REASON_REQUIRED: '請填寫請假原因。'
     }
 
-    req.flash(
-      result.ok ? 'success_messages' : 'error_messages',
-      result.ok
-        ? (result.created ? '已登記出席。' : '已有點名紀錄，本次未修改。')
+    const message = result.ok
+        ? (result.created ? '已儲存點名。' : '已有點名紀錄，本次未修改。')
         : errors[result.code] ?? '目前無法登記。'
-    )
-
+    if (req.get('Accept') === 'application/json') {
+      return res.status(result.ok ? 200 : 409).json({ ok: result.ok, message })
+    }
+    req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(
       303,
-      `/cramschool/attend/courses/${courseId}/calendar/${calendarId}/students`
+      `/cramschool/attend/courses/${courseId}/calendar/${calendarId}/students#roster-${studentId}`
     )
   },
 
@@ -240,16 +241,16 @@ const attendanceController = {
       ENROLLMENT_UNCONFIRMED: '選課期間無法確認，請先核對。'
     }
 
-    req.flash(
-      result.ok ? 'success_messages' : 'error_messages',
-      result.ok
+    const message = result.ok
         ? (result.changed ? '已更正點名並保存操作紀錄。' : '內容相同，沒有變更。')
         : errors[result.code] ?? '目前無法更正。'
-    )
-
+    if (req.get('Accept') === 'application/json') {
+      return res.status(result.ok ? 200 : 409).json({ ok: result.ok, message })
+    }
+    req.flash(result.ok ? 'success_messages' : 'error_messages', message)
     return res.redirect(
       303,
-      `/cramschool/attend/courses/${courseId}/calendar/${calendarId}/students`
+      `/cramschool/attend/courses/${courseId}/calendar/${calendarId}/students#roster-${studentId}`
     )
   },
 

@@ -6,6 +6,8 @@
 <p>課堂內容：{{calendar.content}}</p>
 <p class="text-muted">名單以 {{calendarDate}} 的選課期間判定。</p>
 
+<p id="roster-remaining" class="fw-semibold">待點名 {{remainingCount}} 位</p>
+<p id="attendance-feedback" role="status" aria-live="polite"></p>
 {{#if pendingCount}}
 <p class="alert alert-info">
   有 {{pendingCount}} 位學生的選課期間待核對，確認前無法新增點名。
@@ -25,7 +27,7 @@
   </thead>
   <tbody>
     {{#each students}}
-    <tr>
+    <tr id="roster-{{id}}" tabindex="-1">
       <td data-label="學生編號">{{#if this.studentNo}}{{this.studentNo}}{{else}}—{{/if}}</td>
       <th scope="row" class="ws-cell-title" data-label="姓名">{{this.name}}</th>
       <td data-label="點名結果">
@@ -117,3 +119,5 @@
 <a class="me-3" href="/cramschool/attend/courses/{{course.id}}/sessions">回到這門課的課堂列表</a>
 <a href="/cramschool/attend">回到點名首頁</a>
 </div>
+
+<script src="/assets/workspace/attendance.js" defer></script>
