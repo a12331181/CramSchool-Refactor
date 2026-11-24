@@ -15,5 +15,5 @@
 {{else}}
 <p class="ws-sheet text-muted">目前無進行中的課程</p>
 {{/if}}
-<a href="/cramschool/students">回學生名單</a>
+<a href="/cramschool/students{{#if directoryQuery}}?{{directoryQuery}}#student-{{student.id}}{{/if}}">回學生名單</a>
 </div>

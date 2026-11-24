@@ -1,3 +1,4 @@
+const { studentDirectoryQuery } = require('../utils/studentDirectory')
 const { sendPageError } = require('../utils/pageError')
 const studentService = require('../services/studentService')
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
@@ -11,7 +12,7 @@ const studentController = {
      return res.redirect('/cramschool/students')
     }
 
-    return res.render('students/detail', result)
+    return res.render('students/detail', { ...result, directoryQuery: studentDirectoryQuery(req.query) })
   },
 
   getStudentAttendanceHistoryPage: async (req, res) => {

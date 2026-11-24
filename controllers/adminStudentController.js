@@ -1,3 +1,4 @@
+const { studentDirectoryQuery } = require('../utils/studentDirectory')
 const { sendPageError } = require('../utils/pageError')
 const { SEX_OPTIONS, GRADE_OPTIONS, STUDENT_STATUS_OPTIONS } = require('../constants/profileOptions')
 const { discardUnusedProfileImage } = require('../services/profileImageService')
@@ -74,7 +75,7 @@ const adminStudentController = {
     }
 
     return res.render('admin/students/detail', {
-      student
+      directoryQuery: studentDirectoryQuery(req.query), student
     })
   },
 

@@ -150,7 +150,7 @@
 .ws-actions form { margin: 0; }
 .ws-pager { border-top: 1px solid var(--line); padding: 11px 15px; }
 .ws-pager .pagination { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin: 0; padding: 0; list-style: none; }
-.ws-pager .page-link { display: grid; place-items: center; min-width: 32px; height: 32px; margin: 0; padding: 1px 6px; border: 1px solid transparent; border-radius: 6px; color: var(--muted); background: white; }
+.ws-pager .page-link { display: grid; place-items: center; min-width: 32px; height: 32px; margin: 0; padding: 1px 6px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); background: white; }
 .ws-pager .active .page-link { color: var(--accent); border-color: #c9d9cd; background: #eaf2eb; }
 .ws-pager a.page-link:hover { background: var(--soft); }
 @media (min-width: 701px) {

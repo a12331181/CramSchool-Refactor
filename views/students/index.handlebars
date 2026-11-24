@@ -7,6 +7,7 @@
   <header class="ws-panel-head ws-directory-head">
     <div class="ws-total"><h2 id="students-title">{{> workspace/icon name="users"}}{{#if courseId}}篩選結果{{else}}全部學生{{/if}}</h2><span>{{count}} 位</span></div>
     <form action="{{directoryPath}}" method="get" class="ws-filters">
+      <label for="student-search">姓名或學號</label><input id="student-search" type="search" name="q" maxlength="80" value="{{query}}">
       <label for="courseId">{{> workspace/icon name="filter"}}依課程篩選</label>
       <select id="courseId" name="courseId">
         <option value=""{{#ifCond '' courseId}} selected{{/ifCond}}>全部課程</option>
@@ -18,14 +19,15 @@
   {{#if students}}
   <div class="ws-scroll"><table class="ws-table ws-directory">
     <thead><tr>
-      <th scope="col">學生姓名</th><th scope="col">學號</th><th scope="col">學校</th><th scope="col">年級</th>
+      <th scope="col">序號</th><th scope="col">學生姓名</th><th scope="col">學號</th><th scope="col">學校</th><th scope="col">年級</th>
       {{#if manageStudents}}<th scope="col">性別</th>{{/if}}<th scope="col">學籍狀態</th>
       {{#if manageStudents}}<th scope="col">操作</th>{{/if}}
     </tr></thead>
     <tbody>{{#each students}}
-      <tr>
-        <th scope="row" class="ws-name"><a href="{{../directoryPath}}/{{id}}"><span class="ws-student-dot" aria-hidden="true">{{initial name}}</span>{{#if name}}{{name}}{{else}}查看學生資料{{/if}}</a></th>
-        <td data-label="學號" class="ws-num">{{#if studentNo}}{{studentNo}}{{else}}—{{/if}}<small class="ws-id">ID {{id}}</small></td>
+      <tr id="student-{{id}}">
+        <td data-label="序號" class="ws-num">{{rowNumber}}</td>
+        <th scope="row" class="ws-name"><a href="{{../directoryPath}}/{{id}}?{{../detailQuery}}"><span class="ws-student-dot" aria-hidden="true">{{initial name}}</span>{{#if name}}{{name}}{{else}}查看學生資料{{/if}}</a></th>
+        <td data-label="學號" class="ws-num">{{#if studentNo}}{{studentNo}}{{else}}—{{/if}}</td>
         <td data-label="學校">{{#if school}}{{school}}{{else}}—{{/if}}</td>
         <td data-label="年級">{{#if grade}}{{grade}}{{else}}—{{/if}}</td>
         {{#if ../manageStudents}}<td data-label="性別">{{#if sex}}{{sex}}{{else}}—{{/if}}</td>{{/if}}

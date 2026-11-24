@@ -2,5 +2,5 @@
 
 <div class="ws-content">
 {{> workspace/student-profile}}
-<a href="/admin/students">回學生管理</a>
+<a href="/admin/students{{#if directoryQuery}}?{{directoryQuery}}#student-{{student.id}}{{/if}}">回學生管理</a>
 </div>

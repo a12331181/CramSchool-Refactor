@@ -32,14 +32,21 @@ async function getStudentDetails(studentId) {
   return { student: studentData, enrolledCourses }
 }
 
-async function getStudentsPage({ page, courseId, pageSize }) {
+function studentSearch(query) {
+  if (!query) return {}
+  return { [Op.or]: ['name', 'studentNo'].map(column =>
+    sequelize.where(sequelize.fn('LOCATE', query, sequelize.col('Student.' + column)), { [Op.gt]: 0 })
+  ) }
+}
+
+async function getStudentsPage({ page, courseId, pageSize, query: search }) {
   const offset = (page - 1) * pageSize
 
   const query = {
     attributes: ['id', 'studentNo', 'name', 'school', 'grade'],
     raw: true,
     distinct: true,
-    where: { status: STUDENT_STATUS.ACTIVE },
+    where: { status: STUDENT_STATUS.ACTIVE, ...studentSearch(search) },
     order: [['id', 'ASC']],
     limit: pageSize,
     offset
@@ -73,9 +80,10 @@ async function getStudentsPage({ page, courseId, pageSize }) {
   }
 }
 
-async function getAdminStudentsPage({ page, pageSize, courseId }) {
+async function getAdminStudentsPage({ page, pageSize, courseId, query: search }) {
   const query = {
     attributes: ['id', 'studentNo', 'name', 'sex', 'school', 'grade', 'status'],
+    where: studentSearch(search),
     order: [
       ['status', 'ASC'],
       ['id', 'ASC']

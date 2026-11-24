@@ -21,7 +21,7 @@ const diaryController = {
     }
 
     return res.render('school/diaries/index', {
-      diaries: diaries.rows,
+      diaries: diaries.rows.map((record, index) => ({ ...record, rowNumber: offset + index + 1 })),
       showDeleteColumn: diaries.rows.some(diary => diary.canDelete),
       ...getPaginationLinks(pagination, pageUrl)
     })
@@ -51,7 +51,7 @@ const diaryController = {
     }
 
     return res.render('school/diaries/course-list', {
-      diaries: diaries.rows,
+      diaries: diaries.rows.map((record, index) => ({ ...record, rowNumber: offset + index + 1 })),
       course,
       isDiaryNotExist: diaries.count === 0,
       ...getPaginationLinks(pagination, pageUrl)

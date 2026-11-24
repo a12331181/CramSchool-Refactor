@@ -8,7 +8,7 @@
 <table class="ws-mobile-cards table table-bordered">
   <thead>
     <tr>
-      <th scope="col">編號</th>
+      <th scope="col">序號</th>
       <th scope="col">日期</th>
       <th scope="col">主題</th>
       <th scope="col">操作</th>
@@ -17,7 +17,7 @@
   <tbody>
     {{#each diaries}}
     <tr>
-      <th scope="row" data-label="編號">{{this.id}}</th>
+      <th scope="row" data-label="序號">{{rowNumber}}</th>
       <td data-label="日期">{{this.date}}</td>
       <td class="ws-cell-title" data-label="主題">{{this.subject}}</td>
       <td class="ws-cell-actions" data-label="操作">

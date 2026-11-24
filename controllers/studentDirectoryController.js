@@ -13,15 +13,20 @@ async function renderDirectory(req, res, manageStudents) {
     return sendPageError(res, 400, '課程 ID 必須是正整數')
   }
 
-  const { page } = listPage
+  if (req.query.q !== undefined && (typeof req.query.q !== 'string' || req.query.q.length > 80)) {
+    return sendPageError(res, 400, '請輸入 80 字以內的姓名或學號。')
+  }
+  const query = req.query.q?.trim() || ''
+  const { page, offset } = listPage
   const directoryPath = manageStudents ? '/admin/students' : '/cramschool/students'
   const fetchPage = manageStudents ? studentService.getAdminStudentsPage : studentService.getStudentsPage
-  const { rows, count, courses } = await fetchPage({ page, courseId, pageSize: DIRECTORY_PAGE_SIZE })
+  const { rows, count, courses } = await fetchPage({ page, courseId, query, pageSize: DIRECTORY_PAGE_SIZE })
   const pagination = getPagination({ page, pageSize: DIRECTORY_PAGE_SIZE, totalCount: count })
   const pageUrl = targetPage => {
-    const query = new URLSearchParams({ page: String(targetPage) })
-    if (courseId !== undefined) query.set('courseId', String(courseId))
-    return `${directoryPath}?${query}`
+    const params = new URLSearchParams({ page: String(targetPage) })
+    if (query) params.set('q', query)
+    if (courseId !== undefined) params.set('courseId', String(courseId))
+    return `${directoryPath}?${params}`
   }
 
   if (page > pagination.totalPages) return res.redirect(pageUrl(pagination.totalPages))
@@ -30,7 +35,8 @@ async function renderDirectory(req, res, manageStudents) {
     layout: 'workspace',
     workspaceTitle: manageStudents ? '學生管理' : '學生名單',
     activeNav: manageStudents ? 'admin-students' : 'students',
-    directoryPath, manageStudents, students: rows, courses, count,
+    directoryPath, manageStudents, students: rows.map((student, index) => ({ ...student, rowNumber: offset + index + 1 })),
+    query, detailQuery: pageUrl(page).split('?')[1], courses, count,
     courseId: courseId ?? '', activeStatus: STUDENT_STATUS.ACTIVE, leftStatus: STUDENT_STATUS.LEFT,
     ...getPaginationLinks(pagination, pageUrl)
   })

@@ -21,7 +21,7 @@ const meetingController = {
     }
 
     return res.render('school/meetings/index', {
-      meetings: meetings.rows,
+      meetings: meetings.rows.map((record, index) => ({ ...record, rowNumber: offset + index + 1 })),
       isAdmin: req.user.isAdmin,
       ...getPaginationLinks(pagination, pageUrl)
     })
