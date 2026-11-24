@@ -31,4 +31,4 @@
     </ul>
   </section>
 </div>
-<div class="ws-note">{{> workspace/icon name="id"}}<span>新進教師請先填寫個人資料。</span><a href="/users/{{user.id}}/edit">編輯個人資料{{> workspace/icon name="arrow"}}</a></div>
+{{#if missingFields}}<div class="ws-note">{{> workspace/icon name="id"}}<span>個人資料尚缺 {{missingFields}}。</span><a href="/users/{{user.id}}/edit">編輯個人資料{{> workspace/icon name="arrow"}}</a></div>{{/if}}

@@ -1,8 +1,6 @@
-{{> workspace/page-heading}}
-
 <div class="ws-content">
-<article class="ws-sheet">
-  <h2>{{meeting.subject}}</h2>
+<article class="ws-sheet ws-meeting-detail">
+  <h1>{{meeting.subject}}</h1>
   <p class="text-muted"><time>{{meeting.date}}</time> · 主持人　{{referenceLabel meeting.Teacher.User.userNo meeting.Teacher.name}}</p>
   <p class="ws-record">{{meeting.content}}</p>
 </article>

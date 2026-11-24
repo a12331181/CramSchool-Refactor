@@ -5,14 +5,14 @@
   <span class="ws-monogram" aria-hidden="true">{{initial teacher.name}}</span>
   {{/if}}
   <div><h2 id="profile-name">{{referenceLabel teacher.User.userNo teacher.name}}</h2>
-    <dl class="ws-facts">
-      <div><dt>性別</dt><dd>{{#if teacher.sex}}{{teacher.sex}}{{else}}—{{/if}}</dd></div>
-      <div><dt>生日</dt><dd>{{#if teacher.birth}}{{teacher.birth}}{{else}}—{{/if}}</dd></div>
-      <div><dt>聯絡電話</dt><dd>{{#if teacher.phone}}{{teacher.phone}}{{else}}—{{/if}}</dd></div>
-      <div><dt>信箱</dt><dd>{{#if teacher.User.email}}{{teacher.User.email}}{{else}}—{{/if}}</dd></div>
-      <div><dt>地址</dt><dd>{{#if teacher.address}}{{teacher.address}}{{else}}—{{/if}}</dd></div>
-      <div><dt>最高學歷</dt><dd>{{#if teacher.education}}{{teacher.education}}{{else}}—{{/if}}</dd></div>
-      <div><dt>學校</dt><dd>{{#if teacher.school}}{{teacher.school}}{{else}}—{{/if}}</dd></div>
-    </dl>
+    <table class="table ws-facts-table" aria-label="基本資料"><tbody>
+      <tr><th scope="row">性別</th><td>{{#if teacher.sex}}{{teacher.sex}}{{else}}—{{/if}}</td></tr>
+      <tr><th scope="row">生日</th><td>{{#if teacher.birth}}{{teacher.birth}}{{else}}—{{/if}}</td></tr>
+      <tr><th scope="row">聯絡電話</th><td>{{#if teacher.phone}}{{teacher.phone}}{{else}}—{{/if}}</td></tr>
+      <tr><th scope="row">信箱</th><td>{{#if teacher.User.email}}{{teacher.User.email}}{{else}}—{{/if}}</td></tr>
+      <tr><th scope="row">地址</th><td>{{#if teacher.address}}{{teacher.address}}{{else}}—{{/if}}</td></tr>
+      <tr><th scope="row">最高學歷</th><td>{{#if teacher.education}}{{teacher.education}}{{else}}—{{/if}}</td></tr>
+      <tr><th scope="row">學校</th><td>{{#if teacher.school}}{{teacher.school}}{{else}}—{{/if}}</td></tr>
+    </tbody></table>
   </div>
 </section>

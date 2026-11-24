@@ -3,17 +3,9 @@
 <div class="ws-content">
 {{> workspace/student-profile}}
 
-{{#if enrolledCourses}}
-<h2>目前正在進行的課程</h2>
-<div class="ws-cards">
-  {{#each enrolledCourses}}
-  <article class="ws-sheet"><h3>{{referenceLabel courseNo name}}</h3>
-    <div class="ws-tools"><a href="/cramschool/courses/{{id}}/calendar">課程行事曆</a><a href="/cramschool/students/{{../student.id}}/courses/{{id}}/attend">出缺席狀況</a></div>
-  </article>
-  {{/each}}
-</div>
-{{else}}
-<p class="ws-sheet text-muted">目前無進行中的課程</p>
-{{/if}}
+<section class="ws-sheet ws-course-section"><h2>目前正在進行的課程</h2>
+<div class="table-responsive"><table class="table"><thead><tr><th>課號</th><th>課程名稱</th><th>操作</th></tr></thead>
+<tbody>{{#each enrolledCourses}}<tr><td>{{#if courseNo}}{{courseNo}}{{else}}—{{/if}}</td><th scope="row">{{name}}</th><td class="ws-tools"><a href="/cramschool/courses/{{id}}/calendar">課程行事曆</a> <a href="/cramschool/students/{{../student.id}}/courses/{{id}}/attend">出缺席紀錄</a></td></tr>
+{{else}}<tr><td colspan="3">尚無進行中的課程。</td></tr>{{/each}}</tbody></table></div></section>
 <a href="/cramschool/students{{#if directoryQuery}}?{{directoryQuery}}#student-{{student.id}}{{/if}}">回學生名單</a>
 </div>

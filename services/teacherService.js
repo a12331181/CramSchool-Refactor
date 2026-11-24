@@ -110,7 +110,15 @@ async function updateTeacher(teacherId, teacherData) {
   }
 }
 
+async function getIncompleteProfileFields(userId) {
+  const labels = { name: '姓名', birth: '生日', phone: '聯絡電話', address: '地址', education: '學歷', school: '學校' }
+  const profile = await Teacher.findOne({ where: { UserId: userId }, attributes: Object.keys(labels), raw: true })
+  if (!profile) return []
+  return Object.keys(labels).filter(key => !String(profile[key] ?? '').trim()).map(key => labels[key])
+}
+
 module.exports = {
+  getIncompleteProfileFields,
   getTeacherAccountInclude,
   getActiveTeachersPage,
   getTeachersPage,

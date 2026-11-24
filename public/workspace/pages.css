@@ -144,3 +144,10 @@
   .ws-money-table :is(th, td):is(:first-child,:nth-child(n+3):nth-child(-n+6)) { display: none; }
   .ws-money-breakdown { display: block; margin-top: .3rem; }
 }
+
+.ws-profile > div { min-width: 0; flex: 1; }
+.ws-facts-table th { width: 7em; color: var(--muted); }
+.ws-facts-table td { overflow-wrap: anywhere; }
+.ws-course-section h2, .ws-meeting-detail h1 { margin: 0 0 .9rem; font-size: clamp(1.2rem, 2vw, 1.55rem); font-weight: 650; line-height: 1.4; }
+.ws-meeting-detail { max-width: 52rem; margin-inline: auto; }
+.ws-meeting-detail .ws-record { line-height: 1.85; }

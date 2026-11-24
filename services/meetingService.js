@@ -34,8 +34,7 @@ async function createMeeting({ userId, date, subject, content }) {
   const teacher = await getMeetingAuthor(userId)
   if (!teacher) return false
 
-  await Meeting.create({ date, subject, content, TeacherId: teacher.id })
-  return true
+  return Meeting.create({ date, subject, content, TeacherId: teacher.id })
 }
 
 async function deleteMeeting(meetingId) {

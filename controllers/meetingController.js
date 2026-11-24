@@ -48,14 +48,14 @@ const meetingController = {
     }
 
     req.flash('success_messages', '已成功建立會議紀錄')
-    return res.redirect('/cramschool')
+    return res.redirect(303, '/cramschool/meetings/' + created.id)
   },
 
   deleteMeeting: async (req, res) => {
     const deleted = await meetingService.deleteMeeting(req.params.meetingId)
     req.flash(
       deleted ? 'success_messages' : 'error_messages',
-      deleted ? '已成功刪除會議記錄' : '找不到會議紀錄'
+      deleted ? '已成功刪除會議紀錄' : '找不到會議紀錄'
     )
     return res.redirect('/cramschool/meetings')
   }
