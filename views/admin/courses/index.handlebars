@@ -4,17 +4,17 @@
 
 <div class="ws-content">
 <div class="table-responsive">
-  <table class="table"><thead><tr>
+  <table class="ws-mobile-cards table"><thead><tr>
     <th scope="col">編號</th><th scope="col">課程名稱</th><th scope="col">上課時長</th><th scope="col">計費方式</th>
     <th scope="col">價格</th><th scope="col">教師</th><th scope="col">狀態</th><th scope="col">操作</th>
   </tr></thead>
   <tbody>
     {{#each courses}}
     <tr>
-      <td>{{id}}</td><th scope="row">{{referenceLabel courseNo name}}</th><td>{{time}} 分鐘</td><td>{{type}}</td>
-      <td>NT$ {{price}}</td><td>{{referenceLabel Teacher.User.userNo Teacher.name}}</td>
-      <td><span class="ws-status{{#unless isActive}} ws-inactive{{/unless}}">{{#if isActive}}開課中{{else}}已關閉{{/if}}</span></td>
-      <td><div class="ws-tools">
+      <td data-label="編號">{{id}}</td><th scope="row" class="ws-cell-title" data-label="課程名稱">{{referenceLabel courseNo name}}</th><td data-label="上課時長">{{time}} 分鐘</td><td data-label="計費方式">{{type}}</td>
+      <td data-label="價格">NT$ {{price}}</td><td data-label="教師">{{referenceLabel Teacher.User.userNo Teacher.name}}</td>
+      <td data-label="狀態"><span class="ws-status{{#unless isActive}} ws-inactive{{/unless}}">{{#if isActive}}開課中{{else}}已關閉{{/if}}</span></td>
+      <td class="ws-cell-actions" data-label="操作"><div class="ws-tools{{#unless isActive}} ws-closed-actions{{/unless}}">
         <a href="/admin/courses/{{id}}/calendar">行事曆</a>
         <a href="/admin/courses/{{id}}/edit">修改</a>
         <form method="POST" action="/admin/courses/{{id}}?_method=DELETE"><button type="submit" class="btn btn-sm btn-outline-danger">刪除</button></form>

@@ -4,7 +4,7 @@
 <form class="ws-filter" action="/admin/teachers">
   <div class="ws-tools">
     <label class="mr-2 mt-1" for="status">在職狀態</label>
-    <select name="status" id="status" class="form-control-sm" onchange="this.form.submit()">
+    <select name="status" id="status" class="form-control-sm" onchange="this.form.requestSubmit()">
       <option value="" {{#ifCond '' status}} selected{{/ifCond}}>全部教師</option>
       {{#each statusList}}
         <option value="{{this.id}}" 
@@ -18,12 +18,12 @@
   </div>
 </form>
 
-<div class="table-responsive"><table class="table">
+<div class="table-responsive"><table class="ws-mobile-cards table">
   <thead><tr><th scope="col">編號</th><th scope="col">教師名稱</th><th scope="col">性別</th><th scope="col">學歷</th><th scope="col">畢業學校</th><th scope="col">狀態</th><th scope="col">操作</th></tr></thead>
   <tbody>{{#each teachers}}
-    <tr><td>{{id}}</td><th scope="row">{{referenceLabel User.userNo name}}</th><td>{{sex}}</td><td>{{education}}</td><td>{{school}}</td>
-      <td><span class="ws-status{{#ifCond status 1}}{{else}} ws-inactive{{/ifCond}}">{{#each ../statusList}}{{#ifCond id ../status}}{{status}}{{/ifCond}}{{/each}}</span></td>
-      <td><div class="ws-tools"><a href="/admin/teachers/{{id}}">瀏覽教師資料</a><a href="/admin/teachers/{{id}}/edit">更改教師資料</a></div></td>
+    <tr><td data-label="編號">{{id}}</td><th scope="row" class="ws-cell-title" data-label="教師名稱">{{referenceLabel User.userNo name}}</th><td data-label="性別">{{sex}}</td><td data-label="學歷">{{education}}</td><td data-label="畢業學校">{{school}}</td>
+      <td data-label="狀態"><span class="ws-status{{#ifCond status 1}}{{else}} ws-inactive{{/ifCond}}">{{#each ../statusList}}{{#ifCond id ../status}}{{status}}{{/ifCond}}{{/each}}</span></td>
+      <td class="ws-cell-actions" data-label="操作"><div class="ws-tools"><a href="/admin/teachers/{{id}}">瀏覽教師資料</a><a href="/admin/teachers/{{id}}/edit">更改教師資料</a></div></td>
     </tr>
     {{else}}<tr><td colspan="7">目前沒有符合條件的教師。</td></tr>
   {{/each}}</tbody>

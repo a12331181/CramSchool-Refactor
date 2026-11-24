@@ -19,7 +19,7 @@
 
 <p class="text-muted">共 {{totalCount}} 堂，按上課開始時間由新到舊排列。</p>
 <div class="table-responsive">
-  <table class="table table-bordered">
+  <table class="ws-mobile-cards table table-bordered">
     <thead>
       <tr>
         <th scope="col">開始時間（台北）</th>
@@ -33,12 +33,12 @@
     <tbody>
       {{#each sessions}}
       <tr>
-        <th scope="row" class="text-nowrap">{{this.startAtText}}</th>
-        <td class="text-nowrap">{{this.endAtText}}</td>
-        <td>{{this.teacherName}}</td>
-        <td>{{this.statusText}}</td>
-        <td>{{this.content}}</td>
-        <td>
+        <th scope="row" class="ws-cell-title text-nowrap" data-label="開始時間（台北）">{{this.startAtText}}</th>
+        <td class="text-nowrap" data-label="結束時間（台北）">{{this.endAtText}}</td>
+        <td data-label="授課老師">{{this.teacherName}}</td>
+        <td data-label="課堂狀態">{{this.statusText}}</td>
+        <td data-label="課堂內容">{{this.content}}</td>
+        <td class="ws-cell-actions" data-label="點名">
           {{#if this.canViewStudents}}
           <a class="btn btn-sm btn-outline-primary" href="/cramschool/attend/courses/{{../course.id}}/calendar/{{this.id}}/students">查看名單</a>
           {{else}}—{{/if}}

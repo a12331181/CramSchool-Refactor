@@ -3,7 +3,7 @@
 <div class="ws-content">
 {{#if totalCount}}<p class="text-muted">共 {{totalCount}} 位老師</p>{{/if}}
 <div class="table-responsive">
-  <table class="table table-bordered table-hover">
+  <table class="ws-mobile-cards table table-bordered table-hover">
     <thead>
       <tr>
         <th scope="col">老師編號</th>
@@ -16,11 +16,11 @@
     <tbody>
       {{#each teachers}}
       <tr>
-        <td>{{#if User.userNo}}{{User.userNo}}{{else}}—{{/if}}</td>
-        <th scope="row">{{name}}</th>
-        <td>{{#if phone}}{{phone}}{{else}}—{{/if}}</td>
-        <td>{{#if User.email}}{{User.email}}{{else}}—{{/if}}</td>
-        <td>{{#if UserId}}<a href="/users/{{UserId}}" class="btn btn-sm btn-outline-dark">基本資料</a>{{else}}—{{/if}}</td>
+        <td data-label="老師編號">{{#if User.userNo}}{{User.userNo}}{{else}}—{{/if}}</td>
+        <th scope="row" class="ws-cell-title" data-label="老師姓名">{{name}}</th>
+        <td data-label="聯絡電話">{{#if phone}}{{phone}}{{else}}—{{/if}}</td>
+        <td data-label="信箱">{{#if User.email}}{{User.email}}{{else}}—{{/if}}</td>
+        <td class="ws-cell-actions" data-label="操作">{{#if UserId}}<a href="/users/{{UserId}}" class="btn btn-sm btn-outline-dark">基本資料</a>{{else}}—{{/if}}</td>
       </tr>
       {{else}}
       <tr><td colspan="5" class="text-center text-muted">目前沒有可顯示的老師。</td></tr>

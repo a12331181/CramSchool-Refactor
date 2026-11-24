@@ -1,4 +1,6 @@
-{{> workspace/page-heading}}
+{{#> workspace/page-heading}}
+  <button class="ws-btn" type="button" onclick="window.print()">{{> workspace/icon name="print"}}列印收款明細</button>
+{{/workspace/page-heading}}
 
 <div class="ws-content ws-print-document">
 <p><strong>{{referenceLabel group.Student.studentNo group.studentNameSnapshot}}</strong>｜帳單月份 {{group.billingMonth}}</p>

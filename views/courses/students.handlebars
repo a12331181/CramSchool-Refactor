@@ -3,7 +3,7 @@
 <div class="ws-content">
 <p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
 <div class="table-responsive">
-  <table class="table table-bordered table-hover">
+  <table class="ws-mobile-cards table table-bordered table-hover">
     <thead>
       <tr>
         <th scope="col">學生編號</th>
@@ -16,11 +16,11 @@
     <tbody>
       {{#each students}}
       <tr>
-        <td>{{#if studentNo}}{{studentNo}}{{else}}—{{/if}}</td>
-        <th scope="row">{{name}}</th>
-        <td>{{#if school}}{{school}}{{else}}—{{/if}}</td>
-        <td>{{#if grade}}{{grade}}{{else}}—{{/if}}</td>
-        <td>
+        <td data-label="學生編號">{{#if studentNo}}{{studentNo}}{{else}}—{{/if}}</td>
+        <th scope="row" class="ws-cell-title" data-label="姓名">{{name}}</th>
+        <td data-label="就讀學校">{{#if school}}{{school}}{{else}}—{{/if}}</td>
+        <td data-label="年級">{{#if grade}}{{grade}}{{else}}—{{/if}}</td>
+        <td class="ws-cell-actions" data-label="操作">
           <a href="/cramschool/students/{{id}}" class="btn btn-sm btn-outline-dark">詳細資料</a>
           <a href="/cramschool/students/{{id}}/courses/{{../course.id}}/attend" class="btn btn-sm btn-outline-primary">出缺席紀錄</a>
         </td>

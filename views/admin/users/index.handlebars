@@ -9,7 +9,7 @@
 </form>
 
 <div class="table-responsive">
-<table class="table table-bordered">
+<table class="ws-mobile-cards table table-bordered">
   <thead>
     <tr>
       <th scope="col">編號</th>
@@ -22,12 +22,12 @@
   <tbody>
     {{#each users}}
     <tr>
-      <th scope="row">{{this.id}}</th>
-      <td>{{this.name}}</td>
-      <td>{{this.email}}</td>
+      <th scope="row" data-label="編號">{{this.id}}</th>
+      <td class="ws-cell-title" data-label="名稱">{{this.name}}</td>
+      <td data-label="信箱">{{this.email}}</td>
       {{#if isAdmin}}
-      <td>管理員</td>
-      <td>
+      <td data-label="使用者身分">管理員</td>
+      <td class="ws-cell-actions" data-label="權限操作">
         {{#ifCond this.id ../lastAdminId}}
         最後一位管理員
         {{else}}
@@ -40,8 +40,8 @@
         {{/ifCond}}
       </td>
       {{else}}
-      <td>一般使用者</td>
-      <td>
+      <td data-label="使用者身分">一般使用者</td>
+      <td class="ws-cell-actions" data-label="權限操作">
         <form action="/admin/users/{{this.id}}/toggleAdmin?_method=PUT" method="POST" class="ws-inline">
           <input type="hidden" name="isAdmin" value="true">
           <button type="submit" class="btn btn-link">

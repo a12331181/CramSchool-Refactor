@@ -2,7 +2,7 @@
 
 <div class="ws-content">
 <div class="table-responsive">
-<table class="table table-bordered">
+<table class="ws-mobile-cards table table-bordered">
   <thead>
     <tr>
       <th scope="col">編號</th>
@@ -18,13 +18,13 @@
   <tbody>
     {{#each diaries}}
     <tr>
-      <th scope="row">{{this.id}}</th>
-      <td>{{this.date}}</td>
-      <td><a href="/cramschool/courses/{{this.Course.id}}/diaries/{{this.id}}">{{this.subject}}</a></td>
-      <td>{{referenceLabel this.Course.courseNo this.Course.name}}</td>
-      <td>{{referenceLabel this.Teacher.User.userNo this.Teacher.name}}</td>
+      <th scope="row" data-label="編號">{{this.id}}</th>
+      <td data-label="日期">{{this.date}}</td>
+      <td class="ws-cell-title" data-label="主題"><a href="/cramschool/courses/{{this.Course.id}}/diaries/{{this.id}}">{{this.subject}}</a></td>
+      <td data-label="課程">{{referenceLabel this.Course.courseNo this.Course.name}}</td>
+      <td data-label="教師">{{referenceLabel this.Teacher.User.userNo this.Teacher.name}}</td>
       {{#if ../showDeleteColumn}}
-      <td>
+      <td class="ws-cell-actions" data-label="操作">
         {{#if canDelete}}
         <form action="/cramschool/diaries/{{this.id}}?_method=DELETE" method="POST" class="ws-inline">
           <button type="submit" class="btn btn-sm btn-danger">刪除</button>

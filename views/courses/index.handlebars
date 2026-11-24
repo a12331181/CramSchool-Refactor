@@ -3,7 +3,7 @@
 <div class="ws-content">
 {{#if totalCount}}<p class="text-muted">共 {{totalCount}} 門課程</p>{{/if}}
 <div class="table-responsive">
-  <table class="table table-bordered table-hover">
+  <table class="ws-mobile-cards table table-bordered table-hover">
     <thead>
       <tr>
         <th scope="col">課程編號</th>
@@ -16,11 +16,11 @@
     <tbody>
       {{#each courses}}
       <tr>
-        <td>{{#if courseNo}}{{courseNo}}{{else}}—{{/if}}</td>
-        <th scope="row">{{name}}</th>
-        <td>{{referenceLabel Teacher.User.userNo Teacher.name}}</td>
-        <td>{{time}} 分鐘</td>
-        <td>
+        <td data-label="課程編號">{{#if courseNo}}{{courseNo}}{{else}}—{{/if}}</td>
+        <th scope="row" class="ws-cell-title" data-label="課程名稱">{{name}}</th>
+        <td data-label="授課老師">{{referenceLabel Teacher.User.userNo Teacher.name}}</td>
+        <td data-label="上課時長">{{time}} 分鐘</td>
+        <td class="ws-cell-actions" data-label="操作">
           <a href="/cramschool/courses/{{id}}/calendar" class="btn btn-sm btn-outline-dark">課程行事曆</a>
           <a href="/cramschool/courses/{{id}}/enrolledstudents" class="btn btn-sm btn-outline-secondary">學生名單</a>
           {{#if canViewDiaries}}<a href="/cramschool/courses/{{id}}/diaries" class="btn btn-sm btn-outline-warning">教師日誌</a>{{/if}}

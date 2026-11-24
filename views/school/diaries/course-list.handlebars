@@ -5,7 +5,7 @@
 <div class="ws-content">
 <p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
 <div class="table-responsive">
-<table class="table table-bordered">
+<table class="ws-mobile-cards table table-bordered">
   <thead>
     <tr>
       <th scope="col">編號</th>
@@ -17,10 +17,10 @@
   <tbody>
     {{#each diaries}}
     <tr>
-      <th scope="row">{{this.id}}</th>
-      <td>{{this.date}}</td>
-      <td>{{this.subject}}</td>
-      <td>
+      <th scope="row" data-label="編號">{{this.id}}</th>
+      <td data-label="日期">{{this.date}}</td>
+      <td class="ws-cell-title" data-label="主題">{{this.subject}}</td>
+      <td class="ws-cell-actions" data-label="操作">
         <a href="/cramschool/courses/{{../course.id}}/diaries/{{this.id}}" class="btn btn-sm btn-dark my-1">日誌內容</a>
         {{#if canDelete}}
         <form action="/cramschool/courses/{{../course.id}}/diaries/{{this.id}}?_method=DELETE" method="POST" class="ws-inline">

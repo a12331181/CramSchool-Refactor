@@ -13,7 +13,7 @@
 {{/if}}
 
 <div class="table-responsive">
-<table class="table table-bordered">
+<table class="ws-mobile-cards table table-bordered">
   <thead>
     <tr>
       <th scope="col">學生編號</th>
@@ -26,20 +26,20 @@
   <tbody>
     {{#each students}}
     <tr>
-      <td>{{this.id}}</td>
-      <td>{{referenceLabel this.studentNo this.name}}</td>
-      <td>
+      <td data-label="學生編號">{{#if this.studentNo}}{{this.studentNo}}{{else}}—{{/if}}</td>
+      <th scope="row" class="ws-cell-title" data-label="姓名">{{this.name}}</th>
+      <td data-label="點名結果">
         {{this.attendText}}
         {{#if this.needsEnrollmentReview}}<small class="d-block text-muted">選課待核對</small>{{/if}}
       </td>
-      <td>
+      <td data-label="原因／備註">
         {{#if this.attendReason}}
         {{this.attendReason}}
         {{else}}
         —
         {{/if}}
       </td>
-      <td>
+      <td class="ws-cell-actions" data-label="操作">
         {{#if this.canCreateAttend}}
         <form method="POST"
           action="/cramschool/attend/courses/{{../course.id}}/calendar/{{../calendar.id}}/students/{{this.id}}">

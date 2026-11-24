@@ -105,7 +105,8 @@
 .ws-content dl.row > dt, .ws-content dl.row > dd { padding: .3rem .6rem; margin-bottom: 0; }
 .ws-print-document .ws-stats dd { font-size: 1.16rem; }
 @media print {
-  @page { margin: 15mm; }
+  @page { size: A4; margin: 15mm; }
+  body.ws { min-width: 0 !important; }
   .ws, .ws-frame, .ws-canvas, .ws-main { display: block; min-height: 0; width: 100%; max-width: none; margin: 0; padding: 0; border: 0; background: white; color: #171b18; }
   .ws-sidebar, .ws-top, .ws-skip, .ws-heading .ws-tile-icon, .ws-tools .ws-btn, .ws-screen-only, .ws-print-document > a, .ws-print-document button, .ws-print-document input, .ws-print-document select, .ws-print-document textarea, .ws-print-document form:not(#tuition-item-payment) { display: none !important; }
   .ws-heading { margin-bottom: 10pt; }
@@ -118,4 +119,20 @@
   .ws-print-document section[aria-labelledby] { padding: 8pt 0; border: 0; }
   .ws-print-document a[href]::after { content: none !important; }
   .ws-print-document .ws-stats > div { background: white; border-radius: 0; }
+}
+
+.ws-closed-actions a, .ws-closed-actions form:not(:last-child) { opacity: .78; }
+@media screen and (max-width: 700px) {
+  .ws-content .ws-mobile-cards, .ws-content .ws-mobile-cards tbody { display: block; }
+  .ws-mobile-cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .ws-mobile-cards tbody tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .65rem 1rem; padding: .9rem; }
+  .ws-mobile-cards tbody tr + tr { border-top: 1px solid var(--line); }
+  .ws-content .ws-mobile-cards tbody :is(td,th) { display: block; min-width: 0; padding: 0; border: 0; white-space: normal !important; overflow-wrap: anywhere; }
+  .ws-mobile-cards [data-label]::before { content: attr(data-label); display: block; margin-bottom: .12rem; color: var(--muted); font-size: .78rem; font-weight: 550; }
+  .ws-mobile-cards .ws-cell-title, .ws-mobile-cards .ws-cell-actions, .ws-mobile-cards [colspan] { grid-column: 1 / -1; }
+  .ws-mobile-cards .ws-cell-title { grid-row: 1; color: var(--accent); font-size: 1rem; font-weight: 670; }
+  .ws-mobile-cards .ws-cell-title::before { display: none; }
+  .ws-mobile-cards .ws-cell-actions { grid-row: auto; }
+  .ws-mobile-cards .ws-cell-actions .ws-tools { gap: .45rem .85rem; }
+  .ws-mobile-cards .ws-cell-actions form:not(.ws-inline) { max-width: 100%; }
 }
