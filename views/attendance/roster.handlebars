@@ -98,6 +98,7 @@
         —
         {{/if}}
         {{/if}}
+        {{#if @root.user.isAdmin}}{{#if isExcused}}<a href="/cramschool/makeups?attendId={{attendId}}">處理補課</a>{{/if}}{{/if}}
         {{#if this.hasAttend}}
         <div class="mt-2">
           <a href="/cramschool/attend/courses/{{../course.id}}/calendar/{{../calendar.id}}/students/{{this.id}}/history">

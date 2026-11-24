@@ -9,7 +9,11 @@ const diaryController = require('../controllers/diaryController')
 
 const timetable = require('../controllers/timetableController')
 
+const makeup = require('../controllers/makeupController')
 const router = Router()
+
+router.get('/makeups', authenticatedAdmin, makeup.list)
+router.post('/makeups/:id', authenticatedAdmin, makeup.update)
 
 router.get('/timetable', authenticated, timetable.timetable)
 router.post('/timetable/rooms', authenticatedAdmin, timetable.addRoom)

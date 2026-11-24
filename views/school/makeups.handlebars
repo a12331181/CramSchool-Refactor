@@ -1,0 +1,8 @@
+{{> workspace/page-heading}}
+<form method="get" class="ws-schedule-filters">{{#if attendId}}<input type="hidden" name="attendId" value="{{attendId}}">{{/if}}<label>查找補課時段<input class="form-control" type="date" name="date" value="{{date}}" required></label><button class="btn btn-outline-secondary">載入當日課堂</button><a href="/cramschool/makeups">全部請假</a></form>
+{{#each rows}}<section class="ws-sheet mb-3"><h2>{{name}} · {{label}}</h2>
+<dl><dt>原課堂</dt><dd><a href="{{originalUrl}}">{{original}}</a>{{#if corrected}}（點名已更正）{{/if}}</dd><dt>補課時段</dt><dd>{{#if target}}{{target}}{{else}}尚未指定{{/if}}</dd><dt>費用折抵</dt><dd>{{credit}}{{#if billId}} · 帳單 #{{billId}}{{/if}}</dd></dl>
+<form method="post" action="/cramschool/makeups/{{id}}" class="ws-schedule-filters"><input type="hidden" name="_csrf" value="{{@root.csrfToken}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="date" value="{{@root.date}}">
+<label>管理員決定<select class="form-select" name="state" required><option value="">請選擇</option><option value="pending">待安排</option><option value="scheduled">安排補課</option><option value="completed">確認已補課</option><option value="closed">不需補課／結案</option></select></label>
+<label>補課課堂<select class="form-select" name="targetId"><option value="">沿用已安排的時段</option>{{#each @root.targets}}<option value="{{id}}">{{name}}</option>{{/each}}</select></label><button class="btn btn-primary">儲存決定</button></form></section>{{else}}<p class="ws-empty">目前沒有待處理或已追蹤的請假。</p>{{/each}}
+{{> pagination}}
