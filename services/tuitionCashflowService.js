@@ -3,7 +3,6 @@ const { Payment, Student, TuitionBill, TuitionBillRefund, TuitionPaymentGroup, s
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { getTaipeiDate, getTaipeiMonthRange, isTaipeiDateKey } = require('../utils/date')
 
-const { isPaymentAmount } = require('./tuitionPaymentService')
 const { getGroupPaymentRows, groupPaymentAllocationsAreValid } = require('./tuitionPaymentGroupService')
 const { CASH_KIND, CASH_REVIEW } = require('../constants/tuitionCashflow')
 const DATE_SHAPE = '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
@@ -55,7 +54,7 @@ async function getGroupedCashRows(period, today, transaction) {
     let review = null
     if (!isTaipeiDateKey(group.paidOn) || group.paidOn > today) {
       review = CASH_REVIEW.DATE
-    } else if (!isPaymentAmount(group.amount)) {
+    } else if ((!Number.isSafeInteger(group.amount) || group.amount < 1)) {
       review = CASH_REVIEW.AMOUNT
     } else if (
       !getTaipeiMonthRange(group.billingMonth) ||

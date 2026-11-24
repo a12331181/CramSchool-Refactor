@@ -13,6 +13,7 @@ const { authenticated } = require('./middlewares/auth')
 const { sendPageError, wantsHtmlPage } = require('./utils/pageError')
 const uploadDir = path.join(__dirname, 'upload')
 const app = express()
+app.locals.maxMoneyAmount = require('./constants/money').MAX_MONEY_AMOUNT
 app.locals.imageAccept = IMAGE_ACCEPT
 app.use('/assets/workspace', express.static(path.join(__dirname, 'public', 'workspace')))
 const port = 3000

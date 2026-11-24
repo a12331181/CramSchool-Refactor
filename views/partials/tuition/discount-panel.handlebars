@@ -8,7 +8,7 @@
 
     <label for="bill-discount-amount">折扣金額（NT$）</label>
     <input id="bill-discount-amount" name="amount" type="number" class="form-control mb-2"
-      min="1" step="1" value="{{amount}}" required>
+      min="1" max="{{@root.maxMoneyAmount}}" step="1" value="{{amount}}" required>
 
     <label for="bill-discount-reason">折扣原因（管理員備註）</label>
     <input id="bill-discount-reason" name="reason" type="text" class="form-control mb-2"

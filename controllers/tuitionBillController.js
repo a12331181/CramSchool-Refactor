@@ -139,7 +139,7 @@ const tuitionBillController = {
         STUDENT_NOT_FOUND: '找不到學生。',
         STUDENT_NAME_UNCONFIRMED: '請先核對學生姓名。',
         COURSE_NAME_UNCONFIRMED: '請先核對課程名稱。',
-        INVALID_AMOUNT: '金額超出可儲存的範圍。'
+        INVALID_AMOUNT: `金額超出每張單據的金額範圍（上限 ${MAX_PAYMENT_AMOUNT} 元）。`
       }
 
       req.flash('error_messages', errors[result.code] ?? '目前無法儲存草稿。')
@@ -183,7 +183,7 @@ const tuitionBillController = {
         ISSUED_COURSE_FEES_REQUIRE_REVIEW: '既有帳單的課程明細需要核對，暫時不能補開。',
         DRAFT_NUMBER_EXHAUSTED: '今年的帳單草稿編號已用完，暫時無法開單。',
         DRAFT_REQUIRES_REVIEW: '這門課的選課或計費資料需要核對。',
-        INVALID_AMOUNT: '應收金額超出可儲存的範圍。'
+        INVALID_AMOUNT: `應收金額超出每張單據的金額範圍（上限 ${MAX_PAYMENT_AMOUNT} 元）。`
       }
       req.flash('error_messages', errors[result.code] ?? '目前無法補開帳單。')
       const target = withQuery(`/cramschool/tuition/students/${studentId}/preview`,
@@ -458,7 +458,7 @@ const tuitionBillController = {
       BILL_VERSION_CONFLICT: '帳單已更新，請核對目前明細後再試。',
       EXTRA_FEE_ALREADY_ADDED: '這個費用項目已經在帳單上。',
       EXTRA_FEE_UNAVAILABLE: '這個費用項目目前無法使用。',
-      INVALID_AMOUNT: '加入後的總額超出可儲存的範圍。'
+      INVALID_AMOUNT: `加入後的總額超出每張單據的金額範圍（上限 ${MAX_PAYMENT_AMOUNT} 元）。`
     }
 
     req.flash(
@@ -503,7 +503,7 @@ const tuitionBillController = {
       INVALID_DISCOUNT_REASON: '請填寫折扣原因，最多 255 字元。',
       DISCOUNT_EXCEEDS_DRAFT_TOTAL: '折扣後的應收金額不能低於 NT$ 0。',
       DISCOUNT_REQUIRES_REVIEW: '草稿裡已有需要核對的折扣明細。',
-      INVALID_AMOUNT: '折扣後的總額超出可儲存範圍。'
+      INVALID_AMOUNT: `折扣後的總額超出金額上限 ${MAX_PAYMENT_AMOUNT} 元。`
     }
     const message = result.ok
       ? (result.changed ? '已儲存帳單折扣，請核對更新後的金額。' : '折扣沒有變動。')
@@ -686,7 +686,7 @@ const tuitionBillController = {
       SUPPLEMENT_REQUIRES_ISSUED_BILL: '本月已無正式帳單，請先核對主帳單。',
       NO_COURSES_IN_BILLING_MONTH: '本月沒有可建立明細的課程，草稿未更新。',
       COURSE_NAME_UNCONFIRMED: '課程名稱需要核對，草稿未更新。',
-      INVALID_AMOUNT: '更新後的金額超出可儲存範圍，草稿未更新。',
+      INVALID_AMOUNT: `更新後的金額超出金額上限 ${MAX_PAYMENT_AMOUNT} 元，草稿未更新。`,
       DRAFT_CREDITS_EXCEED_UPDATED_TOTAL: '更新後的金額不足以扣除原有折抵或折扣，草稿未更新。'
     }
 
@@ -740,7 +740,7 @@ const tuitionBillController = {
       BILL_ITEM_NOT_REMOVABLE: '只能移除額外費用、請假折抵或帳單折扣。課程費用請使用「更新草稿」。',
       INVALID_BILL_AMOUNT: '草稿明細的金額需要核對。',
       DRAFT_TOTAL_MISMATCH: '草稿總額與明細合計不符，請先核對。',
-      INVALID_AMOUNT: '移除後的金額超出可儲存範圍，草稿未變更。',
+      INVALID_AMOUNT: `移除後的金額超出金額上限 ${MAX_PAYMENT_AMOUNT} 元，草稿未變更。`,
       DRAFT_CREDITS_EXCEED_UPDATED_TOTAL: '移除後的金額不足以扣除原有折抵或折扣，草稿未變更。'
     }
 

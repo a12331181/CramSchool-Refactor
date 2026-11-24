@@ -154,7 +154,7 @@ function groupPaymentAllocationsAreValid(group, payments) {
       bill.StudentId !== group.StudentId || bill.billingMonth !== group.billingMonth ||
       bill.status !== TUITION_BILL_STATUS.ISSUED || bill.currency !== 'TWD' ||
       row.TuitionId !== null || (row.isPaid !== true && row.isPaid !== 1) ||
-      row.time !== group.paidOn || !isPaymentAmount(row.amount) ||
+      row.time !== group.paidOn || !isId(row.amount) ||
       !Number.isSafeInteger(bill.totalAmount) || row.amount > bill.totalAmount
     ) return false
     billIds.add(bill.id)
@@ -181,7 +181,7 @@ async function getTuitionPaymentGroup(paymentGroupId) {
     const payments = await getGroupPaymentRows([group.id], transaction)
     const requiresReview = !getTaipeiMonthRange(group.billingMonth) ||
       !isTaipeiDateKey(group.paidOn) || group.paidOn > getTaipeiDate() ||
-      !isPaymentAmount(group.amount) || !groupPaymentAllocationsAreValid(group, payments)
+      !isId(group.amount) || !groupPaymentAllocationsAreValid(group, payments)
 
     return { group, allocations: requiresReview ? [] : payments, requiresReview }
   })

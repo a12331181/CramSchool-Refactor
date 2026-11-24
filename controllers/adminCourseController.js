@@ -9,7 +9,7 @@ const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/c
 const COURSE_SETTINGS_MESSAGES = Object.freeze({
   INVALID_TIME: '上課時長只能是 60、90 或 120 分鐘',
   INVALID_TYPE: '計費方式不正確',
-  INVALID_PRICE: '價格必須是有效的非負整數',
+  INVALID_PRICE: `價格須為 0 到 ${MAX_COURSE_PRICE} 元的整數。`,
   INVALID_TEACHER_ID: '教師 ID 不正確'
 })
 

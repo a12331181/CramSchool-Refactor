@@ -1,3 +1,5 @@
+const { MAX_MONEY_AMOUNT } = require('./money')
+
 const COURSE_TIMES = Object.freeze({
   MINUTES_60: '60',
   MINUTES_90: '90',
@@ -10,7 +12,7 @@ const COURSE_TYPES = Object.freeze({
 })
 
 const COURSE_PRICING_FIELDS = Object.freeze(['id', 'courseNo', 'name', 'type', 'price'])
-const MAX_COURSE_PRICE = 2_147_483_647
+const MAX_COURSE_PRICE = MAX_MONEY_AMOUNT
 
 module.exports = {
   COURSE_TIMES,
