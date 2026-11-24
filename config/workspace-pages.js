@@ -1,4 +1,6 @@
 const pages = {
+  'school/schedule/index': { tab: 'timetable', icon: 'calendar', title: '校務課表' },
+  'school/schedule/conflicts': { tab: 'timetable', icon: 'calendar', title: '核對衝堂學生' },
   'school/home': { tab: 'home', icon: 'grid', title: '校務總覽' },
   'courses/index': { tab: 'courses', icon: 'book', title: '課程列表' },
   'courses/calendar': { tab: 'courses', icon: 'book', title: '課程行事曆' },

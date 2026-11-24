@@ -3,7 +3,12 @@ const { authenticatedAdmin } = require('../middlewares/auth')
 const adminCalendarController = require('../controllers/adminCalendarController')
 const adminCourseController = require('../controllers/adminCourseController')
 
+const timetable = require('../controllers/timetableController')
+
 const router = Router()
+
+router.get('/:courseId/sessions/:sessionId/move', authenticatedAdmin, timetable.editSession)
+router.post('/:courseId/sessions/:sessionId/move', authenticatedAdmin, timetable.moveSession)
 
 router.get('/', authenticatedAdmin, adminCourseController.getCourseListPage)
 router.get('/create', authenticatedAdmin, adminCourseController.getCreateCoursePage)

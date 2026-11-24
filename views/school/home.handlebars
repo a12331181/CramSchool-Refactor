@@ -13,6 +13,11 @@
   {{/if}}
 </div>
 
+<section class="ws-panel mb-3">
+  <header class="ws-panel-head"><h2>{{> workspace/icon name="calendar"}}{{#if isAdmin}}今日全校課堂{{else}}我今天的課{{/if}}</h2><a href="/cramschool/timetable">查看課表</a></header>
+  <ul class="ws-today">{{#each sessions}}<li><time>{{time}}</time><span><strong>{{courseName}}</strong><small>{{roomName}} · {{teacherName}}</small></span><span>{{attendanceText}}</span>{{#unless cancelled}}<a href="{{roster}}">開啟名單</a>{{/unless}}</li>{{else}}<li>今天沒有排定課堂。</li>{{/each}}</ul>
+</section>
+
 <div class="ws-records">
   <section class="ws-panel" aria-labelledby="journal-title">
     <header class="ws-panel-head"><h2 id="journal-title">{{> workspace/icon name="journal"}}近期教師日誌</h2><a class="ws-link" href="/cramschool/diaries">全部日誌{{> workspace/icon name="arrow"}}</a></header>

@@ -158,3 +158,20 @@
 .ws-record-body img { max-width: 100%; max-height: 28rem; }
 .ws-record-files { margin-block-start: 1.5rem; }
 .ws-record-files img { max-width: 7rem; max-height: 5rem; object-fit: contain; }
+
+.ws-schedule-filters {display:flex;align-items:end;flex-wrap:wrap;gap:.8rem;margin:1rem 0}
+.ws-schedule-filters label {flex:1 1 8.5rem;min-width:0;font-weight:600}
+.ws-schedule-filters select,.ws-schedule-filters input {margin-top:.3rem}
+.ws-schedule-paging {display:flex;gap:.5rem;margin:1rem 0}
+.ws-schedule-grid {display:grid;grid-auto-flow:column;grid-auto-columns:minmax(8.5rem,1fr);overflow-x:auto;gap:.45rem}
+.ws-schedule-col {padding:.55rem;min-height:9rem;border:1px solid #dce1dd;border-radius:.55rem;background:#fafbf9}
+.ws-schedule-col h2 {font-size:1rem;font-weight:650;margin:.25rem 0 .7rem}
+.ws-session {display:grid;gap:.2rem;border-left:3px solid #318575;border-radius:.35rem;background:white;padding:.55rem;margin:.4rem 0;overflow-wrap:anywhere}
+.ws-session time {font-variant-numeric:tabular-nums;color:#22594e;font-weight:650}
+.ws-session span,.ws-session small,.ws-today small {color:#525d57;font-size:.85rem}
+.ws-cancelled {border-color:#888;background:#f0f0f0}
+.ws-today {list-style:none;margin:0;padding:0 1rem}
+.ws-today li {display:flex;align-items:center;gap:1rem;flex-wrap:wrap;padding:.8rem 0;border-bottom:1px solid #eee}
+.ws-today li:last-child {border:0}
+.ws-today small {display:block}
+@media(max-width:700px) {.ws-today li {gap:.5rem}.ws-schedule-filters label {flex-basis:42%}}

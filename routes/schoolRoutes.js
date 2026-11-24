@@ -7,7 +7,12 @@ const schoolController = require('../controllers/schoolController')
 const meetingController = require('../controllers/meetingController')
 const diaryController = require('../controllers/diaryController')
 
+const timetable = require('../controllers/timetableController')
+
 const router = Router()
+
+router.get('/timetable', authenticated, timetable.timetable)
+router.post('/timetable/rooms', authenticatedAdmin, timetable.addRoom)
 
 router.get('/', authenticated, schoolController.getHomePage)
 router.get('/introduction', authenticated, schoolController.getIntroductionPage)

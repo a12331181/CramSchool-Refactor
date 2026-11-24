@@ -1,0 +1,25 @@
+{{> workspace/page-heading}}
+<form class="ws-schedule-filters" action="/cramschool/timetable" method="get">
+  <label>日期<input class="form-control" type="date" name="date" value="{{day}}" required></label>
+  <label>檢視<select class="form-select" name="mode">
+    <option value="week" {{#ifCond mode "week"}}selected{{/ifCond}}>週課表</option>
+    <option value="day" {{#ifCond mode "day"}}selected{{/ifCond}}>單日課表</option>
+    <option value="rooms" {{#ifCond mode "rooms"}}selected{{/ifCond}}>當日教室對照</option>
+  </select></label>
+  <label>班級<select class="form-select" name="courseId"><option value="">全部班級</option>{{#each courses}}<option value="{{id}}" {{#ifCond id ../courseId}}selected{{/ifCond}}>{{name}}{{#if studentNo}}（{{studentNo}}）{{/if}}</option>{{/each}}</select></label>
+  <label>教師<select class="form-select" name="teacherId"><option value="">全部教師</option>{{#each teachers}}<option value="{{id}}" {{#ifCond id ../teacherId}}selected{{/ifCond}}>{{name}}{{#if studentNo}}（{{studentNo}}）{{/if}}</option>{{/each}}</select></label>
+  <label>教室<select class="form-select" name="classroomId"><option value="">全部教室</option>{{#each rooms}}<option value="{{id}}" {{#ifCond id ../classroomId}}selected{{/ifCond}}>{{name}}{{#if studentNo}}（{{studentNo}}）{{/if}}</option>{{/each}}</select></label>
+  <label>學生<select class="form-select" name="studentId"><option value="">全部學生</option>{{#each students}}<option value="{{id}}" {{#ifCond id ../studentId}}selected{{/ifCond}}>{{name}}{{#if studentNo}}（{{studentNo}}）{{/if}}</option>{{/each}}</select></label>
+  <button class="btn btn-primary">顯示課表</button>
+</form>
+<nav class="ws-schedule-paging" aria-label="課表日期"><a class="btn btn-outline-secondary" href="{{previous}}">上一期</a><a class="btn btn-outline-secondary" href="{{today}}">今天</a><a class="btn btn-outline-secondary" href="{{next}}">下一期</a></nav>
+<div class="ws-schedule-grid">
+  {{#each columns}}<section class="ws-schedule-col"><h2>{{name}}</h2>
+    {{#each rows}}<article class="ws-session {{#if cancelled}}ws-cancelled{{/if}}">
+      <time>{{time}}</time><strong>{{courseName}}</strong><span>{{teacherName}} · {{roomName}}</span><small>{{label}}</small>
+      {{#if @root.user.isAdmin}}{{#if canMove}}<a href="/admin/courses/{{CourseId}}/sessions/{{id}}/move">調整課堂</a>{{/if}}{{/if}}
+    </article>{{else}}<p class="ws-muted">無已排課堂</p>{{/each}}
+  </section>{{/each}}
+</div>
+{{#if legacy}}<section class="ws-sheet mt-3"><h2>時間待補</h2><ul>{{#each legacy}}<li>{{date}} · {{courseName}} · {{teacherName}}</li>{{/each}}</ul></section>{{/if}}
+{{#if user.isAdmin}}<details class="ws-sheet mt-3"><summary>新增教室</summary><form class="ws-schedule-filters" method="post" action="/cramschool/timetable/rooms"><input type="hidden" name="_csrf" value="{{@root.csrfToken}}"><label>教室名稱<input class="form-control" name="name" maxlength="80" required></label><button class="btn btn-primary">儲存教室</button></form></details>{{/if}}

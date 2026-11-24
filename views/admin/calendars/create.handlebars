@@ -12,8 +12,9 @@
 </p>
 {{/unless}}
 
-<form class="ws-form" action="/admin/courses/{{course.id}}/sessions" method="POST">
+<form class="ws-form" action="/admin/courses/{{course.id}}/sessions{{#if editId}}/{{editId}}/move{{/if}}" method="POST">
       <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
+  {{#if editId}}<input type="hidden" name="version" value="{{version}}">{{/if}}
   <div class="mb-3">
     <label for="startAt">開始時間（台北）</label>
     <input type="datetime-local" class="form-control" id="startAt" name="startAt" value="{{values.startAt}}" step="60" required>
@@ -39,13 +40,11 @@
 
   <div class="mb-3">
     <label for="content">課堂內容（選填）</label>
-    <textarea class="form-control" id="content" name="content" rows="3" maxlength="40">
-      {{values.content}}
-    </textarea>
+    <textarea class="form-control" id="content" name="content" rows="3" maxlength="40">{{values.content}}</textarea>
   </div>
 
   <button type="submit" class="btn btn-primary" {{#unless canSubmit}}disabled{{/unless}}>
-    儲存課堂
+    {{#if editId}}儲存調課{{else}}儲存課堂{{/if}}
   </button>
   <a href="/admin/courses/{{course.id}}/calendar" class="btn btn-secondary">返回課堂列表</a>
 </form>
