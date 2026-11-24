@@ -1,20 +1,10 @@
-<br>
+{{> workspace/page-heading}}
 
-<h3 style="color: rgb(92, 79, 79);"><strong>日期 : </strong>{{diary.date}}</h3>
-
-<h5 class="ml-2 mt-3" style="color: rgb(167, 158, 158);"><strong>教師 : </strong>{{referenceLabel diary.Teacher.User.userNo diary.Teacher.name}}</h5>
-
-<br>
-
-<div class="card">
-  <h5 class="card-header">主題 : {{diary.subject}}</h5>
-  <div class="card-body">
-    <p class="card-text">{{diary.content}}</p>
-  </div>
+<div class="ws-content">
+<article class="ws-sheet">
+  <h2>{{diary.subject}}</h2>
+  <p class="text-muted"><time>{{diary.date}}</time> · 教師　{{referenceLabel diary.Teacher.User.userNo diary.Teacher.name}}</p>
+  <p class="ws-record">{{diary.content}}</p>
+</article>
+<a href="/cramschool/diaries">返回列表</a>
 </div>
-
-<br />
-
-<br />
-<br />
-<a href="javascript:history.back()">回上一頁</a>

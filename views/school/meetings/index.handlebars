@@ -1,19 +1,21 @@
-<br>
+{{#> workspace/page-heading}}
+  <a class="ws-btn ws-primary" href="/cramschool/meetings/create">{{> workspace/icon name="plus"}}建立會議紀錄</a>
+{{/workspace/page-heading}}
 
-<h3 class="ml-2" style="color: rgb(75, 66, 57);">會議記錄列表</h3>
-
+<div class="ws-content">
+<div class="table-responsive">
 <table class="table table-bordered">
   <thead>
-    <tr class="table-primary">
-      <th scope="col">#</th>
+    <tr>
+      <th scope="col">編號</th>
       <th scope="col">開會日期</th>
       <th scope="col">主題</th>
-      <th scope="col">#</th>
+      <th scope="col">操作</th>
     </tr>
   </thead>
   <tbody>
     {{#each meetings}}
-    <tr class="table-light">
+    <tr>
       <th scope="row">{{this.id}}</th>
       <td>{{this.date}}</td>
       <td>{{this.subject}}</td>
@@ -23,20 +25,18 @@
         </a>
         {{#if ../isAdmin}}
         <form action="/cramschool/meetings/{{this.id}}?_method=DELETE" method="POST"
-          style="display: inline;">
+          class="ws-inline">
           <button type="submit" class="btn btn-danger btn-sm ml-1 my-1">刪除</button>
         </form>
         {{/if}}
       </td>
     </tr>
+    {{else}}
+    <tr><td colspan="4">目前沒有會議紀錄。</td></tr>
     {{/each}}
   </tbody>
 </table>
-
-<a href="/cramschool/meetings/create" class="btn btn-primary mb-2">建立會議記錄</a>
-
-<br />
-<br />
-<a class="ml-2" href="/cramschool">回到主頁面</a>
-
+</div>
 {{> pagination ariaLabel="會議紀錄分頁"}}
+<a href="/cramschool">回到主頁面</a>
+</div>

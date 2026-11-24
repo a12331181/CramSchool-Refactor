@@ -1,10 +1,8 @@
-<br>
+{{> workspace/page-heading}}
 
-<h3>建立教師日誌｜{{referenceLabel course.courseNo course.name}}</h3>
-
-<br>
-
-<form action="/cramschool/courses/{{course.id}}/diaries" method="POST">
+<div class="ws-content">
+<p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
+<form class="ws-form" action="/cramschool/courses/{{course.id}}/diaries" method="POST">
   <div class="mb-3">
     <label for="date" class="form-label">日期:</label>
     <input type="date" class="form-control" id="date" name="date" required>
@@ -23,7 +21,5 @@
 
   <button type="submit" class="btn btn-primary">送出</button>
 </form>
-
-<br />
-<br />
-<a href="javascript:history.back()">回上一頁</a>
+<a href="/cramschool/courses/{{course.id}}/diaries">返回列表</a>
+</div>

@@ -1,20 +1,10 @@
-<br>
+{{> workspace/page-heading}}
 
-<h3 style="color: rgb(92, 79, 79);"><strong>會議日期 : </strong>{{meeting.date}}</h3>
-
-<h5 style="color: rgb(167, 158, 158);"><strong>主持人 : </strong>{{referenceLabel meeting.Teacher.User.userNo meeting.Teacher.name}}</h5>
-
-<br>
-
-<div class="card">
-  <h5 class="card-header">主題 : {{meeting.subject}}</h5>
-  <div class="card-body">
-    <p class="card-text">{{meeting.content}}</p>
-  </div>
+<div class="ws-content">
+<article class="ws-sheet">
+  <h2>{{meeting.subject}}</h2>
+  <p class="text-muted"><time>{{meeting.date}}</time> · 主持人　{{referenceLabel meeting.Teacher.User.userNo meeting.Teacher.name}}</p>
+  <p class="ws-record">{{meeting.content}}</p>
+</article>
+<a href="/cramschool/meetings">返回列表</a>
 </div>
-
-<br />
-
-<br />
-<br />
-<a href="javascript:history.back()">回上一頁</a>

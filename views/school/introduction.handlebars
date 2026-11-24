@@ -1,65 +1,13 @@
-<div class="card mt-2">
-  <div class="card-body">
-    <h5><strong>前台課程功能</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item">可以瀏覽所有課程的資訊</li>
-      <li class="list-group-item">可以瞭解目前課程行事曆最新期數及進度</li>
-      <li class="list-group-item">可以瀏覽所有課程的學生名單</li>
-      <li class="list-group-item">該課程的教師可以撰寫該堂課的教師日誌</li>
-    </ul>
-  </div>
-  <div class="card-body">
-    <h5><strong>前台教師功能</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item">可以瀏覽所有教師資訊</li>
-      <li class="list-group-item">可以知道目前該教師所教授的課程</li>
-    </ul>
-  </div>
-  <div class="card-body">
-    <h5><strong>前台學生功能</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item">可以瀏覽學生資訊</li>
-      <li class="list-group-item">可以掌握目前學生上的課程有哪些</li>
-      <li class="list-group-item">可以瞭解學生的出缺席狀況</li>
-    </ul>
-  </div>
-  <div class="card-body">
-    <h5><strong>前台課程點名功能</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item">可以在上課前進行點名，並遞交學生出缺席紀錄</li>
-      <li class="list-group-item">如果出缺席狀態有誤可進行刪除並可重新遞交</li>
-    </ul>
-  </div>
-  <div class="card-body">
-    <h5><strong>前台繳費紀錄功能(只有管理員才有權限使用)</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item" style="color: rgb(57, 171, 224);">可以依照課程目前的期數為該堂課所有學生開立新的學費表</li>
-      <li class="list-group-item" style="color: rgb(57, 171, 224);">可以依照課程目前的期數為該堂課單一學生開立新的學費表</li>
-      <li class="list-group-item" style="color: rgb(57, 171, 224);">可以在學費表增加、減少額外費用</li>
-      <li class="list-group-item" style="color: rgb(57, 171, 224);">確認學費表後會一併建立繳費紀錄</li>
-      <li class="list-group-item" style="color: rgb(57, 171, 224);">建立繳費紀錄後可以查看學費表費用細項</li>
-      <li class="list-group-item" style="color: crimson;">※學費表未確認前可以刪除</li>
-      <li class="list-group-item" style="color: crimson;">※如果學費表已確認則要從繳費紀錄列表處刪除</li>
-      <li class="list-group-item" style="color: rgb(57, 171, 224);">可以將繳費狀態更改為已繳費</li>
-      <li class="list-group-item" style="color: crimson;">※如果繳費紀錄呈現未繳費狀態，可以做刪除的動作</li>
-      <li class="list-group-item" style="color: crimson;">※如果勾選已收款則無法刪除已繳費的紀錄</li>
-    </ul>
-  </div>
-  <div class="card-body">
-    <h5><strong>前台教師日誌功能</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item">可以瀏覽所有教師日誌</li>
-      <li class="list-group-item" style="color: rgb(57, 171, 224);">可刪除教師日誌(管理員才有權限使用)</li>
-    </ul>
-  </div>
-  <div class="card-body">
-    <h5><strong>前台會議紀錄功能</strong></h5>
-    <ul style="color: rgb(143, 143, 138)" class="list-group list-group-flush">
-      <li class="list-group-item">可以瀏覽所有會議記錄</li>
-      <li class="list-group-item">可以建立和瀏覽單一會議記錄</li>
-      <li class="list-group-item" style="color: rgb(57, 171, 224);">可以刪除單一會議記錄(管理員才有權限使用)</li>
-    </ul>
-  </div>
-</div>
+{{> workspace/page-heading}}
 
-<a class="mx-1" href="/cramschool">回到首頁</a>
+<div class="ws-content">
+<div class="ws-cards">
+  <section class="ws-sheet"><h2>課程與學生</h2><p>查看上課時段、選課學生與學生的出缺席紀錄。</p><a href="/cramschool/courses">課程列表</a> · <a href="/cramschool/students">學生名單</a></section>
+  <section class="ws-sheet"><h2>教師與點名</h2><p>查找授課教師，選擇課程與課堂後登記到課或請假。</p><a href="/cramschool/teachers">教師名單</a> · <a href="/cramschool/attend">課程點名</a></section>
+  <section class="ws-sheet"><h2>校務紀錄</h2><p>從任課課程建立教師日誌，也可以查看或建立會議紀錄。</p><a href="/cramschool/diaries">教師日誌</a> · <a href="/cramschool/meetings">會議紀錄</a></section>
+  {{#if user.isAdmin}}
+  <section class="ws-sheet"><h2>收費與對帳</h2><p>依月份試算、開立帳單，登記收款與退款，並核對實收金額。</p><a href="/cramschool/tuition/students">學生繳費紀錄</a> · <a href="/cramschool/tuition/cashflow">收退費對帳</a></section>
+  <section class="ws-sheet"><h2>後台管理</h2><p>編輯師生資料與課程、設定額外費用，或為新老師產生註冊連結。</p><a href="/admin/cramschool">後台總覽</a> · <a href="/admin/users">帳號管理</a></section>
+  {{/if}}
+</div>
+</div>

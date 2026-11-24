@@ -1,10 +1,7 @@
-<br>
+{{> workspace/page-heading}}
 
-<h3 style="color: rgb(199, 184, 145);"><strong>建立會議記錄</strong></h4>
-
-<br>
-
-<form action="/cramschool/meetings" method="POST">
+<div class="ws-content">
+<form class="ws-form" action="/cramschool/meetings" method="POST">
   <div class="mb-3">
     <label for="date" class="form-label">開會日期:</label>
     <input type="date" class="form-control" id="date" name="date" required>
@@ -27,3 +24,5 @@
 
   <button type="submit" class="btn btn-primary">送出</button>
 </form>
+<a href="/cramschool/meetings">返回列表</a>
+</div>

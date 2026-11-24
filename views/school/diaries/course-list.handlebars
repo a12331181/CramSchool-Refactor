@@ -1,28 +1,29 @@
-<br>
+{{#> workspace/page-heading}}
+  <a class="ws-btn ws-primary" href="/cramschool/courses/{{course.id}}/diaries/create">{{> workspace/icon name="plus"}}建立教師日誌</a>
+{{/workspace/page-heading}}
 
-<h1>{{referenceLabel course.courseNo course.name}}</h1>
-
-<h4 class="ml-2 mt-2" style="color: rgb(126, 120, 113);">教師日誌</h4>
-
+<div class="ws-content">
+<p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
+<div class="table-responsive">
 <table class="table table-bordered">
   <thead>
-    <tr class="table-primary">
-      <th scope="col">#</th>
+    <tr>
+      <th scope="col">編號</th>
       <th scope="col">日期</th>
       <th scope="col">主題</th>
-      <th scope="col">#</th>
+      <th scope="col">操作</th>
     </tr>
   </thead>
   <tbody>
     {{#each diaries}}
-    <tr class="table-light">
+    <tr>
       <th scope="row">{{this.id}}</th>
       <td>{{this.date}}</td>
       <td>{{this.subject}}</td>
       <td>
         <a href="/cramschool/courses/{{../course.id}}/diaries/{{this.id}}" class="btn btn-sm btn-dark my-1">日誌內容</a>
         {{#if canDelete}}
-        <form action="/cramschool/courses/{{../course.id}}/diaries/{{this.id}}?_method=DELETE" method="POST" style="display: inline;">
+        <form action="/cramschool/courses/{{../course.id}}/diaries/{{this.id}}?_method=DELETE" method="POST" class="ws-inline">
           <button type="submit" class="btn btn-sm btn-danger btn ml-1 my-1">刪除</button>
         </form>
         {{/if}}
@@ -30,17 +31,13 @@
     </tr>
     {{/each}}
     {{#if isDiaryNotExist}}
-    <tr class="table-light">
-      <th colspan="4" style="color: rgb(192, 72, 16);text-align: center;">目前暫無教師日誌</th>
+    <tr>
+      <th colspan="4">目前暫無教師日誌</th>
     </tr>
     {{/if}}
   </tbody>
 </table>
-
-<a href="/cramschool/courses/{{course.id}}/diaries/create" class="btn btn-primary">建立教師日誌</a>
-
-<br />
-<br />
-<a href="/cramschool/courses">回課程列表</a>
-
+</div>
 {{> pagination ariaLabel="課程教師日誌分頁"}}
+<a href="/cramschool/courses">回課程列表</a>
+</div>
