@@ -59,7 +59,7 @@ async function getGroupedCashRows(period, today, transaction) {
     let review = null
     if (!isTaipeiDateKey(group.paidOn) || group.paidOn > today) {
       review = CASH_REVIEW.DATE
-    } else if ((!Number.isSafeInteger(group.amount) || group.amount < 1)) {
+    } else if (!Number.isSafeInteger(group.amount) || group.amount < 1) {
       review = CASH_REVIEW.AMOUNT
     } else if (
       !getTaipeiMonthRange(group.billingMonth) ||

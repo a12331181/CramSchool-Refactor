@@ -55,7 +55,7 @@
 .ws-content input[type=file] { max-width: 100%; }
 .ws-content input[type=checkbox], .ws-content input[type=radio] { accent-color: var(--accent); }
 .ws-content input[readonly], .ws-content :disabled, .ws-access-card input[readonly] { background-color: #f3f5f3; }
-.ws-content .mb-3, .ws-content .form-row { margin-bottom: .95rem; }
+.ws-content .mb-3 { margin-bottom: .95rem; }
 .ws-content .ws-filter { display: flex; flex-wrap: wrap; gap: .55rem .75rem; align-items: center; padding: .85rem 1rem; border: 1px solid var(--line); background: #fafbf9; border-radius: 10px; }
 .ws-content .ws-filter label, .ws-content .ws-filter .mb-3 { margin: 0; }
 .ws-content nav .pagination { flex-wrap: wrap; gap: .22rem; }

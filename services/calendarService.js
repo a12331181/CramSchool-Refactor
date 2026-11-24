@@ -139,6 +139,8 @@ async function saveCourseSessions(courseId, slots, { batch, conflictKey, editing
   const { teacherId, classroomId } = slots[0]
 
   return sequelize.transaction(async transaction => {
+    // 先取得校務課表寫入鎖，再建立交易的讀取快照，以便檢查同時新增的其他班級。
+    await sequelize.query('SELECT id FROM ScheduleWrites WHERE id = 1 FOR UPDATE', { transaction })
     const locked = { transaction, lock: transaction.LOCK.UPDATE }
     const course = await Course.findByPk(courseId, {
       attributes: ['id', 'isActive'],

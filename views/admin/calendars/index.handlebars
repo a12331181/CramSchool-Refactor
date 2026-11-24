@@ -54,6 +54,7 @@
           {{/if}}
 
           {{#if this.canCancel}}
+          <a class="btn btn-sm btn-outline-secondary" href="/admin/courses/{{../course.id}}/sessions/{{id}}/move">調整本堂課</a>
           <form action="/admin/courses/{{../course.id}}/sessions/{{this.id}}/cancel?_method=PUT&amp;page={{../page}}"
             method="POST" class="ws-inline" onsubmit="return confirm('確定取消這堂課嗎？')">
       <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
