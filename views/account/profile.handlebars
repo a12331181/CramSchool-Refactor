@@ -1,5 +1,6 @@
 {{#> workspace/page-heading}}
   {{#if userIsMatch}}<a class="ws-btn ws-primary" href="/users/{{teacher.User.id}}/edit">{{> workspace/icon name="edit"}}編輯個人資料</a>{{/if}}
+  <a class="ws-btn" href="/cramschool/timetable?teacherId={{teacher.id}}">{{> workspace/icon name="calendar"}}授課課表</a>
 {{/workspace/page-heading}}
 
 <div class="ws-content">

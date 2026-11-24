@@ -13,13 +13,16 @@
   <button class="btn btn-primary">顯示課表</button>
 </form>
 <nav class="ws-schedule-paging" aria-label="課表日期"><a class="btn btn-outline-secondary" href="{{previous}}">上一期</a><a class="btn btn-outline-secondary" href="{{today}}">今天</a><a class="btn btn-outline-secondary" href="{{next}}">下一期</a></nav>
-<div class="ws-schedule-grid">
-  {{#each columns}}<section class="ws-schedule-col"><h2>{{name}}</h2>
-    {{#each rows}}<article class="ws-session {{#if cancelled}}ws-cancelled{{/if}}">
+<div class="ws-timeline-scroll" tabindex="0" aria-label="課表時間軸">
+<div class="ws-timeline" style="--hours:{{hours.length}}">
+  <div class="ws-time-axis"><h2>時間</h2><div>{{#each hours}}<time>{{this}}</time>{{/each}}</div></div>
+  {{#each columns}}<section class="ws-timeline-column"><h2>{{name}}</h2>
+    <div class="ws-hours">
+    {{#each rows}}<article tabindex="0" aria-label="{{time}} {{courseName}} {{roomName}} {{label}}" class="ws-session{{#if cancelled}} ws-cancelled{{/if}}" style="--offset:{{offset}};--duration:{{duration}};--left:{{leftPercent}}%;--width:{{widthPercent}}%">
       <time>{{time}}</time><strong>{{courseName}}</strong><span>{{teacherName}} · {{roomName}}</span><small>{{label}}</small>
       {{#if @root.user.isAdmin}}{{#if canMove}}<a href="/admin/courses/{{CourseId}}/sessions/{{id}}/move">調整課堂</a>{{/if}}{{/if}}
-    </article>{{else}}<p class="ws-muted">無已排課堂</p>{{/each}}
-  </section>{{/each}}
-</div>
+    </article>{{else}}<p class="ws-timeline-empty">無已排課堂</p>{{/each}}
+    </div></section>{{/each}}
+</div></div>
 {{#if legacy}}<section class="ws-sheet mt-3"><h2>時間待補</h2><ul>{{#each legacy}}<li>{{date}} · {{courseName}} · {{teacherName}}</li>{{/each}}</ul></section>{{/if}}
 {{#if user.isAdmin}}<details class="ws-sheet mt-3"><summary>新增教室</summary><form class="ws-schedule-filters" method="post" action="/cramschool/timetable/rooms"><input type="hidden" name="_csrf" value="{{@root.csrfToken}}"><label>教室名稱<input class="form-control" name="name" maxlength="80" required></label><button class="btn btn-primary">儲存教室</button></form></details>{{/if}}

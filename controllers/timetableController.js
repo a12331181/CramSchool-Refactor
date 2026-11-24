@@ -11,6 +11,7 @@ const schedule = require('../services/timetableService')
 
 const { getTaipeiDate, parseTaipeiDateTime, formatTaipeiDateTime } = require('../utils/date')
 const { sendPageError } = require('../utils/pageError')
+const { layoutTimetable } = require('../utils/timetableLayout')
 
 const { showWarnings } = require('./adminCalendarController')
 
@@ -28,13 +29,13 @@ async function timetable(req,res) {
   const days = Array.from({ length: data.range.length },(_,i) => schedule.shiftDay(data.range.start,i))
   const columns = mode === 'rooms' ? [...options.rooms, { id: null, name:'未指定教室' }]
     .filter(room => !filters.classroomId || room.id === filters.classroomId)
-    .map(room => ({ name: room.name, rows: data.sessions.filter(row => row.ClassroomId === room.id) })) :
-    days.map(date => ({ name: date.slice(5) + '（' + '日一二三四五六'[new Date(date + 'T12:00Z').getUTCDay()] + '）',
+    .map(room => ({ date: day, name: room.name, rows: data.sessions.filter(row => row.ClassroomId === room.id) })) :
+    days.map(date => ({ date, name: date.slice(5) + '（' + '日一二三四五六'[new Date(date + 'T12:00Z').getUTCDay()] + '）',
       rows: data.sessions.filter(row => row.startAt < parseTaipeiDateTime(schedule.shiftDay(date,1) + 'T00:00') &&
         row.endAt > parseTaipeiDateTime(date + 'T00:00')) }))
   const link = date => '/cramschool/timetable?' + new URLSearchParams({ date,mode,...filters })
   return res.render('school/schedule/index',{ workspaceTitle:'校務課表', activeNav:'timetable', day, mode, ...filters,
-    ...options, columns, legacy:data.legacy, previous:link(schedule.shiftDay(day,-days.length)),
+    ...options, ...layoutTimetable(columns), legacy:data.legacy, previous:link(schedule.shiftDay(day,-days.length)),
     next:link(schedule.shiftDay(day,days.length)), today:link(getTaipeiDate()) })
 }
 
