@@ -1,12 +1,9 @@
 // 多個校務操作使用相同文字時，在這裡維護。
 module.exports = Object.freeze({
   INVALID_COURSE: '課程 ID 必須是正整數',
-  INVALID_PAGE: '頁碼不正確或超出可處理範圍',
+  INVALID_PAGE: '頁碼必須是有效的正整數。',
   INVALID_COURSE_SESSION: '課程與課堂 ID 必須是正整數',
   INVALID_STUDENT: '學生 ID 必須是正整數',
-  INVALID_PAGE_2: '頁碼必須是正整數',
-  INVALID_PAGE_3: '頁碼必須是有效的正整數。',
-  INVALID_COURSE_2: '課程 ID 必須是正整數。',
   INVALID_DATE_CONTENT: '請填寫日期、40 字內的主題及有效內文。',
   MESSAGE_ATTACHMENT: '附件內容須與 JPG、PNG、PDF 或 Word 檔案格式相符。',
   INVALID_STUDENT_COURSE: '課程與學生 ID 必須是正整數',

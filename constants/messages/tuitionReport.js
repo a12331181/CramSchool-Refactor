@@ -30,7 +30,7 @@ module.exports = Object.freeze({
   getStudentTuitionHistoryPageNotFoundStudent: '找不到學生。',
   getStudentTuitionListPageInvalidPage: '頁碼不正確。',
   getStudentTuitionListPageUnavailableStudent: '目前無法取得學生學費列表。',
-  getCourseMonthlyTuitionPageInvalidCourse: common.INVALID_COURSE_2,
+  getCourseMonthlyTuitionPageInvalidCourse: common.INVALID_COURSE,
   getCourseMonthlyTuitionPageInvalidPage: '頁碼不正確。',
   getCourseMonthlyTuitionPageNotFoundCourse: '找不到課程。',
   getCourseMonthlyTuitionPageUnavailableCourse: '目前無法取得課程月學費。'

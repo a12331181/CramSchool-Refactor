@@ -23,9 +23,9 @@ module.exports = Object.freeze({
     VERSION_CONFLICT: '其他分頁已修改這筆點名，請核對重新載入的結果。',
     ENROLLMENT_UNCONFIRMED: '選課期間無法確認，請先核對。'
   },
-  getAttendanceHomePageInvalidPage: common.INVALID_PAGE_3,
-  getCourseAttendanceSessionsPageInvalidCourse: common.INVALID_COURSE_2,
-  getCourseAttendanceSessionsPageInvalidPage: common.INVALID_PAGE_3,
+  getAttendanceHomePageInvalidPage: common.INVALID_PAGE,
+  getCourseAttendanceSessionsPageInvalidCourse: common.INVALID_COURSE,
+  getCourseAttendanceSessionsPageInvalidPage: common.INVALID_PAGE,
   getCourseAttendanceSessionsPageInvalidMonth: '月份格式必須為 YYYY-MM。',
   getCourseAttendanceSessionsPageInvalidSessionStatus: '請選擇有效的課堂狀態。',
   getCourseAttendanceSessionsPageNotFoundCourse: '找不到可查看的課程。',

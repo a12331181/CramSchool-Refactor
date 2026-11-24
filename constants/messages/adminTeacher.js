@@ -1,7 +1,7 @@
 const common = require('./common')
 
 module.exports = Object.freeze({
-  getTeacherListPageInvalidPage: common.INVALID_PAGE_2,
+  getTeacherListPageInvalidPage: common.INVALID_PAGE,
   getTeacherListPageInvalidTeacherStatus: '教師狀態不正確',
   getTeacherDetailsPageInvalidTeacher: '教師 ID 必須是正整數',
   getEditTeacherPageInvalidTeacher: '教師 ID 必須是正整數',

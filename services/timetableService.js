@@ -1,6 +1,6 @@
 // 依台北日期、教室、教師或學生查詢課堂與今日點名進度。
 
-const { Op } = require('sequelize')
+const { Op, UniqueConstraintError } = require('sequelize')
 
 const { Calendar, Course, Classroom, Teacher, Student, Enrollment, Attend } = require('../models')
 
@@ -24,7 +24,7 @@ function rangeFor(day, mode) {
 }
 
 function approvedOn(rows, day) {
-  return getConfirmedSessionEnrollment(rows.filter(row => (!row.startsOn || row.startsOn <= day) && (!row.endsOn || row.endsOn > day)))
+  return getConfirmedSessionEnrollment(rows.filter(row => ['active','ended'].includes(row.status) && (!row.startsOn || row.startsOn <= day) && (!row.endsOn || row.endsOn > day)))
 }
 
 function display(row) {
@@ -96,4 +96,14 @@ async function getTodaySessions(user) {
     return { ...row, attendanceText: row.cancelled ? row.label : count ? '待點 ' + count + ' 位' : marked.size ? '已點名' : '尚無可點名學生' }
   })
 }
-module.exports = { getSchedule, filterOptions, getTodaySessions, shiftDay }
+// 同名教室交由資料庫唯一索引處理，也涵蓋同時送出的表單。
+async function addRoom(name) {
+  try { await Classroom.create({ name }); return true }
+  catch (error) { if (error instanceof UniqueConstraintError) return false; throw error }
+}
+
+function getSessionForEdit(courseId, sessionId) {
+  return Calendar.findOne({ where: { id:sessionId, CourseId:courseId }, raw:true })
+}
+
+module.exports = { addRoom, getSessionForEdit, getSchedule, filterOptions, getTodaySessions, shiftDay }

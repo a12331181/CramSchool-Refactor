@@ -1,9 +1,5 @@
 // 處理課表篩選、教室登記和單堂調課表單。
 
-const { UniqueConstraintError } = require('sequelize')
-
-const { Classroom, Calendar } = require('../models')
-
 const responses = require('../constants/messages/timetable')
 
 const calendars = require('../services/calendarService')
@@ -42,17 +38,14 @@ async function timetable(req,res) {
 async function addRoom(req,res) {
   const name = typeof req.body.name === 'string' ? req.body.name.trim() : ''
   if (!name || name.length > 80) return sendPageError(res,400,responses.addRoomInvalidRoom)
-  try { await Classroom.create({ name }) } catch (error) {
-    if (error instanceof UniqueConstraintError) return sendPageError(res,409,responses.addRoomUnchangedRoom)
-    throw error
-  }
+  if (!await schedule.addRoom(name)) return sendPageError(res,409,responses.addRoomUnchangedRoom)
   return res.redirect(303,'/cramschool/timetable?mode=rooms')
 }
 
 async function editSession(req,res) {
   const { courseId, sessionId } = req.params
   const form = await calendars.getCreateCourseSessionFormData(Number(courseId))
-  const row = await Calendar.findOne({ where:{ id:sessionId, CourseId:courseId }, raw:true })
+  const row = await schedule.getSessionForEdit(courseId,sessionId)
   if (!form.ok || !row?.startAt || !row.endAt) return sendPageError(res,404,responses.editSessionNotFoundSession)
   return res.render('admin/calendars/create',{ ...form, workspaceTitle:'調整單堂課', editId:row.id, selectedRoom:row.ClassroomId,
     teachers:form.teachers.map(t=>({...t,isSelected:t.id===row.TeacherId})), canSubmit:true, version:row.version,
