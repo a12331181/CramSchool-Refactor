@@ -1,10 +1,12 @@
 const { Router } = require('express')
-const { authenticatedAdmin } = require('../middlewares/auth')
-const tuitionPaymentController = require('../controllers/tuitionPaymentController')
-const tuitionCashflowController = require('../controllers/tuitionCashflowController')
-const tuitionReportController = require('../controllers/tuitionReportController')
-const tuitionPricingController = require('../controllers/tuitionPricingController')
+
 const tuitionBillController = require('../controllers/tuitionBillController')
+const tuitionCashflowController = require('../controllers/tuitionCashflowController')
+const tuitionPaymentController = require('../controllers/tuitionPaymentController')
+const tuitionPricingController = require('../controllers/tuitionPricingController')
+const tuitionReportController = require('../controllers/tuitionReportController')
+
+const { authenticatedAdmin } = require('../middlewares/auth')
 
 const router = Router()
 

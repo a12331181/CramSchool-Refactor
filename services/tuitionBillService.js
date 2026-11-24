@@ -1,29 +1,35 @@
+// 建立與核發學費帳單，在交易內處理草稿明細及請假折抵。
+
+const { createHash } = require('node:crypto')
+const { isDeepStrictEqual } = require('node:util')
+
+const { Op, Transaction, UniqueConstraintError, ValidationError } = require('sequelize')
+
+const { Attend, Calendar, Course, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, Payment, AuditLog, User, sequelize } = require('../models')
+
+const ATTEND_STATUS = require('../constants/attendStatus')
+const { COURSE_TYPES } = require('../constants/courseOptions')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const { MAX_EXTRA_FEE_QUANTITY, MAX_EXTRA_FEE_BILL_AMOUNT } = require('../constants/extraFeeLimits')
-const { allocateTuitionDocumentNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
+const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const {
   MAX_TUITION_BILL_VERSION,
   MAX_TUITION_BILL_ITEM_AMOUNT,
   MAX_UNSIGNED_INT,
   TUITION_BILL_HISTORY_LIMIT
 } = require('../constants/tuitionBillLimits')
-const { Op, Transaction, UniqueConstraintError, ValidationError } = require('sequelize')
-const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
-const { createHash } = require('node:crypto')
-const { isDeepStrictEqual } = require('node:util')
-const { Attend, Calendar, Course, Student, ExtraFee, TuitionBill, TuitionBillItem, TuitionLeaveReview, Payment, AuditLog, User, sequelize } = require('../models')
-const { COURSE_TYPES } = require('../constants/courseOptions')
-const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
-const ATTEND_STATUS = require('../constants/attendStatus')
-const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
-const paymentAllocationService = require('./tuitionPaymentAllocationService')
+const { DRAFT_ADJUSTMENT_REMOVAL_REASONS, DRAFT_NON_BLOCKING_REVIEW_CODES } = require('../constants/tuitionDraftReview')
+
+const { allocateTuitionDocumentNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
 const { getIssuedCourseFees, excludeIssuedCourseFees } = require('./tuitionCourseChargeService')
-const { getTuitionBillRefundSummary, hasTuitionBillRefund } = require('./tuitionRefundService')
+const paymentAllocationService = require('./tuitionPaymentAllocationService')
 const { getTuitionBillPaymentStatus, getPaidTuitionBillPayments, summarizeTuitionBillPayments } = require('./tuitionPaymentStateService')
 const { getStudentTuitionPreview } = require('./tuitionPricingService')
+const { getTuitionBillRefundSummary, hasTuitionBillRefund } = require('./tuitionRefundService')
 const { readTuitionSnapshot } = require('./tuitionReportService')
 
-const { DRAFT_ADJUSTMENT_REMOVAL_REASONS, DRAFT_NON_BLOCKING_REVIEW_CODES } = require('../constants/tuitionDraftReview')
+const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
 
 function buildDraftCourseFeeItems(preview) {
   if (!preview.ok) return preview

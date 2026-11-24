@@ -1,6 +1,9 @@
 const express = require('express')
+
 const adminTeacherController = require('../controllers/adminTeacherController')
+
 const { authenticatedAdmin } = require('../middlewares/auth')
+
 const router = express.Router()
 
 router.use(authenticatedAdmin)

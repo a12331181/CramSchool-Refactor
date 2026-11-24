@@ -1,4 +1,7 @@
+// 核對帳單與明細已退、可退金額及退款分攤。
+
 const { Op } = require('sequelize')
+
 const { TuitionBillRefund, TuitionBillRefundAllocation } = require('../models')
 
 const isPositiveAmount = value => Number.isSafeInteger(value) && value > 0

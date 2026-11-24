@@ -1,9 +1,11 @@
-const { getIncompleteProfileFields } = require('../services/teacherService')
-const { getTaipeiDate } = require('../utils/date')
-const meetingService = require('../services/meetingService')
-const diaryService = require('../services/diaryService')
+// 組合首頁的今日課堂、會議、日誌及個人資料提醒。
 
+const diaryService = require('../services/diaryService')
+const meetingService = require('../services/meetingService')
+const { getIncompleteProfileFields } = require('../services/teacherService')
 const { getTodaySessions } = require('../services/timetableService')
+
+const { getTaipeiDate } = require('../utils/date')
 
 const schoolController = {
   getHomePage: async (req, res) => {

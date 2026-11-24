@@ -1,6 +1,11 @@
+// 彙整正式帳單的實收、分攤及退款資料。
+
 const { Op } = require('sequelize')
+
 const { TuitionBillItem } = require('../models')
+
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
+
 const { getAllocationStates } = require('./tuitionPaymentAllocationService')
 const { getIssuedTuitionBillPaymentData } = require('./tuitionPaymentStateService')
 const { getRefundLedgers } = require('./tuitionRefundLedgerService')

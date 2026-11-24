@@ -1,12 +1,18 @@
-const { TEACHER_PROFILE_FIELDS } = require('../constants/profileOptions')
-const { discardUnusedProfileImage } = require('./profileImageService')
-const SCHOOL_CODE = require('../constants/schoolCode')
+// 管理登入帳號資料、註冊交易與使用者權限。
+
 const bcrypt = require('bcryptjs')
 const { Op, Transaction, Validator, UniqueConstraintError } = require('sequelize')
+
 const { User, UserNoCounter, Teacher, Course, sequelize } = require('../models')
+
+const { TEACHER_PROFILE_FIELDS } = require('../constants/profileOptions')
+const SCHOOL_CODE = require('../constants/schoolCode')
 const TEACHER_STATUS = require('../constants/teacherStatus')
-const { getTaipeiDate } = require('../utils/date')
+
+const { discardUnusedProfileImage } = require('./profileImageService')
 const { getActiveInvitation } = require('./teacherInvitationService')
+
+const { getTaipeiDate } = require('../utils/date')
 
 async function signUp({ name, email, password, realName, phone, inviteToken } = {}) {
   const requiredText = [name, email, realName]

@@ -1,9 +1,13 @@
-const responses = require('../constants/messages/student')
-const { studentDirectoryQuery } = require('../utils/studentDirectory')
-const { sendPageError } = require('../utils/pageError')
-const studentService = require('../services/studentService')
+// 顯示學生基本資料、修課與歷次出缺席。
+
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
+const responses = require('../constants/messages/student')
+
+const studentService = require('../services/studentService')
+
 const { formatTaipeiDateTime } = require('../utils/date')
+const { sendPageError } = require('../utils/pageError')
+const { studentDirectoryQuery } = require('../utils/studentDirectory')
 
 const studentController = {
   getStudentDetailsPage: async (req, res) => {

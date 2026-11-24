@@ -1,9 +1,13 @@
+// 顯示與維護教師日誌，並核對日期、附件及刪除權限。
+
 const responses = require('../constants/messages/diary')
-const { validateUploads, recordContents } = require('../services/recordAttachmentService')
-const { sendPageError } = require('../utils/pageError')
-const diaryService = require('../services/diaryService')
-const { getPagination, getPaginationLinks, getPageOffset } = require('../utils/pagination')
 const { SCHOOL_RECORDS_PAGE_SIZE } = require('../constants/pagination')
+
+const diaryService = require('../services/diaryService')
+const { validateUploads, recordContents } = require('../services/recordAttachmentService')
+
+const { sendPageError } = require('../utils/pageError')
+const { getPagination, getPaginationLinks, getPageOffset } = require('../utils/pagination')
 
 const diaryController = {
   getDiaryListPage: async (req, res) => {

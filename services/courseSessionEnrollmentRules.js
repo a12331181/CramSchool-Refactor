@@ -1,4 +1,7 @@
+// 依課堂日期判定學生的選課期間是否明確有效。
+
 const { Op } = require('sequelize')
+
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
 
 function getCandidateEnrollmentWhere(sessionDate) {

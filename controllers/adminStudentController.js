@@ -1,10 +1,14 @@
+// 處理管理端學生資料、在學狀態及選課頁面。
+
 const responses = require('../constants/messages/adminStudent')
-const { studentDirectoryQuery } = require('../utils/studentDirectory')
-const { sendPageError } = require('../utils/pageError')
 const { SEX_OPTIONS, GRADE_OPTIONS, STUDENT_STATUS_OPTIONS } = require('../constants/profileOptions')
+
 const { discardUnusedProfileImage } = require('../services/profileImageService')
 const studentService = require('../services/studentService')
+
 const imageStorage = require('../utils/imageStorage')
+const { sendPageError } = require('../utils/pageError')
+const { studentDirectoryQuery } = require('../utils/studentDirectory')
 
 const adminStudentController = {
   getCreateStudentPage: (req, res) => {

@@ -1,15 +1,16 @@
-const recordUpload = require('../middlewares/recordUpload')
-const { verifyForm } = require('../middlewares/formSecurity')
-const { download } = require('../controllers/recordAttachmentController')
 const { Router } = require('express')
-const { authenticated, authenticatedAdmin } = require('../middlewares/auth')
-const schoolController = require('../controllers/schoolController')
-const meetingController = require('../controllers/meetingController')
-const diaryController = require('../controllers/diaryController')
 
+const diaryController = require('../controllers/diaryController')
+const makeup = require('../controllers/makeupController')
+const meetingController = require('../controllers/meetingController')
+const { download } = require('../controllers/recordAttachmentController')
+const schoolController = require('../controllers/schoolController')
 const timetable = require('../controllers/timetableController')
 
-const makeup = require('../controllers/makeupController')
+const { authenticated, authenticatedAdmin } = require('../middlewares/auth')
+const { verifyForm } = require('../middlewares/formSecurity')
+const recordUpload = require('../middlewares/recordUpload')
+
 const router = Router()
 
 router.get('/makeups', authenticatedAdmin, makeup.list)
@@ -29,7 +30,13 @@ router.delete('/diaries/:diaryId', authenticated, diaryController.deleteDiary)
 router.get('/diaries', authenticated, diaryController.getDiaryListPage)
 router.get('/courses/:courseId/diaries', authenticated, diaryController.getCourseDiariesPage)
 router.get('/courses/:courseId/diaries/create', authenticated, diaryController.getCreateDiaryPage)
-router.post('/courses/:courseId/diaries', authenticated, recordUpload, verifyForm, diaryController.createDiary)
+router.post(
+  '/courses/:courseId/diaries',
+  authenticated,
+  recordUpload,
+  verifyForm,
+  diaryController.createDiary
+)
 router.get(
   '/courses/:courseId/diaries/:diaryId',
   authenticated,

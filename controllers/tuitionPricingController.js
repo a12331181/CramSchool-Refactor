@@ -1,17 +1,21 @@
-const responses = require('../constants/messages/tuitionPricing')
-const { sendPageError } = require('../utils/pageError')
-const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
-const { formatReferenceLabel } = require('../utils/referenceLabel')
-const { getStudentReference } = require('../services/studentService')
-const { MIN_GROUP_BILLS } = require('../constants/tuitionPayment')
-const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
-const { getTaipeiDate } = require('../utils/date')
-const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
+// 呈現學費試算及管理員的請假折抵審核。
+
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
-const { buildMonthlyPaymentNotice } = require('../utils/tuitionPaymentNotice')
+const responses = require('../constants/messages/tuitionPricing')
+const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
+const { MIN_GROUP_BILLS } = require('../constants/tuitionPayment')
+
+const { getStudentReference } = require('../services/studentService')
+const tuitionBillService = require('../services/tuitionBillService')
 const tuitionPricingService = require('../services/tuitionPricingService')
 const tuitionReportService = require('../services/tuitionReportService')
-const tuitionBillService = require('../services/tuitionBillService')
+
+const { getTaipeiDate } = require('../utils/date')
+const { sendPageError } = require('../utils/pageError')
+const { formatReferenceLabel } = require('../utils/referenceLabel')
+const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
+const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
+const { buildMonthlyPaymentNotice } = require('../utils/tuitionPaymentNotice')
 const { amountFormat, getTuitionNavigationParams, withQuery, getTuitionBillPaymentStatusText, getRefundAmountText } = require('../utils/tuitionViewData.js')
 
 const tuitionPricingController = {

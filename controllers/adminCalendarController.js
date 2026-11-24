@@ -1,13 +1,16 @@
-const responses = require('../constants/messages/adminCalendar')
-const { sendPageError } = require('../utils/pageError')
-const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
-const calendarService = require('../services/calendarService')
-const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
-const { formatTaipeiDateTime, getTaipeiDate, parseTaipeiDateTime } = require('../utils/date')
-const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
-const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
+// 管理員建立、調整及結束課堂，並處理衝堂提示與舊紀錄。
 
 const COURSE_SESSION_BATCH_LIMIT = require('../constants/courseSessionBatchLimit')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
+const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
+const responses = require('../constants/messages/adminCalendar')
+const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
+
+const calendarService = require('../services/calendarService')
+
+const { formatTaipeiDateTime, getTaipeiDate, parseTaipeiDateTime } = require('../utils/date')
+const { sendPageError } = require('../utils/pageError')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
 
 const BATCH_ERRORS = responses.batchErrors

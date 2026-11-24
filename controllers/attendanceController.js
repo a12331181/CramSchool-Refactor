@@ -1,14 +1,18 @@
-const responses = require('../constants/messages/attendance')
-const { sendPageError } = require('../utils/pageError')
-const { formatReferenceLabel } = require('../utils/referenceLabel')
-const attendanceService = require('../services/attendanceService')
-const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
-const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
+// 呈現課堂點名名單，處理出缺席登記及更正紀錄。
+
 const ATTEND_STATUS = require('../constants/attendStatus')
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
+const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
+const responses = require('../constants/messages/attendance')
 const { DIRECTORY_PAGE_SIZE, ATTENDANCE_SESSION_PAGE_SIZE } = require('../constants/pagination')
+
+const attendanceService = require('../services/attendanceService')
+
 const { formatTaipeiDateTime } = require('../utils/date')
+const { sendPageError } = require('../utils/pageError')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
+const { formatReferenceLabel } = require('../utils/referenceLabel')
 
 const attendanceController = {
   getAttendanceHomePage: async (req, res) => {

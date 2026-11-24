@@ -1,3 +1,5 @@
+// 呈現管理員的後台首頁與校務入口。
+
 const adminDashboardController = {
   getAdminDashboardPage: (_req, res) => {
     return res.render('admin/dashboard', {

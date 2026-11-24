@@ -1,10 +1,16 @@
-const { getTeacherAccountInclude } = require('./teacherService')
-const { getCandidateEnrollmentWhere, getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
-const { User, Course, Teacher, Calendar, Enrollment, Student, Attend, AuditLog, sequelize } = require('../models')
+// 依授課權限與選課有效日期讀寫點名，記錄更正前後的狀態。
+
 const { Op, col, UniqueConstraintError } = require('sequelize')
+
+const { User, Course, Teacher, Calendar, Enrollment, Student, Attend, AuditLog, sequelize } = require('../models')
+
+const ATTEND_STATUS = require('../constants/attendStatus')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
-const ATTEND_STATUS = require('../constants/attendStatus')
+
+const { getCandidateEnrollmentWhere, getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
+const { getTeacherAccountInclude } = require('./teacherService')
+
 const { getTaipeiDate, getTaipeiMonthRange } = require('../utils/date')
 
 async function getAttendanceViewer(userId) {

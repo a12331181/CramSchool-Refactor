@@ -1,8 +1,11 @@
-const { MAX_PAYMENT_ITEMS } = require('../constants/tuitionPayment')
+// 核對收款明細分攤，並在同一交易內記錄入帳項目。
+
 const { Op } = require('sequelize')
-const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
+
 const { TuitionPaymentAllocation } = require('../models')
 
+const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
+const { MAX_PAYMENT_ITEMS } = require('../constants/tuitionPayment')
 
 function buildPayableItems(items, totalAmount) {
   const payableItems = []

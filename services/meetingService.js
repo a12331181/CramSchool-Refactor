@@ -1,6 +1,9 @@
+// 讀寫會議及作者資料，建立紀錄時一併保存附件。
+
+const { Meeting, Teacher } = require('../models')
+
 const { createSchoolRecord } = require('./recordAttachmentService')
 const { getTeacherAccountInclude } = require('./teacherService')
-const { Meeting, Teacher } = require('../models')
 
 function getRecentMeetings(limit) {
   return Meeting.findAll({

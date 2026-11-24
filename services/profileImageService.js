@@ -1,4 +1,7 @@
+// 管理教師頭像上傳、替換及未使用的暫存檔案。
+
 const { Student, Teacher } = require('../models')
+
 const imageStorage = require('../utils/imageStorage')
 
 // Current and earlier uploads used generated filenames. Leave named assets and external URLs alone.

@@ -1,5 +1,8 @@
-const { TEACHER_PROFILE_FIELDS } = require('../constants/profileOptions')
+// 讀寫教師資料，查詢授課清單及尚待補填的個人欄位。
+
 const { Teacher, User } = require('../models')
+
+const { TEACHER_PROFILE_FIELDS } = require('../constants/profileOptions')
 const TEACHER_STATUS = require('../constants/teacherStatus')
 
 function getTeacherAccountInclude() {

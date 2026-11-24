@@ -1,9 +1,13 @@
+// 管理校內帳號權限及新教師的註冊邀請。
+
 const responses = require('../constants/messages/adminUser')
-const { sendPageError } = require('../utils/pageError')
-const userService = require('../services/userService')
+
 const invitationService = require('../services/teacherInvitationService')
-const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
+const userService = require('../services/userService')
+
 const { formatTaipeiDateTime } = require('../utils/date')
+const { sendPageError } = require('../utils/pageError')
+const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
 
 const adminUserController = {
   getUserListPage: async (req, res) => {

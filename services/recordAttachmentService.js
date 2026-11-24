@@ -1,5 +1,9 @@
+// 驗證校務附件、組合受限格式的內文，並讀取指定紀錄的檔案。
+
 const path = require('node:path')
+
 const yauzl = require('yauzl')
+
 const { Diary, Meeting, RecordAttachment, sequelize } = require('../models')
 
 const allowed = {

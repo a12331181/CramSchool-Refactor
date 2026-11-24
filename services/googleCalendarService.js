@@ -1,6 +1,10 @@
+// 將課堂異動單向送至校方指定的日曆，保存同步狀態以供重試。
+
 const { createHash } = require('node:crypto')
-const { Op } = require('sequelize')
+
 const { GoogleAuth } = require('google-auth-library')
+const { Op } = require('sequelize')
+
 const { sequelize, Calendar, CalendarExport, Course, Classroom } = require('../models')
 
 function digest(value) {

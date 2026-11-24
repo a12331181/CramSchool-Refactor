@@ -1,6 +1,9 @@
-const responses = require('../constants/messages/adminExtraFee')
-const extraFeeService = require('../services/extraFeeService')
+// 處理額外費用項目的新增、編輯及刪除。
+
 const { MAX_EXTRA_FEE_PRICE } = require('../constants/extraFeeLimits')
+const responses = require('../constants/messages/adminExtraFee')
+
+const extraFeeService = require('../services/extraFeeService')
 
 const adminExtraFeeController = {
   getExtraFeeListPage: async (_req, res) => {

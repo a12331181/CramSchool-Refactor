@@ -1,9 +1,13 @@
+// 處理會議紀錄的列表、建立、閱讀及刪除。
+
 const responses = require('../constants/messages/meeting')
-const { validateUploads, recordContents } = require('../services/recordAttachmentService')
-const { sendPageError } = require('../utils/pageError')
-const meetingService = require('../services/meetingService')
-const { getPagination, getPaginationLinks, getPageOffset } = require('../utils/pagination')
 const { SCHOOL_RECORDS_PAGE_SIZE } = require('../constants/pagination')
+
+const meetingService = require('../services/meetingService')
+const { validateUploads, recordContents } = require('../services/recordAttachmentService')
+
+const { sendPageError } = require('../utils/pageError')
+const { getPagination, getPaginationLinks, getPageOffset } = require('../utils/pagination')
 
 const meetingController = {
   getMeetingListPage: async (req, res) => {

@@ -1,7 +1,11 @@
+// 依課程計價方式與有效選課期間計算本期費用。
+
 const { TuitionBill, TuitionBillItem } = require('../models')
-const COURSE_FEE_TYPES = require('../constants/courseOptions').COURSE_TYPES
-const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
+
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
+const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
+
+const COURSE_FEE_TYPES = require('../constants/courseOptions').COURSE_TYPES
 
 const isId = value => Number.isSafeInteger(value) && value > 0
 

@@ -1,5 +1,9 @@
+// 建立有期限的教師邀請，核對信箱並防止重複使用。
+
 const { createHash, randomBytes } = require('node:crypto')
+
 const { Transaction, Validator } = require('sequelize')
+
 const { TeacherInvitation, User, sequelize } = require('../models')
 
 const { INVITATION_HOURS } = require('../constants/teacherInvitation')

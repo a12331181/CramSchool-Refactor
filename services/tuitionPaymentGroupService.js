@@ -1,10 +1,17 @@
+// 將同一學生的多張帳單合併收款，防止重複入帳。
+
 const { createHash } = require('node:crypto')
+
 const { Op, Transaction, UniqueConstraintError } = require('sequelize')
+
 const { AuditLog, Payment, Student, TuitionBill, TuitionPaymentGroup, sequelize } = require('../models')
+
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { MIN_GROUP_BILLS, MAX_GROUP_BILLS, MAX_GROUP_NOTE_LENGTH } = require('../constants/tuitionPayment')
-const { getTaipeiDate, getTaipeiMonthRange, isTaipeiDateKey } = require('../utils/date')
+
 const { isPaymentAmount, isPaymentVersion, prepareBillPayment, saveBillPayment } = require('./tuitionPaymentService')
+
+const { getTaipeiDate, getTaipeiMonthRange, isTaipeiDateKey } = require('../utils/date')
 
 const isId = n => Number.isSafeInteger(n) && n > 0
 const isRequestKey = value =>

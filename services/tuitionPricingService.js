@@ -1,9 +1,14 @@
+// 依月份計算學費試算、出席及可折抵請假。
+
 const { Op } = require('sequelize')
+
 const { Attend, Calendar, Course, Enrollment, Student, sequelize } = require('../models')
+
+const ATTEND_STATUS = require('../constants/attendStatus')
 const { COURSE_TYPES, COURSE_PRICING_FIELDS } = require('../constants/courseOptions')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
-const ATTEND_STATUS = require('../constants/attendStatus')
+
 const { parseTaipeiDateTime, getTaipeiDate, getTaipeiMonthRange } = require('../utils/date')
 
 function getTuitionEnrollmentStateForMonth(row, { monthStart, nextMonthStart }) {

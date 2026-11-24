@@ -1,8 +1,11 @@
-const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
+// 依帳單明細與實際收款分攤推算各課程的收費狀態。
+
 const COURSE_PAYMENT_REVIEW = require('../constants/coursePaymentReview')
+const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
+
+const { getIssuedTuitionBillFinancialData } = require('./tuitionBillFinancialService')
 const { buildPayableItems } = require('./tuitionPaymentAllocationService')
 const { getLastPaidOn } = require('./tuitionPaymentStateService')
-const { getIssuedTuitionBillFinancialData } = require('./tuitionBillFinancialService')
 
 function review(code, totalAmount = null) {
   return {

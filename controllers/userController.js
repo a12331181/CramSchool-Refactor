@@ -1,10 +1,14 @@
+// 處理邀請註冊、登入登出及教師個人資料表單。
+
 const responses = require('../constants/messages/user')
-const { sendPageError } = require('../utils/pageError')
 const { SEX_OPTIONS } = require('../constants/profileOptions')
+
 const { discardUnusedProfileImage } = require('../services/profileImageService')
-const userService = require('../services/userService')
-const imageStorage = require('../utils/imageStorage')
 const { getActiveInvitation } = require('../services/teacherInvitationService')
+const userService = require('../services/userService')
+
+const imageStorage = require('../utils/imageStorage')
+const { sendPageError } = require('../utils/pageError')
 
 const unavailableInvite = responses.invitationUnavailable
 

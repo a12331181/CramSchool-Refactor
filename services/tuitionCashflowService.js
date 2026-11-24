@@ -1,11 +1,16 @@
+// 按實際收退費日期彙整對帳資料及待核對標記。
+
 const { Op, Transaction } = require('sequelize')
+
 const { Payment, Student, TuitionBill, TuitionBillRefund, TuitionPaymentGroup, sequelize } = require('../models')
+
+const DATE_SHAPE = require('../constants/cashflowDatePattern')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
-const { getTaipeiDate, getTaipeiMonthRange, isTaipeiDateKey } = require('../utils/date')
+const { CASH_KIND, CASH_REVIEW } = require('../constants/tuitionCashflow')
 
 const { getGroupPaymentRows, groupPaymentAllocationsAreValid } = require('./tuitionPaymentGroupService')
-const { CASH_KIND, CASH_REVIEW } = require('../constants/tuitionCashflow')
-const DATE_SHAPE = require('../constants/cashflowDatePattern')
+
+const { getTaipeiDate, getTaipeiMonthRange, isTaipeiDateKey } = require('../utils/date')
 
 function cashRow(record, kind, today) {
   const bill = record.TuitionBill

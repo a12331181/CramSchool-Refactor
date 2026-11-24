@@ -1,9 +1,13 @@
+// 顯示與更新教師的人事資料。
+
 const responses = require('../constants/messages/adminTeacher')
-const { sendPageError } = require('../utils/pageError')
-const { SEX_OPTIONS, TEACHER_STATUS_OPTIONS } = require('../constants/profileOptions')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
-const teacherService = require('../services/teacherService')
+const { SEX_OPTIONS, TEACHER_STATUS_OPTIONS } = require('../constants/profileOptions')
 const TEACHER_STATUS = require('../constants/teacherStatus')
+
+const teacherService = require('../services/teacherService')
+
+const { sendPageError } = require('../utils/pageError')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const adminTeacherController = {

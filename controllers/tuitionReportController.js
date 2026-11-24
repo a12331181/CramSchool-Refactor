@@ -1,14 +1,17 @@
+// 呈現按月份、課程及學生查詢的收費報表。
+
 const responses = require('../constants/messages/tuitionReport')
-const { sendPageError } = require('../utils/pageError')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
-const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
-const { formatReferenceLabel } = require('../utils/referenceLabel')
-const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
-const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
-const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
-const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
+const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
+
 const tuitionReportService = require('../services/tuitionReportService')
+
+const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
+const { sendPageError } = require('../utils/pageError')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
+const { formatReferenceLabel } = require('../utils/referenceLabel')
+const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
 const { amountFormat, getTuitionNavigationParams, withQuery, getTuitionBillPaymentStatusText, getRefundAmountText, getRefundStatusText, getCoursePaymentStatusText } = require('../utils/tuitionViewData.js')
 
 const COURSE_COLLECTION_LABELS = responses.collectionLabels

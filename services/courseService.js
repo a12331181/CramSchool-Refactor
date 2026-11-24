@@ -1,10 +1,15 @@
-const { getTeacherAccountInclude } = require('./teacherService')
-const { allocateCourseNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
-const {Course, Teacher, Student, Calendar, Enrollment, LegacyTuition, TuitionBillItem, Diary, Attend, sequelize} = require('../models')
-const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
+// 查詢與維護課程、計價設定及啟用狀態。
+
 const { Op } = require('sequelize')
+
+const {Course, Teacher, Student, Calendar, Enrollment, LegacyTuition, TuitionBillItem, Diary, Attend, sequelize} = require('../models')
+
+const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const TEACHER_STATUS = require('../constants/teacherStatus')
+
+const { allocateCourseNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
+const { getTeacherAccountInclude } = require('./teacherService')
 
 async function getCourseDirectoryPage({ userId, limit, offset }) {
   const [{ rows, count }, teacher] = await Promise.all([

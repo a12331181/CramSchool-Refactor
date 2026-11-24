@@ -1,11 +1,15 @@
+// 提供收退費對帳清單與 CSV 匯出。
+
 const responses = require('../constants/messages/tuitionCashflow')
 const { CASHFLOW_PAGE_SIZE } = require('../constants/pagination')
-const { formatReferenceLabel } = require('../utils/referenceLabel')
+const { CASH_KIND } = require('../constants/tuitionCashflow')
+
 const { getTuitionCashflow } = require('../services/tuitionCashflowService')
-const { CASH_KIND, CASH_REVIEW } = require('../constants/tuitionCashflow')
-const { buildCashflowCsv } = require('../utils/tuitionCashflowCsv')
+
 const { getTaipeiDate } = require('../utils/date')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
+const { formatReferenceLabel } = require('../utils/referenceLabel')
+const { buildCashflowCsv } = require('../utils/tuitionCashflowCsv')
 
 const CASHFLOW_URL = '/cramschool/tuition/cashflow'
 const CSV_URL = '/cramschool/tuition/cashflow.csv'

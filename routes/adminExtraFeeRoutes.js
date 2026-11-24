@@ -1,9 +1,11 @@
-const { sendPageError } = require('../utils/pageError')
 const { Router } = require('express')
-const { authenticatedAdmin } = require('../middlewares/auth')
+
 const adminExtraFeeController = require('../controllers/adminExtraFeeController')
 
+const { authenticatedAdmin } = require('../middlewares/auth')
+
 const { InvalidExtraFeePrice } = require('../utils/extraFeePrice')
+const { sendPageError } = require('../utils/pageError')
 
 const router = Router()
 

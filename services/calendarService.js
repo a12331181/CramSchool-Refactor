@@ -1,14 +1,20 @@
-const { findStudentConflicts } = require('./scheduleConflictService')
-const { getTeacherAccountInclude } = require('./teacherService')
-const { getCandidateEnrollmentWhere, isConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
+// 在交易內檢查教師、教室與時段，建立、調整或取消課堂。
+
 const { Op, col, fn, literal, where } = require('sequelize')
+
+const { Classroom, Course, Calendar, Teacher, Enrollment, Attend, TuitionBill, TuitionBillItem, sequelize } = require('../models')
+
+const ATTEND_STATUS = require('../constants/attendStatus')
+const COURSE_SESSION_BATCH_LIMIT = require('../constants/courseSessionBatchLimit')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
+const TEACHER_STATUS = require('../constants/teacherStatus')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
-const { Classroom, Course, Calendar, Teacher, Enrollment, Attend, TuitionBill, TuitionBillItem, sequelize } = require('../models')
-const TEACHER_STATUS = require('../constants/teacherStatus')
-const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
-const COURSE_SESSION_BATCH_LIMIT = require('../constants/courseSessionBatchLimit')
-const ATTEND_STATUS = require('../constants/attendStatus')
+
+const { getCandidateEnrollmentWhere, isConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
+const { findStudentConflicts } = require('./scheduleConflictService')
+const { getTeacherAccountInclude } = require('./teacherService')
+
 const { parseTaipeiDateTime, getTaipeiDate } = require('../utils/date')
 
 async function getAdminCourseCalendarPage({ courseId, page, pageSize }) {

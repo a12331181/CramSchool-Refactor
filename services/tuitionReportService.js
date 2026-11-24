@@ -1,18 +1,24 @@
-const { getStudentReference } = require('./studentService')
-const { formatReferenceLabel } = require('../utils/referenceLabel')
+// 在一致的帳務快照上彙整學生與課程的當期及歷史報表。
+
 const { Op, Transaction } = require('sequelize')
-const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
-const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
+
 const { Course, Enrollment, Student, TuitionBill, TuitionBillItem, sequelize } = require('../models')
+
+const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
 const STUDENT_STATUS = require('../constants/studentStatus')
 const STUDENT_TUITION_STATUS = require('../constants/studentTuitionStatus')
-const COURSE_COLLECTION_STATUS = require('../constants/courseCollectionStatus')
-const { parseTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
-const { canReceiveBillPayment } = require('./tuitionPaymentService')
-const { getIssuedCoursePaymentStatuses } = require('./tuitionCoursePaymentService')
+const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
+const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
+
+const { getStudentReference } = require('./studentService')
 const { getIssuedTuitionBillFinancialData, getBillRefundAmounts, summarizeStudentBillGroup, combinePaymentStatuses, sumKnownAmounts } = require('./tuitionBillFinancialService')
+const { getIssuedCoursePaymentStatuses } = require('./tuitionCoursePaymentService')
+const { canReceiveBillPayment } = require('./tuitionPaymentService')
 const { getTuitionBillPaymentState, getIssuedTuitionBillPaymentStatuses } = require('./tuitionPaymentStateService')
 const { getTuitionEnrollmentStateForMonth, getStudentTuitionPreview } = require('./tuitionPricingService')
+
+const { parseTaipeiDateTime, getTaipeiMonthRange } = require('../utils/date')
+const { formatReferenceLabel } = require('../utils/referenceLabel')
 
 async function getStudentTuitionBillsForMonth({ studentId, billingMonth } = {}) {
   if (!Number.isSafeInteger(studentId) || studentId < 1) {

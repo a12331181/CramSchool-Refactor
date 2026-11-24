@@ -1,11 +1,18 @@
-const responses = require('../constants/messages/timetable')
+// 處理課表篩選、教室登記和單堂調課表單。
+
 const { UniqueConstraintError } = require('sequelize')
+
 const { Classroom, Calendar } = require('../models')
-const schedule = require('../services/timetableService')
+
+const responses = require('../constants/messages/timetable')
+
 const calendars = require('../services/calendarService')
-const { showWarnings } = require('./adminCalendarController')
+const schedule = require('../services/timetableService')
+
 const { getTaipeiDate, parseTaipeiDateTime, formatTaipeiDateTime } = require('../utils/date')
 const { sendPageError } = require('../utils/pageError')
+
+const { showWarnings } = require('./adminCalendarController')
 
 async function timetable(req,res) {
   const day = req.query.date ?? getTaipeiDate()

@@ -1,6 +1,9 @@
+// 讀寫課程日誌，並檢查作者與管理員的刪除資格。
+
+const { Course, Diary, Teacher, sequelize } = require('../models')
+
 const { createSchoolRecord } = require('./recordAttachmentService')
 const { getTeacherAccountInclude } = require('./teacherService')
-const { Course, Diary, Teacher, sequelize } = require('../models')
 
 function activeCourseInclude() {
   return { model: Course, attributes: ['id', 'courseNo', 'name'], where: { isActive: true } }

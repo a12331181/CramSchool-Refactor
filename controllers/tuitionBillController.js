@@ -1,17 +1,21 @@
-const responses = require('../constants/messages/tuitionBill')
-const { sendPageError } = require('../utils/pageError')
+// 處理草稿、費用明細、折抵、出帳與帳單檢視。
+
 const { MAX_EXTRA_FEE_QUANTITY } = require('../constants/extraFeeLimits')
-const { formatReferenceLabel } = require('../utils/referenceLabel')
-const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
-const { MAX_PAYMENT_AMOUNT, MAX_REFUND_AMOUNT } = require('../constants/tuitionPayment')
-const { readUnsignedInteger } = require('../utils/formNumbers')
+const responses = require('../constants/messages/tuitionBill')
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
-const { getTaipeiDate, formatTaipeiDateTime, isTaipeiDateKey } = require('../utils/date')
-const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
+const { MAX_PAYMENT_AMOUNT, MAX_REFUND_AMOUNT } = require('../constants/tuitionPayment')
 const REFUND_MESSAGES = require('../constants/tuitionRefundMessages')
-const { buildTuitionPaymentNotice } = require('../utils/tuitionPaymentNotice')
+
 const tuitionBillService = require('../services/tuitionBillService')
+
+const { getTaipeiDate, formatTaipeiDateTime, isTaipeiDateKey } = require('../utils/date')
+const { readUnsignedInteger } = require('../utils/formNumbers')
+const { sendPageError } = require('../utils/pageError')
+const { formatReferenceLabel } = require('../utils/referenceLabel')
+const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
+const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
+const { buildTuitionPaymentNotice } = require('../utils/tuitionPaymentNotice')
 const { getTuitionNavigationParams, withQuery, getTuitionBillPaymentStatusText } = require('../utils/tuitionViewData.js')
 
 function describeTuitionBillChange({ before, after }) {

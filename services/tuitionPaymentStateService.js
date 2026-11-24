@@ -1,6 +1,11 @@
+// 由已登記的付款彙算帳單實收與剩餘金額。
+
 const { Op } = require('sequelize')
+
 const { Payment, TuitionBill } = require('../models')
+
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
+
 const { isTaipeiDateKey } = require('../utils/date')
 
 function getTuitionBillPaymentState(paymentStatus) {

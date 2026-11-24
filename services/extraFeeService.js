@@ -1,4 +1,7 @@
+// 讀寫額外費用，於儲存前驗證收費金額。
+
 const { ExtraFee } = require('../models')
+
 const { parseExtraFeePrice } = require('../utils/extraFeePrice')
 
 function getExtraFees() {

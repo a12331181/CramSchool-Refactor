@@ -1,12 +1,18 @@
+// 維護學生資料，查詢學生、修課及出缺席記錄。
+
+const { Op } = require('sequelize')
+
+const {Student, Course, Enrollment, Calendar, Attend, LegacyTuition, TuitionBill, sequelize} = require('../models')
+
+const ATTEND_STATUS = require('../constants/attendStatus')
+const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
+const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
+const STUDENT_STATUS = require('../constants/studentStatus')
+
+const { getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
 const { discardUnusedProfileImage } = require('./profileImageService')
 const { allocateStudentNo, ReferenceNumberExhaustedError } = require('./referenceNumberService')
-const { getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
-const {Student, Course, Enrollment, Calendar, Attend, LegacyTuition, TuitionBill, sequelize} = require('../models')
-const { Op } = require('sequelize')
-const STUDENT_STATUS = require('../constants/studentStatus')
-const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
-const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
-const ATTEND_STATUS = require('../constants/attendStatus')
+
 const { getTaipeiDate } = require('../utils/date')
 
 function getStudentReference(studentId, transaction) {

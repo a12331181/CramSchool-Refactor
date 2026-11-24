@@ -1,5 +1,7 @@
 const express = require('express')
+
 const enrollmentController = require('../controllers/enrollmentController')
+
 const router = express.Router()
 
 router.get('/:studentId/enrolls', enrollmentController.getEnrollmentPage)

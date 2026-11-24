@@ -1,17 +1,22 @@
-const responses = require('../constants/messages/tuitionPayment')
-const { sendPageError } = require('../utils/pageError')
-const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
-const { formatReferenceLabel } = require('../utils/referenceLabel')
-const { readUnsignedInteger } = require('../utils/formNumbers')
+// 處理單筆或合併收款、分攤確認及收款紀錄。
+
 const { randomUUID } = require('node:crypto')
+
+const responses = require('../constants/messages/tuitionPayment')
+const { MAX_PAYMENT_AMOUNT, MIN_GROUP_BILLS, MAX_GROUP_BILLS, MAX_GROUP_NOTE_LENGTH } = require('../constants/tuitionPayment')
+const REFUND_MESSAGES = require('../constants/tuitionRefundMessages')
+
+const tuitionPaymentGroupService = require('../services/tuitionPaymentGroupService')
 const { recordTuitionBillPayment } = require('../services/tuitionPaymentService')
 const { recordTuitionBillRefund } = require('../services/tuitionRefundService')
 const { getStudentTuitionBillsForMonth } = require('../services/tuitionReportService')
-const tuitionPaymentGroupService = require('../services/tuitionPaymentGroupService')
-const { MAX_PAYMENT_AMOUNT, MIN_GROUP_BILLS, MAX_GROUP_BILLS, MAX_GROUP_NOTE_LENGTH } = require('../constants/tuitionPayment')
+
 const { getTaipeiDate } = require('../utils/date')
+const { readUnsignedInteger } = require('../utils/formNumbers')
+const { sendPageError } = require('../utils/pageError')
+const { formatReferenceLabel } = require('../utils/referenceLabel')
 const { createSessionFormToken, isValidSessionFormToken } = require('../utils/sessionFormToken')
-const REFUND_MESSAGES = require('../constants/tuitionRefundMessages')
+const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
 
 const amountFormat = new Intl.NumberFormat('zh-TW')
 const paymentGroupBase = '/cramschool/tuition/payment-groups'

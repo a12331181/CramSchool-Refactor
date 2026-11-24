@@ -1,8 +1,10 @@
-const { verifyForm } = require('../middlewares/formSecurity')
 const { Router } = require('express')
-const { authenticated } = require('../middlewares/auth')
-const upload = require('../middlewares/upload')
+
 const userController = require('../controllers/userController')
+
+const { authenticated } = require('../middlewares/auth')
+const { verifyForm } = require('../middlewares/formSecurity')
+const upload = require('../middlewares/upload')
 
 module.exports = passport => {
   const router = Router()
@@ -12,7 +14,8 @@ module.exports = passport => {
   router.put(
     '/users/:userId',
     authenticated,
-    upload.single('image'), verifyForm,
+    upload.single('image'),
+    verifyForm,
     userController.updateUserProfile
   )
   router.get('/signup', userController.loadTeacherInvitation, userController.getSignUpPage)

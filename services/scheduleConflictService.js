@@ -1,9 +1,16 @@
+// 以有效選課期間找出跨班重疊的學生，產生本次確認依據。
+
 const { createHash } = require('node:crypto')
+
 const { Op } = require('sequelize')
+
 const { Enrollment, Calendar, Student, Course } = require('../models')
-const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
-const { getCandidateEnrollmentWhere, getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
+
 const STATUS = require('../constants/courseSessionStatus')
+
+const { getCandidateEnrollmentWhere, getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
+
+const { getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 
 function groupByStudent(rows) {
   const group = new Map()

@@ -1,5 +1,9 @@
+// 檢查附件與原紀錄的關係，回傳圖片或下載文件。
+
 const responses = require('../constants/messages/recordAttachment')
+
 const records = require('../services/recordAttachmentService')
+
 const { sendPageError } = require('../utils/pageError')
 
 async function download(req, res) {

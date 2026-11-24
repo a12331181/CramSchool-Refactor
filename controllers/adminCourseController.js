@@ -1,11 +1,15 @@
-const responses = require('../constants/messages/adminCourse')
-const { sendPageError } = require('../utils/pageError')
-const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
-const { readUnsignedInteger } = require('../utils/formNumbers')
-const { COURSE_PREFIX_LETTERS } = require('../constants/referenceNumbers')
-const courseService = require('../services/courseService')
-const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
+// 管理課程基本資料、計費方式及開關課狀態。
+
 const { COURSE_TIMES, COURSE_TYPES, MAX_COURSE_PRICE } = require('../constants/courseOptions')
+const responses = require('../constants/messages/adminCourse')
+const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
+const { COURSE_PREFIX_LETTERS } = require('../constants/referenceNumbers')
+
+const courseService = require('../services/courseService')
+
+const { readUnsignedInteger } = require('../utils/formNumbers')
+const { sendPageError } = require('../utils/pageError')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const COURSE_SETTINGS_MESSAGES = responses.courseSettings
 

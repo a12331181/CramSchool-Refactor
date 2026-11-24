@@ -1,7 +1,9 @@
-const studentDirectoryController = require('../controllers/studentDirectoryController')
 const { Router } = require('express')
-const { authenticated } = require('../middlewares/auth')
+
 const studentController = require('../controllers/studentController')
+const studentDirectoryController = require('../controllers/studentDirectoryController')
+
+const { authenticated } = require('../middlewares/auth')
 
 const router = Router()
 

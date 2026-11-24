@@ -1,7 +1,12 @@
+// 維護學生選課的生效與結束日期，避免重複選課。
+
 const { Op } = require('sequelize')
+
 const { Enrollment, Student, Course, sequelize } = require('../models')
-const STUDENT_STATUS = require('../constants/studentStatus')
+
 const ENROLLMENT_STATUS = require('../constants/enrollmentStatus')
+const STUDENT_STATUS = require('../constants/studentStatus')
+
 const { getTaipeiDate } = require('../utils/date')
 
 async function addEnrollment({ studentId, courseId }) {

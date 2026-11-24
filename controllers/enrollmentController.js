@@ -1,6 +1,10 @@
+// 處理學生選課與退選，回傳實際異動結果。
+
 const responses = require('../constants/messages/enrollment')
-const { sendPageError } = require('../utils/pageError')
+
 const enrollmentService = require('../services/enrollmentService')
+
+const { sendPageError } = require('../utils/pageError')
 
 const enrollmentController = {
   getEnrollmentPage: async (req, res) => {

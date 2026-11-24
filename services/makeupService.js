@@ -1,6 +1,11 @@
+// 在交易內登記補課決定與目的課堂，連結原請假及折抵紀錄。
+
 const { Op } = require('sequelize')
+
 const { sequelize, Attend, Calendar, Course, Teacher, Student, MakeupLesson, TuitionBillItem, TuitionLeaveReview } = require('../models')
+
 const { STATES } = require('../constants/makeup')
+
 const { formatTaipeiDateTime, parseTaipeiDateTime } = require('../utils/date')
 
 const sessionIncludes = () => [{ model: Course, attributes: ['id','name'] }, { model: Teacher, attributes: ['name'] }]

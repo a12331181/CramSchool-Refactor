@@ -1,8 +1,12 @@
+// 為教師及管理員提供共用的學生搜尋與分頁結果。
+
 const responses = require('../constants/messages/studentDirectory')
-const { sendPageError } = require('../utils/pageError')
-const studentService = require('../services/studentService')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const STUDENT_STATUS = require('../constants/studentStatus')
+
+const studentService = require('../services/studentService')
+
+const { sendPageError } = require('../utils/pageError')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 async function renderDirectory(req, res, manageStudents) {

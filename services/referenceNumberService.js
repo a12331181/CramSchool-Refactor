@@ -1,6 +1,10 @@
+// 安全地配置學生、課程、帳單等校務編號。
+
 const { QueryTypes } = require('sequelize')
-const SCHOOL_CODE = require('../constants/schoolCode')
+
 const { COURSE_SEQUENCE_WIDTH, STUDENT_SEQUENCE_WIDTH, TUITION_DOCUMENT_SEQUENCE_WIDTH } = require('../constants/referenceNumbers')
+const SCHOOL_CODE = require('../constants/schoolCode')
+
 const { getTaipeiDate } = require('../utils/date')
 
 class ReferenceNumberExhaustedError extends Error {}

@@ -1,13 +1,19 @@
-const { MAX_TUITION_BILL_VERSION } = require('../constants/tuitionBillLimits')
-const { MAX_REFUND_AMOUNT, MAX_PAYMENT_ITEMS } = require('../constants/tuitionPayment')
+// 驗證退款原因與金額，在交易內建立退款及稽核紀錄。
+
 const { Op, Transaction, json } = require('sequelize')
+
 const { TuitionBill, TuitionBillItem, TuitionBillRefund, TuitionBillRefundAllocation, AuditLog, sequelize } = require('../models')
-const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
+
 const TUITION_BILL_ITEM_KIND = require('../constants/tuitionBillItemKind')
-const { isTaipeiDateKey, getTaipeiDate } = require('../utils/date')
-const { getPaidTuitionBillPayments, summarizeTuitionBillPayments } = require('./tuitionPaymentStateService')
+const { MAX_TUITION_BILL_VERSION } = require('../constants/tuitionBillLimits')
+const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
+const { MAX_REFUND_AMOUNT, MAX_PAYMENT_ITEMS } = require('../constants/tuitionPayment')
+
 const { getAllocationState } = require('./tuitionPaymentAllocationService')
+const { getPaidTuitionBillPayments, summarizeTuitionBillPayments } = require('./tuitionPaymentStateService')
 const { getRefundLedger } = require('./tuitionRefundLedgerService')
+
+const { isTaipeiDateKey, getTaipeiDate } = require('../utils/date')
 
 async function hasTuitionBillRefund(billId, transaction) {
   const refund = await TuitionBillRefund.findOne({

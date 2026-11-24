@@ -1,7 +1,9 @@
-const { verifyForm } = require('../middlewares/formSecurity')
-const studentDirectoryController = require('../controllers/studentDirectoryController')
 const express = require('express')
+
 const adminStudentController = require('../controllers/adminStudentController')
+const studentDirectoryController = require('../controllers/studentDirectoryController')
+
+const { verifyForm } = require('../middlewares/formSecurity')
 const upload = require('../middlewares/upload')
 
 const router = express.Router()

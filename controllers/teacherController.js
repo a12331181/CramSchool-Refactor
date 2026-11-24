@@ -1,7 +1,11 @@
+// 提供教師名單與在職資訊。
+
 const responses = require('../constants/messages/teacher')
-const { sendPageError } = require('../utils/pageError')
-const teacherService = require('../services/teacherService')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
+
+const teacherService = require('../services/teacherService')
+
+const { sendPageError } = require('../utils/pageError')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 const teacherController = {

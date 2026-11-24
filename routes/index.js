@@ -1,18 +1,19 @@
 const { authenticated, authenticatedAdmin } = require('../middlewares/auth')
-const schoolRoutes = require('./schoolRoutes')
-const courseRoutes = require('./courseRoutes')
-const attendanceRoutes = require('./attendanceRoutes')
-const teacherRoutes = require('./teacherRoutes')
-const studentRoutes = require('./studentRoutes')
-const tuitionRoutes = require('./tuitionRoutes')
-const adminDashboardRoutes = require('./adminDashboardRoutes')
-const adminUserRoutes = require('./adminUserRoutes')
-const adminCourseRoutes = require('./adminCourseRoutes')
-const adminExtraFeeRoutes = require('./adminExtraFeeRoutes')
+
 const createAccountRoutes = require('./accountRoutes')
-const adminTeacherRoutes = require('./adminTeacherRoutes')
+const adminCourseRoutes = require('./adminCourseRoutes')
+const adminDashboardRoutes = require('./adminDashboardRoutes')
+const adminExtraFeeRoutes = require('./adminExtraFeeRoutes')
 const adminStudentRoutes = require('./adminStudentRoutes')
+const adminTeacherRoutes = require('./adminTeacherRoutes')
+const adminUserRoutes = require('./adminUserRoutes')
+const attendanceRoutes = require('./attendanceRoutes')
+const courseRoutes = require('./courseRoutes')
 const enrollmentRoutes = require('./enrollmentRoutes')
+const schoolRoutes = require('./schoolRoutes')
+const studentRoutes = require('./studentRoutes')
+const teacherRoutes = require('./teacherRoutes')
+const tuitionRoutes = require('./tuitionRoutes')
 
 module.exports = (app, passport) => {
   app.get('/', authenticated, (req, res) => res.redirect('/cramschool'))
@@ -29,10 +30,5 @@ module.exports = (app, passport) => {
   app.use('/admin/extrafees', adminExtraFeeRoutes)
   app.use('/', createAccountRoutes(passport))
   app.use('/admin/teachers', adminTeacherRoutes)
-  app.use(
-    '/admin/students',
-    authenticatedAdmin,
-    adminStudentRoutes,
-    enrollmentRoutes
-  )
+  app.use('/admin/students', authenticatedAdmin, adminStudentRoutes, enrollmentRoutes)
 }

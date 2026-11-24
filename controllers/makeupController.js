@@ -1,9 +1,13 @@
+// 呈現管理員補課清單，接收補課安排與完成決定。
+
 const responses = require('../constants/messages/makeup')
-const makeup = require('../services/makeupService')
-const { getTaipeiDate, isTaipeiDateKey } = require('../utils/date')
-const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
-const { sendPageError } = require('../utils/pageError')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
+
+const makeup = require('../services/makeupService')
+
+const { getTaipeiDate, isTaipeiDateKey } = require('../utils/date')
+const { sendPageError } = require('../utils/pageError')
+const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
 
 async function list(req,res) {
   const date = req.query.date ?? getTaipeiDate()

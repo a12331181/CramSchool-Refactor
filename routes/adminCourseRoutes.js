@@ -1,9 +1,10 @@
 const { Router } = require('express')
-const { authenticatedAdmin } = require('../middlewares/auth')
+
 const adminCalendarController = require('../controllers/adminCalendarController')
 const adminCourseController = require('../controllers/adminCourseController')
-
 const timetable = require('../controllers/timetableController')
+
+const { authenticatedAdmin } = require('../middlewares/auth')
 
 const router = Router()
 

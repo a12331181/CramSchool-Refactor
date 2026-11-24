@@ -1,10 +1,15 @@
-const { MAX_TUITION_BILL_VERSION } = require('../constants/tuitionBillLimits')
+// 核對帳單版本與待收金額，在交易內登記單筆付款。
+
 const { AuditLog, Payment, TuitionBill, TuitionBillItem, sequelize } = require('../models')
+
+const { MAX_TUITION_BILL_VERSION } = require('../constants/tuitionBillLimits')
 const TUITION_BILL_STATUS = require('../constants/tuitionBillStatus')
 const { MAX_PAYMENT_AMOUNT, MAX_PAYMENT_ITEMS } = require('../constants/tuitionPayment')
-const { getTaipeiDate, isTaipeiDateKey } = require('../utils/date')
-const { getPaidTuitionBillPayments, summarizeTuitionBillPayments } = require('./tuitionPaymentStateService')
+
 const { getAllocationState, createAllocations } = require('./tuitionPaymentAllocationService')
+const { getPaidTuitionBillPayments, summarizeTuitionBillPayments } = require('./tuitionPaymentStateService')
+
+const { getTaipeiDate, isTaipeiDateKey } = require('../utils/date')
 
 const isPositiveInteger = n => Number.isSafeInteger(n) && n > 0
 const isPaymentVersion = n => Number.isSafeInteger(n) && n >= 0 && n < MAX_TUITION_BILL_VERSION

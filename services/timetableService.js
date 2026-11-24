@@ -1,9 +1,15 @@
+// 依台北日期、教室、教師或學生查詢課堂與今日點名進度。
+
 const { Op } = require('sequelize')
+
 const { Calendar, Course, Classroom, Teacher, Student, Enrollment, Attend } = require('../models')
-const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
-const { getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
+
 const STATUS = require('../constants/courseSessionStatus')
 const labels = require('../constants/courseSessionStatusLabels')
+
+const { getConfirmedSessionEnrollment } = require('./courseSessionEnrollmentRules')
+
+const { parseTaipeiDateTime, getTaipeiDate, formatTaipeiDateTime } = require('../utils/date')
 
 function shiftDay(day, days) {
   const instant = parseTaipeiDateTime(day + 'T12:00')
