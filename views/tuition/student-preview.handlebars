@@ -79,6 +79,7 @@
 {{/if}}
 {{#if draftFormToken}}
 <form method="POST" action="{{draftAction}}" class="mb-3">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <input type="hidden" name="billingMonth" value="{{preview.billingMonth}}">
   <input type="hidden" name="tuitionFormToken" value="{{draftFormToken}}">
   <button type="submit" class="btn btn-primary">儲存草稿</button>

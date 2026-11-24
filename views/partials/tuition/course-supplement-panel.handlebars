@@ -17,6 +17,7 @@
           <td>{{totalText}}</td>
           <td>
             <form method="POST" action="{{../supplementPanel.action}}">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
               <input type="hidden" name="tuitionFormToken" value="{{../supplementPanel.formToken}}">
               <input type="hidden" name="billingMonth" value="{{../supplementPanel.billingMonth}}">
               <input type="hidden" name="courseId" value="{{id}}">

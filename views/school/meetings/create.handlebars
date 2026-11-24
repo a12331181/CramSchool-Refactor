@@ -2,6 +2,7 @@
 
 <div class="ws-content">
 <form class="ws-form" action="/cramschool/meetings" method="POST">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <div class="mb-3">
     <label for="date" class="form-label">開會日期:</label>
     <input type="date" class="form-control" id="date" name="date" required>

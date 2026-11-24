@@ -34,6 +34,7 @@
             <details>
               <summary>審核請假原因</summary>
               <form method="POST" action="{{../actionBase}}/{{attendId}}" class="mt-2">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
                 <input type="hidden" name="tuitionFormToken" value="{{../formToken}}">
                 <input type="hidden" name="billingMonth" value="{{../billingMonth}}">
                 <input type="hidden" name="attendVersion" value="{{attendVersion}}">

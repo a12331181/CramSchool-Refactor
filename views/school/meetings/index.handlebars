@@ -26,6 +26,7 @@
         {{#if ../isAdmin}}
         <form action="/cramschool/meetings/{{this.id}}?_method=DELETE" method="POST"
           class="ws-inline">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
           <button type="submit" class="btn btn-danger btn-sm ms-1 my-1">刪除</button>
         </form>
         {{/if}}

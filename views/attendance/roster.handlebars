@@ -43,6 +43,7 @@
         {{#if this.canCreateAttend}}
         <form method="POST"
           action="/cramschool/attend/courses/{{../course.id}}/calendar/{{../calendar.id}}/students/{{this.id}}">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
           <input type="hidden" name="calendarStartAt" value="{{../calendarStartAt}}">
           <input type="hidden" name="calendarEndAt" value="{{../calendarEndAt}}">
 
@@ -67,6 +68,7 @@
 
           <form method="POST"
             action="/cramschool/attend/courses/{{../course.id}}/calendar/{{../calendar.id}}/students/{{this.id}}?_method=PUT">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
             <input type="hidden" name="attendId" value="{{this.attendId}}">
             <input type="hidden" name="attendVersion" value="{{this.attendVersion}}">
             <input type="hidden" name="calendarStartAt" value="{{../calendarStartAt}}">

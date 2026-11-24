@@ -19,6 +19,7 @@
 {{/unless}}
 
 <form class="ws-form" action="/admin/courses/{{course.id}}/sessions/batch" method="POST">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <input type="hidden" name="batchToken" value="{{batchToken}}">
   <div class="form-row">
     <div class="mb-3 col-md-3">

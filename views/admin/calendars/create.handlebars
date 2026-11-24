@@ -13,6 +13,7 @@
 {{/unless}}
 
 <form class="ws-form" action="/admin/courses/{{course.id}}/sessions" method="POST">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <div class="mb-3">
     <label for="startAt">開始時間（台北）</label>
     <input type="datetime-local" class="form-control" id="startAt" name="startAt" value="{{values.startAt}}" step="60" required>

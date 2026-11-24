@@ -27,6 +27,7 @@
       <td class="ws-cell-actions" data-label="操作">
         {{#if canDelete}}
         <form action="/cramschool/diaries/{{this.id}}?_method=DELETE" method="POST" class="ws-inline">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
           <button type="submit" class="btn btn-sm btn-danger">刪除</button>
         </form>
         {{/if}}

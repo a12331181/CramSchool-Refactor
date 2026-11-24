@@ -2,6 +2,9 @@ const express = require('express')
 const { engine } = require('express-handlebars')
 const flash = require('connect-flash')
 const session = require('express-session')
+const SequelizeStore = require('connect-session-sequelize')(session.Store)
+const { sequelize } = require('./models')
+const { protectForms } = require('./middlewares/formSecurity')
 const passport = require('./config/passport')
 const methodOverride = require('method-override')
 const fs = require('node:fs')
@@ -27,7 +30,12 @@ app.set('view engine', 'handlebars')
 // setup bodyParser
 app.use(express.urlencoded({ extended: true }))
 // setup session and flash
-app.use(session({ secret: getSessionSecret(), resave: false, saveUninitialized: false }))
+if (process.env.TRUST_PROXY_HOPS === '1') app.set('trust proxy', 1)
+const sessionStore = new SequelizeStore({ db: sequelize, tableName: 'SchoolSessions' })
+app.use(session({
+  store: sessionStore, secret: getSessionSecret(), resave: false, saveUninitialized: false,
+  cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' }
+}))
 // setup passport
 app.use(passport.initialize())
 app.use(passport.session())
@@ -51,6 +59,7 @@ app.use((req, res, next) => {
   next()
 })
 
+app.use(protectForms)
 require('./routes')(app, passport)
 app.use(handleImageUploadError)
 app.use((req, res, next) => {

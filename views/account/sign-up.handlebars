@@ -1,4 +1,5 @@
 <form class="ws-access-form" action="/signup" method="POST">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <input type="hidden" name="inviteToken" value="{{inviteToken}}">
   <h1>註冊帳號</h1>
   

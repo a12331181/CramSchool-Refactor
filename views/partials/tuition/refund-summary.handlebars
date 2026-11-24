@@ -26,6 +26,7 @@
   {{#if blockedMessage}}<p class="alert alert-warning">{{blockedMessage}}</p>{{/if}}
   {{#with form}}
   <form method="POST" action="{{action}}" onsubmit="return confirm('確認已實際退費，要登記這筆退費嗎？')">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
     <p class="text-muted">請在實際退費後登記。系統只保存紀錄，不會匯款。</p>
     <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
     <input type="hidden" name="billVersion" value="{{billVersion}}">

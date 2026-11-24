@@ -2,6 +2,7 @@
 
 <div class="ws-content">
 <form class="ws-form" action="/admin/courses/{{calendar.Course.id}}/calendar/{{calendar.id}}?_method=PUT" method="POST">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <p>課程：{{referenceLabel calendar.Course.courseNo calendar.Course.name}}</p>
 
   <div class="mb-3">

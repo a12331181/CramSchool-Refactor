@@ -3,6 +3,7 @@
   <h2 id="extra-fee-heading" class="h5">加入額外費用</h2>
   {{#if extraFeeFormToken}}
   <form method="POST" action="/cramschool/tuition/bills/{{bill.id}}/extra-fees" class="mb-3">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
     <input type="hidden" name="tuitionFormToken" value="{{extraFeeFormToken}}">
     <input type="hidden" name="billVersion" value="{{bill.version}}">
 

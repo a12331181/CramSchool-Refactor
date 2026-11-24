@@ -7,6 +7,7 @@
 <p class="small text-muted">如果這筆匯款只付其中一張帳單的部分課程，請從該張帳單的「分項收款」登記。</p>
 
 <form method="POST" action="{{action}}" id="tuition-payment-group-form" class="ws-form">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
   <input type="hidden" name="billingMonth" value="{{billingMonth}}">
   <input type="hidden" name="requestKey" value="{{requestKey}}">

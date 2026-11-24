@@ -3,8 +3,10 @@
 <div class="ws-content">
 {{#if extrafee}}
 <form class="ws-form" action="/admin/extrafees/{{extrafee.id}}?_method=PUT" method="POST">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
 {{else}}
 <form class="ws-form" action="/admin/extrafees" method="POST">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
 {{/if}}
   <div class="mb-3">
     <label for="name">名稱</label>

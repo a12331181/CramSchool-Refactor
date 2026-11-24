@@ -43,7 +43,8 @@
           <a class="ws-action" href="/admin/students/{{id}}/edit">{{> workspace/icon name="edit"}}編輯</a>
           {{#ifCond status ../activeStatus}}
           <a class="ws-action" href="/admin/students/{{id}}/enrolls">{{> workspace/icon name="book"}}選課</a>
-          <form method="post" action="/admin/students/{{id}}?_method=DELETE"><button class="ws-action ws-danger" type="submit">{{> workspace/icon name="trash"}}刪除</button></form>
+          <form method="post" action="/admin/students/{{id}}?_method=DELETE">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}"><button class="ws-action ws-danger" type="submit">{{> workspace/icon name="trash"}}刪除</button></form>
           {{/ifCond}}
         </div></td>
         {{/if}}

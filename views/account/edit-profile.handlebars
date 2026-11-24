@@ -2,6 +2,7 @@
 
 <div class="ws-content">
 <form class="ws-form" action="/users/{{profile.id}}?_method=PUT" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <div class="mb-3">
     <label for="name">教師名稱</label>
     <input type="text" class="form-control" name="name" id="name" placeholder="輸入教師名稱.." value="{{profile.Teacher.name}}"

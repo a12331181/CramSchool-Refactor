@@ -3,8 +3,10 @@
 <div class="ws-content">
 {{#if course}}
 <form class="ws-form" action="/admin/courses/{{course.id}}?_method=PUT" method="POST">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
 {{else}}
 <form class="ws-form" action="/admin/courses" method="POST">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
 {{/if}}
   {{#if course}}
   <p>課程編號：<strong>{{#if course.courseNo}}{{course.courseNo}}{{else}}—{{/if}}</strong></p>

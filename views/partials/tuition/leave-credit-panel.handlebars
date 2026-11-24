@@ -17,6 +17,7 @@
 
       {{#if ../formToken}}
       <form method="POST" action="{{../action}}" class="mt-2">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
         <input type="hidden" name="tuitionFormToken" value="{{../formToken}}">
         <input type="hidden" name="billVersion" value="{{../billVersion}}">
         <input type="hidden" name="attendId" value="{{attendId}}">

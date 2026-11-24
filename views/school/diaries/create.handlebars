@@ -3,6 +3,7 @@
 <div class="ws-content">
 <p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
 <form class="ws-form" action="/cramschool/courses/{{course.id}}/diaries" method="POST">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <div class="mb-3">
     <label for="date" class="form-label">日期:</label>
     <input type="date" class="form-control" id="date" name="date" required>

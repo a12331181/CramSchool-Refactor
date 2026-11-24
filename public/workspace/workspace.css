@@ -169,3 +169,5 @@
   .ws-directory .ws-actions { gap: 14px; }
   .ws-id { display: inline; margin-left: 4px; }
 }
+
+.ws-logout { width: 100%; border: 0; background: transparent; text-align: start; cursor: pointer; }

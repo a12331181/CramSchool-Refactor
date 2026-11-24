@@ -33,6 +33,7 @@
   {{/if}}
   <div class="ws-group ws-secondary">
     {{> workspace-link href="/cramschool/introduction" icon="info" label="關於系統" tab="about"}}
-    {{> workspace-link href="/logout" icon="logout" label="登出" tab="logout"}}
+    <form action="/logout" method="post">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}"><button class="ws-nav-link ws-logout" type="submit">{{> workspace/icon name="logout"}} 登出</button></form>
   </div>
 </nav>

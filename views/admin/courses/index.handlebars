@@ -17,11 +17,14 @@
       <td class="ws-cell-actions" data-label="操作"><div class="ws-tools{{#unless isActive}} ws-closed-actions{{/unless}}">
         <a href="/admin/courses/{{id}}/calendar">行事曆</a>
         <a href="/admin/courses/{{id}}/edit">修改</a>
-        <form method="POST" action="/admin/courses/{{id}}?_method=DELETE"><button type="submit" class="btn btn-sm btn-outline-danger">刪除</button></form>
+        <form method="POST" action="/admin/courses/{{id}}?_method=DELETE">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}"><button type="submit" class="btn btn-sm btn-outline-danger">刪除</button></form>
         {{#if isActive}}
-        <form method="POST" action="/admin/courses/{{id}}/close?_method=PUT"><button type="submit" class="btn btn-sm btn-outline-secondary">關閉課程</button></form>
+        <form method="POST" action="/admin/courses/{{id}}/close?_method=PUT">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}"><button type="submit" class="btn btn-sm btn-outline-secondary">關閉課程</button></form>
         {{else}}
-        <form method="POST" action="/admin/courses/{{id}}/open?_method=PUT"><button type="submit" class="btn btn-sm btn-outline-primary">開啟課程</button></form>
+        <form method="POST" action="/admin/courses/{{id}}/open?_method=PUT">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}"><button type="submit" class="btn btn-sm btn-outline-primary">開啟課程</button></form>
         {{/if}}
       </div></td>
     </tr>

@@ -6,6 +6,7 @@
   </p>
 
   <form method="POST" action="/cramschool/tuition/bills/{{bill.id}}/refresh">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
     <input type="hidden" name="tuitionFormToken" value="{{issueForm.formToken}}">
     <input type="hidden" name="billVersion" value="{{bill.version}}">
     <button type="submit" class="btn btn-outline-primary">更新草稿</button>
@@ -28,6 +29,7 @@
   {{/if}}
 
   <form method="POST" action="{{action}}" onsubmit="return confirm('確認明細與金額，正式出帳？')">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
     <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
     <input type="hidden" name="billVersion" value="{{billVersion}}">
     {{#if unappliedCreditCount}}
@@ -52,6 +54,7 @@
   </p>
 
   <form method="POST" action="/cramschool/tuition/bills/{{bill.id}}/discard" onsubmit="return confirm('確定捨棄這張草稿嗎？')">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
     <input type="hidden" name="tuitionFormToken" value="{{issueForm.formToken}}">
     <input type="hidden" name="billVersion" value="{{bill.version}}">
 

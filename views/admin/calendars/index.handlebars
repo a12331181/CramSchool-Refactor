@@ -46,6 +46,7 @@
           {{#if this.canComplete}}
           <form action="/admin/courses/{{../course.id}}/sessions/{{this.id}}/complete?_method=PUT&amp;page={{../page}}"
             method="POST" class="ws-inline" onsubmit="return confirm('確定完成這堂課嗎？完成後，老師將無法再新增或更正點名。')">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
             <button type="submit" class="btn btn-sm btn-success">
               完成課堂
             </button>
@@ -55,6 +56,7 @@
           {{#if this.canCancel}}
           <form action="/admin/courses/{{../course.id}}/sessions/{{this.id}}/cancel?_method=PUT&amp;page={{../page}}"
             method="POST" class="ws-inline" onsubmit="return confirm('確定取消這堂課嗎？')">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
             <button type="submit" class="btn btn-sm btn-outline-danger">
               取消課堂
             </button>

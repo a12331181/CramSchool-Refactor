@@ -2,6 +2,7 @@
 
 <div class="ws-content">
 <form method="POST" action="/admin/users/invitations" class="ws-filter">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
   <input type="hidden" name="inviteFormToken" value="{{inviteFormToken}}">
   <label for="teacher-invite-email">新老師的登入信箱</label>
   <input id="teacher-invite-email" type="email" name="email" maxlength="254" required>
@@ -32,6 +33,7 @@
         最後一位管理員
         {{else}}
         <form action="/admin/users/{{this.id}}/toggleAdmin?_method=PUT" method="POST" class="ws-inline">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
           <input type="hidden" name="isAdmin" value="false">
           <button type="submit" class="btn btn-link">
             切換為使用者
@@ -43,6 +45,7 @@
       <td data-label="使用者身分">一般使用者</td>
       <td class="ws-cell-actions" data-label="權限操作">
         <form action="/admin/users/{{this.id}}/toggleAdmin?_method=PUT" method="POST" class="ws-inline">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
           <input type="hidden" name="isAdmin" value="true">
           <button type="submit" class="btn btn-link">
             切換為管理員

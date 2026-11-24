@@ -27,6 +27,7 @@
       <td class="ws-screen-only">
         {{#if this.canRemove}}
         <form method="POST" action="/cramschool/tuition/bills/{{../bill.id}}/items/{{this.id}}/remove">
+      <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
           <input type="hidden" name="tuitionFormToken" value="{{../issueForm.formToken}}">
           <input type="hidden" name="billVersion" value="{{../bill.version}}">
           <button type="submit" class="btn btn-sm btn-outline-danger"
