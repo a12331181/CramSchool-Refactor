@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const { SEX_OPTIONS } = require('../constants/profileOptions')
 const { discardUnusedProfileImage } = require('../services/profileImageService')
 const userService = require('../services/userService')
@@ -11,7 +12,7 @@ const userController = {
     res.set({ 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' })
     const token = req.method === 'POST' ? req.body?.inviteToken : req.query.invite
     const invite = await getActiveInvitation(token)
-    if (!invite) return res.status(410).send(unavailableInvite)
+    if (!invite) return sendPageError(res, 410, unavailableInvite)
     res.locals.inviteToken = token
     res.locals.invitedEmail = invite.email
     return next()
@@ -26,7 +27,7 @@ const userController = {
 
     const signupPath = '/signup?invite=' + res.locals.inviteToken
     if (typeof body.email !== 'string' || body.email.trim().toLowerCase() !== res.locals.invitedEmail) {
-      return res.status(400).send('請使用管理員邀請的信箱。')
+      return sendPageError(res, 400, '請使用管理員邀請的信箱。')
     }
     if (body.passwordCheck !== body.password) {
       req.flash('error_messages', '兩次密碼輸入不同！')
@@ -42,7 +43,7 @@ const userController = {
       inviteToken: res.locals.inviteToken
     })
 
-    if (result.code === 'INVALID_INVITATION') return res.status(410).send(unavailableInvite)
+    if (result.code === 'INVALID_INVITATION') return sendPageError(res, 410, unavailableInvite)
     if (!result.ok) {
       const errors = {
         INVALID_INPUT: '請完整填寫姓名、暱稱、信箱與密碼，文字欄位限 255 字以內。',

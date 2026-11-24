@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const meetingService = require('../services/meetingService')
 const { getPagination, getPaginationLinks, getPageOffset } = require('../utils/pagination')
 const { SCHOOL_RECORDS_PAGE_SIZE } = require('../constants/pagination')
@@ -6,7 +7,7 @@ const meetingController = {
   getMeetingListPage: async (req, res) => {
     const listPage = getPageOffset(req.query.page, SCHOOL_RECORDS_PAGE_SIZE)
     if (!listPage) {
-      return res.status(400).send('頁碼不正確或超出可處理範圍')
+      return sendPageError(res, 400, '頁碼不正確或超出可處理範圍')
     }
     const { page, offset } = listPage
 

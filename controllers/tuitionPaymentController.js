@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
 const { readUnsignedInteger } = require('../utils/formNumbers')
@@ -36,13 +37,13 @@ const tuitionPaymentController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
     }
 
     const billId = readUnsignedInteger(req.params.billId)
     const invalidInput = '帳單或收款資料不正確，請重新開啟帳單再試。'
     if (body.paymentMode !== undefined && body.paymentMode !== 'items') {
-      return res.status(400).send(invalidInput)
+      return sendPageError(res, 400, invalidInput)
     }
     const rawItems = body.paymentItems ?? []
     const selectedItemIds = body.paymentMode === 'items'
@@ -58,9 +59,9 @@ const tuitionPaymentController = {
       actorId: req.user.id
     })
 
-    if (result.code === 'INVALID_INPUT') return res.status(400).send(invalidInput)
-    if (result.code === 'INVALID_PAYMENT_DATE') return res.status(400).send('請輸入有效的實際收款日，不可晚於今天。')
-    if (result.code === 'BILL_NOT_FOUND') return res.status(404).send('找不到這張帳單。')
+    if (result.code === 'INVALID_INPUT') return sendPageError(res, 400, invalidInput)
+    if (result.code === 'INVALID_PAYMENT_DATE') return sendPageError(res, 400, '請輸入有效的實際收款日，不可晚於今天。')
+    if (result.code === 'BILL_NOT_FOUND') return sendPageError(res, 404, '找不到這張帳單。')
 
     const errors = {
       BILL_NOT_ISSUED: '只有已出帳的帳單可以登記收款。',
@@ -91,7 +92,7 @@ const tuitionPaymentController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
     }
 
     const billId = readUnsignedInteger(req.params.billId)
@@ -101,15 +102,15 @@ const tuitionPaymentController = {
     if (itemized) {
       const fields = body.refundItems ?? {}
       if (body.amount !== undefined || typeof fields !== 'object' || Array.isArray(fields)) {
-        return res.status(400).send(invalidInput)
+        return sendPageError(res, 400, invalidInput)
       }
       refundItems = []
       for (const [key, value] of Object.entries(fields)) {
-        if (!/^a[1-9]\d*$/.test(key) || typeof value !== 'string') return res.status(400).send(invalidInput)
+        if (!/^a[1-9]\d*$/.test(key) || typeof value !== 'string') return sendPageError(res, 400, invalidInput)
         if (value !== '') refundItems.push({ allocationId: readUnsignedInteger(key.slice(1)), amount: readUnsignedInteger(value) })
       }
     } else if (body.refundMode !== undefined || body.refundItems !== undefined) {
-      return res.status(400).send(invalidInput)
+      return sendPageError(res, 400, invalidInput)
     }
 
     const result = await recordTuitionBillRefund({
@@ -123,9 +124,9 @@ const tuitionPaymentController = {
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return res.status(400).send(invalidInput)
+      return sendPageError(res, 400, invalidInput)
     }
-    if (result.code === 'BILL_NOT_FOUND') return res.status(404).send('找不到這張帳單。')
+    if (result.code === 'BILL_NOT_FOUND') return sendPageError(res, 404, '找不到這張帳單。')
 
     req.flash(
       result.ok ? 'success_messages' : 'error_messages',
@@ -138,7 +139,7 @@ const tuitionPaymentController = {
     const studentId = readUnsignedInteger(req.params.studentId)
     const billingMonth = req.query.billingMonth
     const result = await getStudentTuitionBillsForMonth({ studentId, billingMonth })
-    if (!result.ok) return res.status(400).send('請選擇有效的學生及計費月份。')
+    if (!result.ok) return sendPageError(res, 400, '請選擇有效的學生及計費月份。')
 
     const bills = result.rows.filter(bill => bill.canReceiveGroupedPayment).map(bill => ({
       id: bill.id,
@@ -174,7 +175,7 @@ const tuitionPaymentController = {
   recordTuitionPaymentGroup: async (req, res) => {
     const body = req.body ?? {}
     if (!isValidSessionFormToken(body.tuitionFormToken, req.session?.tuitionFormToken)) {
-      return res.status(403).send('表單已失效，請重新開啟合併收款頁再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟合併收款頁再試。')
     }
     const bills = readBillSelections(body.billSelections)
     const studentId = readUnsignedInteger(req.params.studentId)
@@ -186,8 +187,8 @@ const tuitionPaymentController = {
       req.flash('success_messages', result.created ? '已登記一筆合併收款。' : '這筆合併收款已登記，未重複新增。')
       return res.redirect(303, `${paymentGroupBase}/${result.paymentGroupId}`)
     }
-    if (result.code === 'INVALID_INPUT') return res.status(400).send('收款資料不正確，請重新開啟收款頁再試。')
-    if (result.code === 'STUDENT_NOT_FOUND') return res.status(404).send('找不到這位學生。')
+    if (result.code === 'INVALID_INPUT') return sendPageError(res, 400, '收款資料不正確，請重新開啟收款頁再試。')
+    if (result.code === 'STUDENT_NOT_FOUND') return sendPageError(res, 404, '找不到這位學生。')
 
     const messages = {
       GROUP_BILLS_REQUIRED: `請勾選至少 ${MIN_GROUP_BILLS} 張待繳帳單。只有一張時請由該帳單收款。`,
@@ -210,10 +211,10 @@ const tuitionPaymentController = {
 
   getTuitionPaymentGroupDetails: async (req, res) => {
     const id = readUnsignedInteger(req.params.paymentGroupId)
-    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).send('合併收款編號不正確。')
+    if (!Number.isSafeInteger(id) || id < 1) return sendPageError(res, 400, '合併收款編號不正確。')
 
     const result = await tuitionPaymentGroupService.getTuitionPaymentGroup(id)
-    if (!result) return res.status(404).send('找不到這筆合併收款。')
+    if (!result) return sendPageError(res, 404, '找不到這筆合併收款。')
     const { group, allocations, requiresReview } = result
     res.set('Cache-Control', 'no-store')
     return res.render('tuition/payment-group-detail', {

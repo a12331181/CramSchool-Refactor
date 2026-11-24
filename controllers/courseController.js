@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const courseService = require('../services/courseService')
 const calendarService = require('../services/calendarService')
 const COURSE_SESSION_STATUS_LABELS = require('../constants/courseSessionStatusLabels')
@@ -9,7 +10,7 @@ const courseController = {
   getCourseListPage: async (req, res) => {
     const pageSize = DIRECTORY_PAGE_SIZE
     const listPage = getPageOffset(req.query.page, pageSize)
-    if (!listPage) return res.status(400).send('頁碼必須是有效的正整數。')
+    if (!listPage) return sendPageError(res, 400, '頁碼必須是有效的正整數。')
 
     const { page, offset } = listPage
     const { courses, count } = await courseService.getCourseDirectoryPage({
@@ -31,7 +32,7 @@ const courseController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
+      return sendPageError(res, 400, '課程 ID 必須是正整數')
     }
 
     const result = await calendarService.getCourseCalendarData(courseId)
@@ -56,7 +57,7 @@ const courseController = {
   getCourseStudentsPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
+      return sendPageError(res, 400, '課程 ID 必須是正整數')
     }
 
     const result = await courseService.getCourseEnrolledStudents(courseId)

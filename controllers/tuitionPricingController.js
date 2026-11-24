@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
 const { getStudentReference } = require('../services/studentService')
@@ -18,7 +19,7 @@ const tuitionPricingController = {
     const studentId = Number(req.params.studentId)
 
     if (![courseId, studentId].every(id => Number.isSafeInteger(id) && id > 0)) {
-      return res.status(400).send('課程與學生 ID 必須是正整數')
+      return sendPageError(res, 400, '課程與學生 ID 必須是正整數')
     }
 
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
@@ -76,7 +77,7 @@ const tuitionPricingController = {
     const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
-      return res.status(400).send('學生 ID 必須是正整數')
+      return sendPageError(res, 400, '學生 ID 必須是正整數')
     }
 
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
@@ -246,7 +247,7 @@ const tuitionPricingController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return res.status(403).send('表單已失效，請重新開啟學費預覽再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟學費預覽再試。')
     }
 
     const readInt = value =>
@@ -267,7 +268,7 @@ const tuitionPricingController = {
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return res.status(400).send('審核資料格式不正確，請重新確認結果和備註。')
+      return sendPageError(res, 400, '審核資料格式不正確，請重新確認結果和備註。')
     }
 
     const errors = {

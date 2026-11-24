@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
@@ -34,7 +35,7 @@ const tuitionReportController = {
           errorMessage: '請選擇有效的計費月份。'
         })
       }
-      return res.status(500).send('無法取得課程收費資料。')
+      return sendPageError(res, 500, '無法取得課程收費資料。')
     }
 
     const monthQuery = new URLSearchParams({ billingMonth })
@@ -69,9 +70,9 @@ const tuitionReportController = {
 
     if (!result.ok) {
       if (result.code === 'INVALID_INPUT') {
-        return res.status(400).send(courseId === undefined ? '學生 ID 必須是正整數。' : '課程與學生 ID 必須是正整數。')
+        return sendPageError(res, 400, courseId === undefined ? '學生 ID 必須是正整數。' : '課程與學生 ID 必須是正整數。')
       }
-      return res.status(404).send(result.code === 'COURSE_NOT_FOUND' ? '找不到課程。' : '找不到學生。')
+      return sendPageError(res, 404, result.code === 'COURSE_NOT_FOUND' ? '找不到課程。' : '找不到學生。')
     }
 
     const { course, student } = result
@@ -238,7 +239,7 @@ const tuitionReportController = {
   getCourseMonthlyTuitionPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數。')
+      return sendPageError(res, 400, '課程 ID 必須是正整數。')
     }
 
     const billingMonth = req.query.billingMonth ?? getTaipeiDate().slice(0, 7)
@@ -258,7 +259,7 @@ const tuitionReportController = {
     const { page } = listPage
     const result = await tuitionReportService.getCourseMonthlyTuitionList({ courseId, billingMonth, page, pageSize })
     if (!result.ok) {
-      if (result.code === 'COURSE_NOT_FOUND') return res.status(404).send('找不到課程。')
+      if (result.code === 'COURSE_NOT_FOUND') return sendPageError(res, 404, '找不到課程。')
       const errors = {
         INVALID_BILLING_MONTH: '請選擇有效的計費月份。',
         INVALID_PAGE: '頁碼不正確。'

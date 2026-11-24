@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const studentService = require('../services/studentService')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const STUDENT_STATUS = require('../constants/studentStatus')
@@ -5,11 +6,11 @@ const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/p
 
 async function renderDirectory(req, res, manageStudents) {
   const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
-  if (!listPage) return res.status(400).send('頁碼必須是正整數')
+  if (!listPage) return sendPageError(res, 400, '頁碼必須是正整數')
 
   const courseId = req.query.courseId ? Number(req.query.courseId) : undefined
   if (courseId !== undefined && (!Number.isSafeInteger(courseId) || courseId < 1)) {
-    return res.status(400).send('課程 ID 必須是正整數')
+    return sendPageError(res, 400, '課程 ID 必須是正整數')
   }
 
   const { page } = listPage

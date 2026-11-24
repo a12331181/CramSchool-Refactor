@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const enrollmentService = require('../services/enrollmentService')
 
 const enrollmentController = {
@@ -5,7 +6,7 @@ const enrollmentController = {
     const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
-      return res.status(400).send('學生 ID 必須是正整數')
+      return sendPageError(res, 400, '學生 ID 必須是正整數')
     }
 
     const result = await enrollmentService.getEnrollmentPage(studentId)
@@ -26,7 +27,7 @@ const enrollmentController = {
       !Number.isSafeInteger(courseId) ||
       courseId < 1
     ) {
-      return res.status(400).send('學生與課程 ID 必須是正整數')
+      return sendPageError(res, 400, '學生與課程 ID 必須是正整數')
     }
 
     const { allowed, created, reason } = await enrollmentService.addEnrollment({
@@ -73,11 +74,11 @@ const enrollmentController = {
       !Number.isSafeInteger(courseId) ||
       courseId < 1
     ) {
-      return res.status(400).send('學生與課程 ID 必須是正整數')
+      return sendPageError(res, 400, '學生與課程 ID 必須是正整數')
     }
 
     if (!Number.isSafeInteger(enrollmentId) || enrollmentId < 1) {
-      return res.status(400).send('選課表單已過期或不完整，請重新整理選課頁後再試')
+      return sendPageError(res, 400, '選課表單已過期或不完整，請重新整理選課頁後再試')
     }
 
     const { removed, reason } = await enrollmentService.removeEnrollment({

@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const { readUnsignedInteger } = require('../utils/formNumbers')
 const { COURSE_PREFIX_LETTERS } = require('../constants/referenceNumbers')
@@ -26,7 +27,7 @@ const adminCourseController = {
   getCourseListPage: async (req, res) => {
     const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
     if (!listPage) {
-      return res.status(400).send('頁碼不正確或超出可處理範圍')
+      return sendPageError(res, 400, '頁碼不正確或超出可處理範圍')
     }
     const { page } = listPage
 
@@ -95,9 +96,7 @@ const adminCourseController = {
       }
 
       const status = result.reason === 'COURSE_NUMBER_EXHAUSTED' ? 409 : 400
-      return res.status(status).send(
-        errorMessages[result.reason] ?? '課程資料不正確'
-      )
+      return sendPageError(res, status, errorMessages[result.reason] ?? '課程資料不正確')
     }
 
     req.flash('success_messages', `成功建立課程｜${result.courseNo}`)
@@ -108,7 +107,7 @@ const adminCourseController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
+      return sendPageError(res, 400, '課程 ID 必須是正整數')
     }
 
     const result = await courseService.getCourseEditData(courseId)
@@ -138,7 +137,7 @@ const adminCourseController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
+      return sendPageError(res, 400, '課程 ID 必須是正整數')
     }
 
     const body = req.body ?? {}
@@ -147,7 +146,7 @@ const adminCourseController = {
 
     if (!result.ok) {
       if (Object.hasOwn(COURSE_SETTINGS_MESSAGES, result.code)) {
-        return res.status(400).send(COURSE_SETTINGS_MESSAGES[result.code])
+        return sendPageError(res, 400, COURSE_SETTINGS_MESSAGES[result.code])
       }
 
       const errorMessages = {
@@ -172,7 +171,7 @@ const adminCourseController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
+      return sendPageError(res, 400, '課程 ID 必須是正整數')
     }
 
     const result = await courseService.deleteCourse(courseId)
@@ -205,7 +204,7 @@ const adminCourseController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
+      return sendPageError(res, 400, '課程 ID 必須是正整數')
     }
 
     const result = await courseService.setCourseActive(
@@ -232,7 +231,7 @@ const adminCourseController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
+      return sendPageError(res, 400, '課程 ID 必須是正整數')
     }
 
     const result = await courseService.setCourseActive(

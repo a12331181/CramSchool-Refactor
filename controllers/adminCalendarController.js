@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const calendarService = require('../services/calendarService')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
@@ -53,7 +54,7 @@ function redirectFromUnavailableCourse(req, res, code) {
 const adminCalendarController = {
   getCreateCourseSessionBatchPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
-    if (!Number.isSafeInteger(courseId) || courseId < 1) return res.status(400).send('課程 ID 必須是正整數')
+    if (!Number.isSafeInteger(courseId) || courseId < 1) return sendPageError(res, 400, '課程 ID 必須是正整數')
 
     const form = await calendarService.getCreateCourseSessionFormData(courseId)
     if (!form.ok) return redirectFromUnavailableCourse(req, res, form.code)
@@ -62,11 +63,11 @@ const adminCalendarController = {
 
   createCourseSessionBatch: async (req, res) => {
     const courseId = Number(req.params.courseId)
-    if (!Number.isSafeInteger(courseId) || courseId < 1) return res.status(400).send('課程 ID 必須是正整數')
+    if (!Number.isSafeInteger(courseId) || courseId < 1) return sendPageError(res, 400, '課程 ID 必須是正整數')
 
     const body = req.body ?? {}
     if (!isValidSessionFormToken(body.batchToken, req.session?.courseSessionBatchToken)) {
-      return res.status(403).send('表單已失效，請重新開啟批次排課頁。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟批次排課頁。')
     }
 
     const result = await calendarService.createCourseSessionBatch(courseId, {
@@ -96,12 +97,12 @@ const adminCalendarController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
+      return sendPageError(res, 400, '課程 ID 必須是正整數')
     }
 
     const listPage = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)
     if (!listPage) {
-      return res.status(400).send('頁碼不正確或超出可處理範圍')
+      return sendPageError(res, 400, '頁碼不正確或超出可處理範圍')
     }
     const { page } = listPage
 
@@ -173,7 +174,7 @@ const adminCalendarController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
+      return sendPageError(res, 400, '課程 ID 必須是正整數')
     }
 
     const result = await calendarService.getCreateCourseSessionFormData(courseId)
@@ -209,7 +210,7 @@ const adminCalendarController = {
     const courseId = Number(req.params.courseId)
 
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
+      return sendPageError(res, 400, '課程 ID 必須是正整數')
     }
 
     const body = req.body ?? {}
@@ -296,7 +297,7 @@ const adminCalendarController = {
       ![courseId, calendarId]
         .every(id => Number.isSafeInteger(id) && id > 0)
     ) {
-      return res.status(400).send('課程與課堂 ID 必須是正整數')
+      return sendPageError(res, 400, '課程與課堂 ID 必須是正整數')
     }
 
     const page = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)?.page ?? 1
@@ -352,7 +353,7 @@ const adminCalendarController = {
     const result = await calendarService.cancelCourseSession(courseId, calendarId)
 
     if (['INVALID_COURSE_ID', 'INVALID_CALENDAR_ID'].includes(result.code)) {
-      return res.status(400).send('課程與課堂 ID 必須是正整數')
+      return sendPageError(res, 400, '課程與課堂 ID 必須是正整數')
     }
 
     const page = getPageOffset(req.query.page, DIRECTORY_PAGE_SIZE)?.page ?? 1
@@ -392,7 +393,7 @@ const adminCalendarController = {
       !Number.isSafeInteger(courseId) || courseId < 1 ||
       !Number.isSafeInteger(calendarId) || calendarId < 1
     ) {
-      return res.status(400).send('課程與課堂 ID 必須是正整數')
+      return sendPageError(res, 400, '課程與課堂 ID 必須是正整數')
     }
 
     const calendar = await calendarService.getLegacyCalendarEditData(
@@ -401,9 +402,8 @@ const adminCalendarController = {
     )
 
     if (!calendar) {
-      return res.status(409).send(
-        '此課堂目前無法使用舊日期表單修改，請返回課堂列表確認'
-      )
+      return sendPageError(res, 409,
+        '此課堂目前無法使用舊日期表單修改，請返回課堂列表確認')
     }
 
     return res.render('admin/calendars/edit', { calendar })
@@ -435,7 +435,7 @@ const adminCalendarController = {
       }
 
       const [status, message] = errors[result.code] ?? [500, '更新課堂失敗']
-      return res.status(status).send(message)
+      return sendPageError(res, status, message)
     }
 
     req.flash('success_messages', '已成功更新課堂資料')

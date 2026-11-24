@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const { SEX_OPTIONS, GRADE_OPTIONS, STUDENT_STATUS_OPTIONS } = require('../constants/profileOptions')
 const { discardUnusedProfileImage } = require('../services/profileImageService')
 const studentService = require('../services/studentService')
@@ -35,9 +36,9 @@ const adminStudentController = {
 
       if (!result.created) {
         if (result.reason === 'STUDENT_NUMBER_EXHAUSTED') {
-          return res.status(409).send('今年的學生編號已用完，請聯繫管理員。')
+          return sendPageError(res, 409, '今年的學生編號已用完，請聯繫管理員。')
         }
-        return res.status(400).send('學生狀態不正確')
+        return sendPageError(res, 400, '學生狀態不正確')
       }
 
       createCompleted = true
@@ -61,7 +62,7 @@ const adminStudentController = {
     const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
-      return res.status(400).send('學生 ID 必須是正整數')
+      return sendPageError(res, 400, '學生 ID 必須是正整數')
     }
 
     const student = await studentService.getAdminStudentDetails(
@@ -81,7 +82,7 @@ const adminStudentController = {
     const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
-      return res.status(400).send('學生 ID 必須是正整數')
+      return sendPageError(res, 400, '學生 ID 必須是正整數')
     }
 
     const student = await studentService.getAdminStudentDetails(
@@ -103,7 +104,7 @@ const adminStudentController = {
       const studentId = Number(req.params.studentId)
 
       if (!Number.isSafeInteger(studentId) || studentId < 1) {
-        return res.status(400).send('學生 ID 必須是正整數')
+        return sendPageError(res, 400, '學生 ID 必須是正整數')
       }
 
       const body = req.body ?? {}
@@ -128,7 +129,7 @@ const adminStudentController = {
 
       if (!result.updated) {
         if (result.reason === 'INVALID_STATUS') {
-          return res.status(400).send('學生狀態不正確')
+          return sendPageError(res, 400, '學生狀態不正確')
         }
 
         if (result.reason === 'FUTURE_ENROLLMENT') {
@@ -161,7 +162,7 @@ const adminStudentController = {
     const studentId = Number(req.params.studentId)
 
     if (!Number.isSafeInteger(studentId) || studentId < 1) {
-      return res.status(400).send('學生 ID 必須是正整數')
+      return sendPageError(res, 400, '學生 ID 必須是正整數')
     }
 
     const result = await studentService.deleteStudent(studentId)

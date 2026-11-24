@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const { MAX_EXTRA_FEE_QUANTITY } = require('../constants/extraFeeLimits')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
 const { getTuitionDocumentNo } = require('../utils/tuitionBillReference')
@@ -113,12 +114,12 @@ const tuitionBillController = {
       typeof billingMonth !== 'string' ||
       !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)
     ) {
-      return res.status(400).send('學生 ID 或計費月份不正確。')
+      return sendPageError(res, 400, '學生 ID 或計費月份不正確。')
     }
 
     const expectedToken = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(tuitionFormToken, expectedToken)) {
-      return res.status(403).send('表單已失效，請重新開啟合併預覽再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟合併預覽再試。')
     }
 
     const result = await tuitionBillService.createTuitionBillDraft({
@@ -160,7 +161,7 @@ const tuitionBillController = {
   createSupplementalTuitionBillDraft: async (req, res) => {
     const { courseId: rawCourseId, billingMonth, tuitionFormToken, page, status } = req.body ?? {}
     if (!isValidSessionFormToken(tuitionFormToken, req.session?.tuitionFormToken)) {
-      return res.status(403).send('表單已失效，請重新開啟月度總覽再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟月度總覽再試。')
     }
 
     const parseId = value => typeof value === 'string' && /^[1-9]\d*$/.test(value) ? Number(value) : NaN
@@ -168,7 +169,7 @@ const tuitionBillController = {
     const courseId = parseId(rawCourseId)
     if (![studentId, courseId].every(Number.isSafeInteger) ||
         typeof billingMonth !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)) {
-      return res.status(400).send('學生、課程或計費月份不正確。')
+      return sendPageError(res, 400, '學生、課程或計費月份不正確。')
     }
 
     const result = await tuitionBillService.createSupplementalTuitionBillDraft({
@@ -202,8 +203,7 @@ const tuitionBillController = {
     if (!result.ok) {
       const invalidId = result.code === 'INVALID_BILL_ID'
 
-      return res.status(invalidId ? 400 : 404)
-        .send(invalidId ? '帳單 ID 不正確。' : '找不到這張帳單。')
+      return sendPageError(res, invalidId ? 400 : 404, invalidId ? '帳單 ID 不正確。' : '找不到這張帳單。')
     }
 
     const { bill, extraFees, leaveCreditData, canVoidIssuedBill } = result
@@ -430,14 +430,14 @@ const tuitionBillController = {
   addTuitionBillExtraFee: async (req, res) => {
     const billId = Number(req.params.billId)
     if (!Number.isSafeInteger(billId) || billId < 1) {
-      return res.status(400).send('帳單 ID 不正確。')
+      return sendPageError(res, 400, '帳單 ID 不正確。')
     }
 
     const body = req.body ?? {}
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
     }
 
 
@@ -449,7 +449,7 @@ const tuitionBillController = {
     })
 
     if (result.code === 'BILL_NOT_FOUND') {
-      return res.status(404).send('找不到這張帳單。')
+      return sendPageError(res, 404, '找不到這張帳單。')
     }
 
     const errors = {
@@ -474,7 +474,7 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
     }
 
     const billId = readUnsignedInteger(req.params.billId)
@@ -487,10 +487,10 @@ const tuitionBillController = {
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return res.status(400).send('帳單 ID 或草稿版本不正確，請重新開啟帳單再試。')
+      return sendPageError(res, 400, '帳單 ID 或草稿版本不正確，請重新開啟帳單再試。')
     }
     if (result.code === 'BILL_NOT_FOUND') {
-      return res.status(404).send('找不到這張帳單。')
+      return sendPageError(res, 404, '找不到這張帳單。')
     }
 
     const errors = {
@@ -518,13 +518,13 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
     }
 
 
     const billId = readUnsignedInteger(req.params.billId)
     if (!Number.isSafeInteger(billId) || billId < 1) {
-      return res.status(400).send('帳單 ID 不正確。')
+      return sendPageError(res, 400, '帳單 ID 不正確。')
     }
 
     const result = await tuitionBillService.addLeaveCreditToDraft({
@@ -534,11 +534,11 @@ const tuitionBillController = {
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return res.status(400).send('折抵資料格式不正確，請重新開啟帳單再試。')
+      return sendPageError(res, 400, '折抵資料格式不正確，請重新開啟帳單再試。')
     }
 
     if (result.code === 'BILL_NOT_FOUND') {
-      return res.status(404).send('找不到要核對的帳單。')
+      return sendPageError(res, 404, '找不到要核對的帳單。')
     }
 
     const errors = {
@@ -582,13 +582,13 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
     }
 
 
     const billId = readUnsignedInteger(req.params.billId)
     if (!Number.isSafeInteger(billId) || billId < 1) {
-      return res.status(400).send('帳單 ID 不正確。')
+      return sendPageError(res, 400, '帳單 ID 不正確。')
     }
 
     const result = await tuitionBillService.issueTuitionBill({
@@ -600,11 +600,11 @@ const tuitionBillController = {
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return res.status(400).send('出帳資料格式不正確，請重新開啟帳單再試。')
+      return sendPageError(res, 400, '出帳資料格式不正確，請重新開啟帳單再試。')
     }
 
     if (result.code === 'BILL_NOT_FOUND') {
-      return res.status(404).send('找不到這張帳單。')
+      return sendPageError(res, 404, '找不到這張帳單。')
     }
 
     const errors = {
@@ -643,7 +643,7 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
     }
 
 
@@ -655,7 +655,7 @@ const tuitionBillController = {
       !Number.isSafeInteger(billId) || billId < 1 ||
       !Number.isSafeInteger(billVersion) || billVersion < 0
     ) {
-      return res.status(400).send(invalidInput)
+      return sendPageError(res, 400, invalidInput)
     }
 
     const result = await tuitionBillService.refreshTuitionBillDraft({
@@ -665,10 +665,10 @@ const tuitionBillController = {
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return res.status(400).send(invalidInput)
+      return sendPageError(res, 400, invalidInput)
     }
     if (result.code === 'BILL_NOT_FOUND') {
-      return res.status(404).send('找不到這張帳單。')
+      return sendPageError(res, 404, '找不到這張帳單。')
     }
 
     const errors = {
@@ -703,7 +703,7 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
     }
 
 
@@ -716,7 +716,7 @@ const tuitionBillController = {
       ![billId, billItemId].every(id => Number.isSafeInteger(id) && id > 0) ||
       !Number.isSafeInteger(billVersion) || billVersion < 0
     ) {
-      return res.status(400).send(invalidInput)
+      return sendPageError(res, 400, invalidInput)
     }
 
     const result = await tuitionBillService.removeTuitionBillDraftAdjustment({
@@ -727,10 +727,10 @@ const tuitionBillController = {
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return res.status(400).send(invalidInput)
+      return sendPageError(res, 400, invalidInput)
     }
     if (result.code === 'BILL_NOT_FOUND') {
-      return res.status(404).send('找不到這張帳單。')
+      return sendPageError(res, 404, '找不到這張帳單。')
     }
 
     const errors = {
@@ -756,7 +756,7 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
     }
 
 
@@ -768,7 +768,7 @@ const tuitionBillController = {
       !Number.isSafeInteger(billId) || billId < 1 ||
       !Number.isSafeInteger(billVersion) || billVersion < 0
     ) {
-      return res.status(400).send(invalidInput)
+      return sendPageError(res, 400, invalidInput)
     }
 
     const result = await tuitionBillService.discardTuitionBillDraft({
@@ -779,10 +779,10 @@ const tuitionBillController = {
     })
 
     if (result.code === 'INVALID_INPUT') {
-      return res.status(400).send(invalidInput)
+      return sendPageError(res, 400, invalidInput)
     }
     if (result.code === 'BILL_NOT_FOUND') {
-      return res.status(404).send('找不到這張帳單。')
+      return sendPageError(res, 404, '找不到這張帳單。')
     }
 
     const errors = {
@@ -806,7 +806,7 @@ const tuitionBillController = {
     const token = body.tuitionFormToken
     const expected = req.session?.tuitionFormToken
     if (!isValidSessionFormToken(token, expected)) {
-      return res.status(403).send('表單已失效，請重新開啟帳單再試。')
+      return sendPageError(res, 403, '表單已失效，請重新開啟帳單再試。')
     }
 
 
@@ -818,7 +818,7 @@ const tuitionBillController = {
       !Number.isSafeInteger(billId) || billId < 1 ||
       !Number.isSafeInteger(billVersion) || billVersion < 0
     ) {
-      return res.status(400).send(invalidInput)
+      return sendPageError(res, 400, invalidInput)
     }
 
     const result = await tuitionBillService.voidIssuedTuitionBill({
@@ -828,8 +828,8 @@ const tuitionBillController = {
       reason: body.reason
     })
 
-    if (result.code === 'INVALID_INPUT') return res.status(400).send(invalidInput)
-    if (result.code === 'BILL_NOT_FOUND') return res.status(404).send('找不到這張帳單。')
+    if (result.code === 'INVALID_INPUT') return sendPageError(res, 400, invalidInput)
+    if (result.code === 'BILL_NOT_FOUND') return sendPageError(res, 404, '找不到這張帳單。')
 
     const errors = {
       INVALID_VOID_REASON: '請填寫作廢原因，最多 255 字元。',

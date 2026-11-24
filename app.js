@@ -10,6 +10,7 @@ const { getSessionSecret } = require('./utils/sessionConfig')
 const { IMAGE_ACCEPT } = require('./constants/imageUpload')
 const handleImageUploadError = require('./middlewares/imageUploadError')
 const { authenticated } = require('./middlewares/auth')
+const { sendPageError, wantsHtmlPage } = require('./utils/pageError')
 const uploadDir = path.join(__dirname, 'upload')
 const app = express()
 app.locals.imageAccept = IMAGE_ACCEPT
@@ -51,6 +52,10 @@ app.use((req, res, next) => {
 
 require('./routes')(app, passport)
 app.use(handleImageUploadError)
+app.use((req, res, next) => {
+  if (wantsHtmlPage(req)) return sendPageError(res, 404, '找不到這個頁面。')
+  return next()
+})
 
 if (require.main === module) {
   app.listen(port, () => {

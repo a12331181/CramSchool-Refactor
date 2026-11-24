@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const studentService = require('../services/studentService')
 const ATTEND_STATUS_LABELS = require('../constants/attendStatusLabels')
 const { formatTaipeiDateTime } = require('../utils/date')
@@ -17,7 +18,7 @@ const studentController = {
     const courseId = Number(req.params.courseId)
     const studentId = Number(req.params.studentId)
     if (![courseId, studentId].every(id => Number.isSafeInteger(id) && id > 0)) {
-      return res.status(400).send('課程與學生 ID 必須是正整數')
+      return sendPageError(res, 400, '課程與學生 ID 必須是正整數')
     }
 
     const result = await studentService.getStudentAttendanceHistory({ courseId, studentId })

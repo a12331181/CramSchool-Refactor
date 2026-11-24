@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const teacherService = require('../services/teacherService')
 const { DIRECTORY_PAGE_SIZE } = require('../constants/pagination')
 const { getPageOffset, getPagination, getPaginationLinks } = require('../utils/pagination')
@@ -6,7 +7,7 @@ const teacherController = {
   getTeacherDirectoryPage: async (req, res) => {
     const pageSize = DIRECTORY_PAGE_SIZE
     const listPage = getPageOffset(req.query.page, pageSize)
-    if (!listPage) return res.status(400).send('頁碼必須是有效的正整數。')
+    if (!listPage) return sendPageError(res, 400, '頁碼必須是有效的正整數。')
 
     const { page, offset } = listPage
     const { teachers, count } = await teacherService.getActiveTeachersPage({ limit: pageSize, offset })

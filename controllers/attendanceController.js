@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const { formatReferenceLabel } = require('../utils/referenceLabel')
 const attendanceService = require('../services/attendanceService')
 const COURSE_SESSION_STATUS = require('../constants/courseSessionStatus')
@@ -12,7 +13,7 @@ const attendanceController = {
   getAttendanceHomePage: async (req, res) => {
     const pageSize = DIRECTORY_PAGE_SIZE
     const listPage = getPageOffset(req.query.page, pageSize)
-    if (!listPage) return res.status(400).send('頁碼必須是有效的正整數。')
+    if (!listPage) return sendPageError(res, 400, '頁碼必須是有效的正整數。')
 
     const { page, offset } = listPage
     const { courses, count, isAdmin } = await attendanceService.getAttendanceHome({
@@ -35,12 +36,12 @@ const attendanceController = {
   getCourseAttendanceSessionsPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數。')
+      return sendPageError(res, 400, '課程 ID 必須是正整數。')
     }
 
     const listPage = getPageOffset(req.query.page, ATTENDANCE_SESSION_PAGE_SIZE)
     if (!listPage) {
-      return res.status(400).send('頁碼必須是有效的正整數。')
+      return sendPageError(res, 400, '頁碼必須是有效的正整數。')
     }
     const { page } = listPage
 
@@ -50,9 +51,9 @@ const attendanceController = {
     })
     res.set('Cache-Control', 'no-store')
     if (!result.ok) {
-      if (result.code === 'INVALID_MONTH') return res.status(400).send('月份格式必須為 YYYY-MM。')
-      if (result.code === 'INVALID_STATUS') return res.status(400).send('請選擇有效的課堂狀態。')
-      return res.status(404).send('找不到可查看的課程。')
+      if (result.code === 'INVALID_MONTH') return sendPageError(res, 400, '月份格式必須為 YYYY-MM。')
+      if (result.code === 'INVALID_STATUS') return sendPageError(res, 400, '請選擇有效的課堂狀態。')
+      return sendPageError(res, 404, '找不到可查看的課程。')
     }
 
     const pagination = getPagination({ page, pageSize: ATTENDANCE_SESSION_PAGE_SIZE, totalCount: result.count })
@@ -92,7 +93,7 @@ const attendanceController = {
       !Number.isSafeInteger(courseId) || courseId < 1 ||
       !Number.isSafeInteger(calendarId) || calendarId < 1
     ) {
-      return res.status(400).send('課程與課堂 ID 必須是正整數')
+      return sendPageError(res, 400, '課程與課堂 ID 必須是正整數')
     }
 
     const result = await attendanceService.getAttendanceRoster({
@@ -153,7 +154,7 @@ const attendanceController = {
       ![courseId, calendarId, studentId].every(id => Number.isSafeInteger(id) && id > 0) ||
       typeof calendarStartAt !== 'string' || typeof calendarEndAt !== 'string'
     ) {
-      return res.status(400).send('課程、課堂、學生或時間格式不正確')
+      return sendPageError(res, 400, '課程、課堂、學生或時間格式不正確')
     }
 
     const result = await attendanceService.recordAttendance({
@@ -208,7 +209,7 @@ const attendanceController = {
       typeof body.calendarStartAt !== 'string' ||
       typeof body.calendarEndAt !== 'string'
     ) {
-      return res.status(400).send('課程、課堂、學生或點名版本格式不正確')
+      return sendPageError(res, 400, '課程、課堂、學生或點名版本格式不正確')
     }
 
     const result = await attendanceService.updateAttendance({
@@ -261,7 +262,7 @@ const attendanceController = {
       ![courseId, calendarId, studentId]
         .every(id => Number.isSafeInteger(id) && id > 0)
     ) {
-      return res.status(400).send('課程、課堂與學生 ID 必須是正整數')
+      return sendPageError(res, 400, '課程、課堂與學生 ID 必須是正整數')
     }
 
     const result = await attendanceService.getAttendanceHistory({

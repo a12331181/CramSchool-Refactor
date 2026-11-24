@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const diaryService = require('../services/diaryService')
 const { getPagination, getPaginationLinks, getPageOffset } = require('../utils/pagination')
 const { SCHOOL_RECORDS_PAGE_SIZE } = require('../constants/pagination')
@@ -6,7 +7,7 @@ const diaryController = {
   getDiaryListPage: async (req, res) => {
     const listPage = getPageOffset(req.query.page, SCHOOL_RECORDS_PAGE_SIZE)
     if (!listPage) {
-      return res.status(400).send('頁碼不正確或超出可處理範圍')
+      return sendPageError(res, 400, '頁碼不正確或超出可處理範圍')
     }
     const { page, offset } = listPage
 
@@ -29,12 +30,12 @@ const diaryController = {
   getCourseDiariesPage: async (req, res) => {
     const courseId = Number(req.params.courseId)
     if (!Number.isSafeInteger(courseId) || courseId < 1) {
-      return res.status(400).send('課程 ID 必須是正整數')
+      return sendPageError(res, 400, '課程 ID 必須是正整數')
     }
 
     const listPage = getPageOffset(req.query.page, SCHOOL_RECORDS_PAGE_SIZE)
     if (!listPage) {
-      return res.status(400).send('頁碼不正確或超出可處理範圍')
+      return sendPageError(res, 400, '頁碼不正確或超出可處理範圍')
     }
     const { page, offset } = listPage
 
@@ -86,7 +87,7 @@ const diaryController = {
   deleteDiary: async (req, res) => {
     const { courseId, diaryId } = req.params
     const result = await diaryService.deleteDiary({ courseId, diaryId, viewer: req.user })
-    if (result.code === 'FORBIDDEN') return res.status(403).send('只有日誌作者或管理員可以刪除。')
+    if (result.code === 'FORBIDDEN') return sendPageError(res, 403, '只有日誌作者或管理員可以刪除。')
     req.flash(result.ok ? 'success_messages' : 'error_messages', result.ok ? '已成功刪除教師日誌' : '找不到該筆日誌')
     return res.redirect(303, courseId === undefined ? '/cramschool/diaries' : `/cramschool/courses/${courseId}/diaries`)
   }

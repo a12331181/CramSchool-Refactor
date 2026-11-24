@@ -1,0 +1,8 @@
+<div class="ws-content">
+  <div class="ws-page-title"><span class="ws-tile-icon">{{> workspace/icon name="info"}}</span><h1>操作提示</h1></div>
+  <section class="ws-sheet" role="alert">
+    <p>{{message}}</p>
+    <small class="text-muted">HTTP {{status}}</small>
+  </section>
+  {{#if signedIn}}<a class="ws-btn" href="/cramschool">回校務總覽</a>{{else}}<a class="ws-btn" href="/signin">回登入頁</a>{{/if}}
+</div>

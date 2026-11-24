@@ -1,3 +1,4 @@
+const { sendPageError } = require('../utils/pageError')
 const { Router } = require('express')
 const { authenticatedAdmin } = require('../middlewares/auth')
 const adminExtraFeeController = require('../controllers/adminExtraFeeController')
@@ -13,7 +14,7 @@ router.get('/:extraFeeId/edit', authenticatedAdmin, adminExtraFeeController.getE
 router.put('/:extraFeeId', authenticatedAdmin, adminExtraFeeController.updateExtraFee)
 
 router.use((error, _req, res, next) => {
-  if (error instanceof InvalidExtraFeePrice) return res.status(400).send(error.message)
+  if (error instanceof InvalidExtraFeePrice) return sendPageError(res, 400, error.message)
   return next(error)
 })
 
