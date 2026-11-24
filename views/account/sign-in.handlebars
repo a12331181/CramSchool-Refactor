@@ -1,19 +1,16 @@
-<form class="form-signin" action="/signin" method="POST" style="width: 100%;">
-  <div class="text-center mb-4">
-    <h1 class="h3 mb-3 font-weight-normal">登入</h1>
-  </div>
+<form class="ws-access-form" action="/signin" method="POST">
+  <h1>登入</h1>
 
-  <div class="form-label-group my-1">
+  <div class="form-group">
     <label for="inputEmail">信箱</label>
-    <input type="text" name="email" class="form-control" placeholder="輸入信箱..." required autofocus>
+    <input id="inputEmail" type="text" inputmode="email" autocomplete="username" name="email" class="form-control" placeholder="輸入信箱..." required autofocus>
   </div>
 
-  <div class="form-label-group my-1">
+  <div class="form-group">
     <label for="inputPassword">密碼</label>
-    <input type="password" name="password" class="form-control" placeholder="輸入密碼..." required>
+    <input id="inputPassword" type="password" name="password" autocomplete="current-password" class="form-control" placeholder="輸入密碼..." required>
   </div>
-  <br />
 
-  <button class="btn btn-lg btn-primary btn-block my-1" type="submit">送出</button>
-  <p class="mt-5 mb-3 text-muted text-center">© 2021-2022</p>
+  <button class="btn btn-lg btn-primary btn-block my-1" type="submit">登入</button>
+
 </form>
