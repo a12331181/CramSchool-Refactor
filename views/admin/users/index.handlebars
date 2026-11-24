@@ -1,29 +1,27 @@
-<br />
+{{> workspace/page-heading}}
 
-<h1>資料管理後台</h1>
-
-{{> admin-nav activeTab="users"}}
-
-<form method="POST" action="/admin/users/invitations" class="my-3">
+<div class="ws-content">
+<form method="POST" action="/admin/users/invitations" class="ws-filter">
   <input type="hidden" name="inviteFormToken" value="{{inviteFormToken}}">
   <label for="teacher-invite-email">新老師的登入信箱</label>
   <input id="teacher-invite-email" type="email" name="email" maxlength="254" required>
   <button type="submit" class="btn btn-primary">產生註冊連結</button>
 </form>
 
+<div class="table-responsive">
 <table class="table table-bordered">
-  <thead class="thead-dark">
+  <thead>
     <tr>
-      <th scope="col">#</th>
+      <th scope="col">編號</th>
       <th scope="col">名稱</th>
       <th scope="col">信箱</th>
       <th scope="col">使用者身分</th>
-      <th scope="col">#</th>
+      <th scope="col">權限操作</th>
     </tr>
   </thead>
   <tbody>
     {{#each users}}
-    <tr class="table-light">
+    <tr>
       <th scope="row">{{this.id}}</th>
       <td>{{this.name}}</td>
       <td>{{this.email}}</td>
@@ -33,7 +31,7 @@
         {{#ifCond this.id ../lastAdminId}}
         最後一位管理員
         {{else}}
-        <form action="/admin/users/{{this.id}}/toggleAdmin?_method=PUT" method="POST" style="display: inline;">
+        <form action="/admin/users/{{this.id}}/toggleAdmin?_method=PUT" method="POST" class="ws-inline">
           <input type="hidden" name="isAdmin" value="false">
           <button type="submit" class="btn btn-link">
             切換為使用者
@@ -44,7 +42,7 @@
       {{else}}
       <td>一般使用者</td>
       <td>
-        <form action="/admin/users/{{this.id}}/toggleAdmin?_method=PUT" method="POST" style="display: inline;">
+        <form action="/admin/users/{{this.id}}/toggleAdmin?_method=PUT" method="POST" class="ws-inline">
           <input type="hidden" name="isAdmin" value="true">
           <button type="submit" class="btn btn-link">
             切換為管理員
@@ -56,3 +54,5 @@
     {{/each}}
   </tbody>
 </table>
+</div>
+</div>

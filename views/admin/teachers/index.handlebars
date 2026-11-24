@@ -1,15 +1,10 @@
-<br />
+{{> workspace/page-heading}}
 
-<h1>資料管理後台</h1>
-
-{{> admin-nav activeTab="teachers"}}
-
-<br>
-
-<form action="/admin/teachers">
-  <div class="form-group d-flex justify-content-center">
-    <label class="mr-2 mt-1" for="status"><strong style="color: rgb(83, 6, 6);">篩選: </strong></label>
-    <select name="status" id="status" class="form-control-sm col-8" onchange="this.form.submit()">
+<div class="ws-content">
+<form class="ws-filter" action="/admin/teachers">
+  <div class="ws-tools">
+    <label class="mr-2 mt-1" for="status">在職狀態</label>
+    <select name="status" id="status" class="form-control-sm" onchange="this.form.submit()">
       <option value="" {{#ifCond '' status}} selected{{/ifCond}}>全部教師</option>
       {{#each statusList}}
         <option value="{{this.id}}" 
@@ -19,92 +14,19 @@
         >{{this.status}}</option>
       {{/each}}
     </select>
+    <button type="submit" class="btn btn-sm btn-outline-primary">套用</button>
   </div>
 </form>
 
-<table class="table table-bordered">
-  <thead class="thead-dark">
-    <tr>
-      <th scope="col">#</th>
-      <th scope="col">教師名稱</th>
-      <th scope="col">性別</th>
-      <th scope="col">學歷</th>
-      <th scope="col">畢業學校</th>
-      <th scope="col">狀態</th>
-      <th scope="col">#</th>
+<div class="table-responsive"><table class="table">
+  <thead><tr><th scope="col">編號</th><th scope="col">教師名稱</th><th scope="col">性別</th><th scope="col">學歷</th><th scope="col">畢業學校</th><th scope="col">狀態</th><th scope="col">操作</th></tr></thead>
+  <tbody>{{#each teachers}}
+    <tr><td>{{id}}</td><th scope="row">{{referenceLabel User.userNo name}}</th><td>{{sex}}</td><td>{{education}}</td><td>{{school}}</td>
+      <td><span class="ws-status{{#ifCond status 1}}{{else}} ws-inactive{{/ifCond}}">{{#each ../statusList}}{{#ifCond id ../status}}{{status}}{{/ifCond}}{{/each}}</span></td>
+      <td><div class="ws-tools"><a href="/admin/teachers/{{id}}">瀏覽教師資料</a><a href="/admin/teachers/{{id}}/edit">更改教師資料</a></div></td>
     </tr>
-  </thead>
-  <tbody>
-    {{#each teachers}}
-    {{#ifCond this.status 1}}
-    <tr class="table-light">
-      <th scope="row">{{this.id}}</th>
-      <td>{{referenceLabel this.User.userNo this.name}}</td>
-      <td>{{this.sex}}</td>
-      <td>{{this.education}}</td>
-      <td>{{this.school}}</td>
-      <td style="color: rgb(116, 177, 55);">在職</td>
-      <td>
-        <button type="button" class="btn btn-link">
-          <a href="/admin/teachers/{{this.id}}">
-            瀏覽教師資料
-          </a>
-        </button>
-        <button type="button" class="btn btn-link">
-          <a href="/admin/teachers/{{this.id}}/edit">
-            更改教師資料
-          </a>
-        </button>
-      </td>
-    </tr>
-    {{/ifCond}}
-    {{#ifCond this.status 2}}
-    <tr class="table-warning">
-      <th scope="row">{{this.id}}</th>
-      <td>{{referenceLabel this.User.userNo this.name}}</td>
-      <td>{{this.sex}}</td>
-      <td>{{this.education}}</td>
-      <td>{{this.school}}</td>
-      <td style="color: rgb(121, 112, 112);">留職停薪</td>
-      <td>
-        <button type="button" class="btn btn-link">
-          <a href="/admin/teachers/{{this.id}}">
-            瀏覽教師資料
-          </a>
-        </button>
-        <button type="button" class="btn btn-link">
-          <a href="/admin/teachers/{{this.id}}/edit">
-            更改教師資料
-          </a>
-        </button>
-      </td>
-    </tr>
-    {{/ifCond}}
-    {{#ifCond this.status 3}}
-    <tr class="table-secondary">
-      <th scope="row">{{this.id}}</th>
-      <td>{{referenceLabel this.User.userNo this.name}}</td>
-      <td>{{this.sex}}</td>
-      <td>{{this.education}}</td>
-      <td>{{this.school}}</td>
-      <td style="color: rgb(187, 37, 37);">離職</td>
-      <td>
-        <button type="button" class="btn btn-link">
-          <a href="/admin/teachers/{{this.id}}">
-            瀏覽教師資料
-          </a>
-        </button>
-        <button type="button" class="btn btn-link">
-          <a href="/admin/teachers/{{this.id}}/edit">
-            更改教師資料
-          </a>
-        </button>
-      </td>
-    </tr>
-    {{/ifCond}}
-    {{/each}}
-  </tbody>
-</table>
-
-<br />
+    {{else}}<tr><td colspan="7">目前沒有符合條件的教師。</td></tr>
+  {{/each}}</tbody>
+</table></div>
 {{> pagination ariaLabel="後台教師列表分頁"}}
+</div>

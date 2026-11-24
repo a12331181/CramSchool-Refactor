@@ -1,5 +1,7 @@
-<h1>{{referenceLabel course.courseNo course.name}}</h1>
-<h2 class="h4">批次新增課堂</h2>
+{{> workspace/page-heading}}
+
+<div class="ws-content">
+<p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
 <p class="text-muted">多選日期，每個日期各建立一堂課；這批共用同一位老師與起訖時間，時間以台北為準。</p>
 
 {{#if error}}
@@ -16,7 +18,7 @@
 <p class="alert alert-warning">目前沒有可安排的授課老師，請先確認教師資料。</p>
 {{/unless}}
 
-<form action="/admin/courses/{{course.id}}/sessions/batch" method="POST">
+<form class="ws-form" action="/admin/courses/{{course.id}}/sessions/batch" method="POST">
   <input type="hidden" name="batchToken" value="{{batchToken}}">
   <div class="form-row">
     <div class="form-group col-md-3">
@@ -51,3 +53,4 @@
 <noscript>
   <p class="mt-3">多選月曆需要 JavaScript。你仍可以<a href="/admin/courses/{{course.id}}/sessions/create">新增單堂課</a>。</p>
 </noscript>
+</div>

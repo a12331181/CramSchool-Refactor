@@ -1,6 +1,7 @@
-<h1>{{referenceLabel course.courseNo course.name}}</h1>
-<h2>新增課堂</h2>
+{{> workspace/page-heading}}
 
+<div class="ws-content">
+<p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
 <p class="text-muted">
   清單中標示「待核對」的舊紀錄，請先確認實際上課時間，避免重複安排。
 </p>
@@ -11,7 +12,7 @@
 </p>
 {{/unless}}
 
-<form action="/admin/courses/{{course.id}}/sessions" method="POST">
+<form class="ws-form" action="/admin/courses/{{course.id}}/sessions" method="POST">
   <div class="form-group">
     <label for="startAt">開始時間（台北）</label>
     <input type="datetime-local" class="form-control" id="startAt" name="startAt" value="{{values.startAt}}" step="60" required>
@@ -46,3 +47,4 @@
   </button>
   <a href="/admin/courses/{{course.id}}/calendar" class="btn btn-secondary">返回課堂列表</a>
 </form>
+</div>

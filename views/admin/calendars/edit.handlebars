@@ -1,6 +1,9 @@
-<form action="/admin/courses/{{calendar.Course.id}}/calendar/{{calendar.id}}?_method=PUT" method="POST">
+{{> workspace/page-heading}}
+
+<div class="ws-content">
+<form class="ws-form" action="/admin/courses/{{calendar.Course.id}}/calendar/{{calendar.id}}?_method=PUT" method="POST">
   <p>課程：{{referenceLabel calendar.Course.courseNo calendar.Course.name}}</p>
-  
+
   <div class="form-group">
     <label for="date">日期</label>
     <input type="date" class="form-control" name="date" id="date" value="{{calendar.date}}" required>
@@ -15,7 +18,5 @@
 
   <button type="submit" class="btn btn-primary">送出資料</button>
 </form>
-
-<br />
-<br />
-<a href="javascript:history.back()">回上一頁</a>
+<a href="/admin/courses/{{calendar.Course.id}}/calendar">返回列表</a>
+</div>

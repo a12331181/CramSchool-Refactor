@@ -1,21 +1,21 @@
-<br />
+{{#> workspace/page-heading}}
+  <a class="ws-btn ws-primary" href="/admin/extrafees/create">{{> workspace/icon name="plus"}}建立新的額外費用</a>
+{{/workspace/page-heading}}
 
-<h1>資料管理後台</h1>
-
-{{> admin-nav activeTab="extra-fees"}}
-
+<div class="ws-content">
+<div class="table-responsive">
 <table class="table table-bordered">
-  <thead class="thead-dark">
+  <thead>
     <tr>
-      <th scope="col">#</th>
+      <th scope="col">編號</th>
       <th scope="col">費用名稱</th>
       <th scope="col">價格</th>
-      <th scope="col">#</th>
+      <th scope="col">操作</th>
     </tr>
   </thead>
   <tbody>
     {{#each extrafees}}
-    <tr class="table-light">
+    <tr>
       <th scope="row">{{this.id}}</th>
       <td>{{this.name}}</td>
       <td>{{this.price}}</td>
@@ -23,13 +23,10 @@
         <a href="/admin/extrafees/{{this.id}}/edit">修改</a>
       </td>
     </tr>
+    {{else}}
+    <tr><td colspan="4">目前沒有額外費用。</td></tr>
     {{/each}}
   </tbody>
 </table>
-
-<br />
-<br />
-
-<a href='/admin/extrafees/create'>
-  <button type="button" class="btn btn-primary">建立新的額外費用</button>
-</a>
+</div>
+</div>

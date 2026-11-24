@@ -1,9 +1,10 @@
+{{> workspace/page-heading}}
+
+<div class="ws-content">
 {{#if extrafee}}
-<h3><strong>修改額外費用</strong></h3>
-<form action="/admin/extrafees/{{extrafee.id}}?_method=PUT" method="POST">
+<form class="ws-form" action="/admin/extrafees/{{extrafee.id}}?_method=PUT" method="POST">
 {{else}}
-<h3><strong>建立新的額外費用</strong></h3>
-<form action="/admin/extrafees" method="POST">
+<form class="ws-form" action="/admin/extrafees" method="POST">
 {{/if}}
   <div class="form-group">
     <label for="name">名稱</label>
@@ -17,8 +18,5 @@
 
   <button type="submit" class="btn btn-primary">送出資料</button>
 </form>
-
-<br />
-<br />
-
-<a href="javascript:history.back()">回上一頁</a>
+<a href="/admin/extrafees">返回列表</a>
+</div>

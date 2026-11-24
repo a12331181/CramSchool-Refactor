@@ -1,40 +1,36 @@
-<br />
+{{#> workspace/page-heading}}
+  <a class="ws-btn ws-primary" href="/admin/courses/{{course.id}}/sessions/create">{{> workspace/icon name="plus"}}新增課堂</a>
+  <a class="ws-btn" href="/admin/courses/{{course.id}}/sessions/batch/create">{{> workspace/icon name="calendar"}}批次新增課堂</a>
+{{/workspace/page-heading}}
 
-<h1>{{referenceLabel course.courseNo course.name}}</h1>
-<h4 class="ml-2" style="color: rgb(182, 190, 202)">課程行事曆</h4>
-
-<a href="/admin/courses/{{course.id}}/sessions/create" class="btn btn-primary mb-3">
-  新增課堂
-</a>
-<a href="/admin/courses/{{course.id}}/sessions/batch/create" class="btn btn-outline-primary mb-3">
-  批次新增課堂
-</a>
-
+<div class="ws-content">
+<p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
+<div class="table-responsive">
 <table class="table table-bordered">
-  <thead class="thead-dark">
+  <thead>
     <tr>
-      <th scope="col">#</th>
+      <th scope="col">編號</th>
       <th scope="col">原紀錄日期</th>
       <th scope="col">開始時間（台北）</th>
       <th scope="col">結束時間（台北）</th>
       <th scope="col">課堂狀態</th>
       <th scope="col">期數</th>
       <th scope="col">課程內容</th>
-      <th scope="col">#</th>
+      <th scope="col">操作</th>
     </tr>
   </thead>
   <tbody>
     {{#each calendars}}
     <tr class="{{this.rowClass}}">
       <th scope="row">{{this.id}}</th>
-  
+
       <td>{{#if this.date}}{{this.date}}{{else}}—{{/if}}</td>
       <td>{{this.startAtText}}</td>
       <td>{{this.endAtText}}</td>
       <td>{{this.statusText}}</td>
       <td>{{#if this.period}}第{{this.period}}期{{else}}—{{/if}}</td>
       <td>{{this.content}}</td>
-  
+
       <td>
         {{#if this.isLegacy}}
           {{#if this.isActive}}
@@ -49,16 +45,16 @@
           {{else}}
           {{#if this.canComplete}}
           <form action="/admin/courses/{{../course.id}}/sessions/{{this.id}}/complete?_method=PUT&amp;page={{../page}}"
-            method="POST" style="display: inline;" onsubmit="return confirm('確定完成這堂課嗎？完成後，老師將無法再新增或更正點名。')">
+            method="POST" class="ws-inline" onsubmit="return confirm('確定完成這堂課嗎？完成後，老師將無法再新增或更正點名。')">
             <button type="submit" class="btn btn-sm btn-success">
               完成課堂
             </button>
           </form>
           {{/if}}
-        
+
           {{#if this.canCancel}}
           <form action="/admin/courses/{{../course.id}}/sessions/{{this.id}}/cancel?_method=PUT&amp;page={{../page}}"
-            method="POST" style="display: inline;" onsubmit="return confirm('確定取消這堂課嗎？')">
+            method="POST" class="ws-inline" onsubmit="return confirm('確定取消這堂課嗎？')">
             <button type="submit" class="btn btn-sm btn-outline-danger">
               取消課堂
             </button>
@@ -78,7 +74,9 @@
     {{/each}}
   </tbody>
 </table>
+</div>
 
 {{> pagination ariaLabel="課程行事曆分頁"}}
 
 <a href="/admin/courses">回到後台課程頁面</a>
+</div>

@@ -1,13 +1,16 @@
+{{> workspace/page-heading}}
+
+<div class="ws-content">
 {{#if student}}
-<form action="/admin/students/{{student.id}}?_method=PUT" method="POST" enctype="multipart/form-data">
+<form class="ws-form" action="/admin/students/{{student.id}}?_method=PUT" method="POST" enctype="multipart/form-data">
 {{else}}
-<form action="/admin/students" method="POST" enctype="multipart/form-data">
+<form class="ws-form" action="/admin/students" method="POST" enctype="multipart/form-data">
   {{/if}}
   <div class="form-group">
     <label for="name">學生名稱</label>
     <input type="text" class="form-control" name="name" id="name" placeholder="輸入學生名稱.." value="{{student.name}}" required {{#ifCond student.status 2 }} readonly {{/ifCond}}>
   </div>
-  
+
   <div class="form-group">
     <label for="sex">性別</label>
     <select class="form-control" name="sex" id="sex" {{#ifCond student.status 2 }} disabled {{/ifCond}}>
@@ -20,17 +23,17 @@
       {{/each}}
     </select>
   </div>
-  
+
   <div class="form-group">
     <label for="birth">生日</label>
     <input type="date" class="form-control" name="birth" id="birth" placeholder="輸入出生年月日.." value="{{student.birth}}" required {{#ifCond student.status 2 }} readonly {{/ifCond}}>
   </div>
-  
+
   <div class="form-group">
     <label for="school">學校</label>
     <input type="text" class="form-control" name="school" id="school" placeholder="輸入學校.." value="{{student.school}}" required {{#ifCond student.status 2 }} readonly {{/ifCond}}>
   </div>
-  
+
   <div class="form-group">
     <label for="grade">年級</label>
     <select class="form-control" name="grade" id="grade" {{#ifCond student.status 2 }} disabled {{/ifCond}}>
@@ -43,22 +46,22 @@
       {{/each}}
     </select>
   </div>
-  
+
   <div class="form-group">
     <label for="tel">聯絡電話</label>
     <input type="text" class="form-control" name="tel" id="tel" placeholder="輸入電話號碼.." value="{{student.tel}}" required {{#ifCond student.status 2 }} readonly {{/ifCond}}>
   </div>
-  
+
   <div class="form-group">
     <label for="address">地址</label>
     <input type="text" class="form-control" name="address" id="address" placeholder="輸入地址.." value="{{student.address}}" required {{#ifCond student.status 2 }} readonly {{/ifCond}}>
   </div>
-  
+
   <div class="form-group">
     <label for="image">照片</label>
     <input type="file" class="form-control-file" id="image" name="image" accept="{{imageAccept}}" {{#ifCond student.status 2 }} disabled {{/ifCond}}>
   </div>
-  
+
   <div class="form-group">
     <label for="status">狀態</label>
     <select class="form-control" name="status" id="status">
@@ -74,3 +77,5 @@
 
   <button type="submit" class="btn btn-primary">送出資料</button>
 </form>
+<a href="/admin/students">返回列表</a>
+</div>

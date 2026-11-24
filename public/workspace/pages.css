@@ -85,3 +85,14 @@
   .ws-content .table th, .ws-content .table td { padding: .62rem .7rem; }
   .ws-page-heading .ws-tile-icon { width: 2.2rem; height: 2.2rem; }
 }
+
+.ws-content #batch-date-picker { padding: 1rem 0 0; }
+.ws-content #batch-date-picker table { table-layout: fixed; }
+.ws-content #batch-date-picker th, .ws-content #batch-date-picker td { padding: .18rem; text-align: center; }
+.ws-content #batch-date-picker [aria-pressed=true] { border-color: #244c39; background: #244c39; color: white; }
+.ws-content #batch-selected-dates { display: flex; flex-wrap: wrap; gap: .4rem; list-style: none; padding: 0; }
+.ws-content #batch-selected-dates li { display: flex; align-items: center; gap: .35rem; border-radius: .4rem; background: var(--soft); padding: .14rem .45rem; }
+@media (max-width: 480px) {
+  .ws-content #batch-date-picker td .btn { padding: .3rem 0; min-height: 2rem; }
+  .ws-content #batch-date-picker th { white-space: normal; }
+}

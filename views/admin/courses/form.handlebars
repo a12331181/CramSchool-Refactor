@@ -1,7 +1,10 @@
+{{> workspace/page-heading}}
+
+<div class="ws-content">
 {{#if course}}
-<form action="/admin/courses/{{course.id}}?_method=PUT" method="POST">
+<form class="ws-form" action="/admin/courses/{{course.id}}?_method=PUT" method="POST">
 {{else}}
-<form action="/admin/courses" method="POST">
+<form class="ws-form" action="/admin/courses" method="POST">
 {{/if}}
   {{#if course}}
   <p>課程編號：<strong>{{#if course.courseNo}}{{course.courseNo}}{{else}}—{{/if}}</strong></p>
@@ -57,7 +60,7 @@
       {{/each}}
     </select>
   </div>
-  
+
   <div class="form-group">
     <label for="price">價格（NT$）</label>
     <input type="number" class="form-control" name="price" id="price" min="0" max="{{maxPrice}}" step="1" value="{{course.price}}" placeholder="輸入價格" required>
@@ -79,3 +82,5 @@
 
   <button type="submit" class="btn btn-primary">送出資料</button>
 </form>
+<a href="/admin/courses">返回列表</a>
+</div>
