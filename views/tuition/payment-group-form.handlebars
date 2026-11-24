@@ -28,16 +28,16 @@
   </fieldset>
   <p>勾選金額合計：NT$ <output id="payment-group-selected-total" aria-live="polite">0</output></p>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="payment-group-paid-on">實際收款日</label>
     <input id="payment-group-paid-on" type="date" name="paidOn" value="{{today}}" max="{{today}}" class="form-control" required>
   </div>
-  <div class="form-group">
+  <div class="mb-3">
     <label for="payment-group-amount">實際收到的匯款金額（NT$）</label>
     <input id="payment-group-amount" type="number" name="amount" min="1" max="{{maxAmount}}" step="1"
       inputmode="numeric" class="form-control" required>
   </div>
-  <div class="form-group">
+  <div class="mb-3">
     <label for="payment-group-note">匯款備註（選填，例如末五碼）</label>
     <input id="payment-group-note" type="text" name="note" maxlength="{{maxNoteLength}}" class="form-control">
   </div>

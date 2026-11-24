@@ -2,37 +2,37 @@
   <input type="hidden" name="inviteToken" value="{{inviteToken}}">
   <h1>註冊帳號</h1>
   
-  <div class="form-group">
+  <div class="mb-3">
     <label for="inputRealName">教師姓名</label>
     <input id="inputRealName" type="text" name="realName" class="form-control" placeholder="輸入真實姓名..." required>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="inputName">暱稱或ID</label>
     <input id="inputName" type="text" name="name" class="form-control" placeholder="輸入暱稱或ID..." required autofocus>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="inputEmail">信箱</label>
     <input id="inputEmail" type="email" name="email" class="form-control" placeholder="輸入信箱..." maxlength="254" autocomplete="email" value="{{invitedEmail}}" readonly required>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="inputPhone">聯絡電話</label>
     <input id="inputPhone" type="tel" name="phone" class="form-control" placeholder="例如 0912345678" inputmode="numeric" pattern="09[0-9]{8}" minlength="10" maxlength="10" title="請輸入 09 開頭的十位手機號碼" autocomplete="tel-national" required>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="inputPassword">密碼</label>
     <input id="inputPassword" type="password" name="password" class="form-control" placeholder="輸入密碼..." autocomplete="new-password" required>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="inputPasswordCheck">密碼確認</label>
     <input id="inputPasswordCheck" type="password" name="passwordCheck" class="form-control" placeholder="輸入密碼..." autocomplete="new-password" required>
   </div>
 
-  <button class="btn btn-lg btn-primary btn-block" type="submit">建立教師帳號</button>
+  <button class="btn btn-lg btn-primary w-100" type="submit">建立教師帳號</button>
   <div class="ws-return">
     <p><a href="/signin">登入</a></p>
   </div>

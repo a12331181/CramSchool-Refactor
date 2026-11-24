@@ -75,7 +75,7 @@
       </table>
     </div>
     {{#if canRecord}}
-      <div class="form-group ws-screen-only">
+      <div class="mb-3 ws-screen-only">
         <label for="item-paid-on">實際收款日</label>
         <input id="item-paid-on" name="paidOn" type="date" class="form-control"
           value="{{today}}" max="{{today}}" required>
@@ -116,7 +116,7 @@
     <input type="hidden" name="tuitionFormToken" value="{{formToken}}">
     <input type="hidden" name="billVersion" value="{{billVersion}}">
     <input type="hidden" name="amount" value="{{amount}}">
-    <div class="form-group ws-screen-only">
+    <div class="mb-3 ws-screen-only">
       <label for="bill-paid-on">實際收款日</label>
       <input id="bill-paid-on" name="paidOn" type="date" class="form-control"
         value="{{today}}" max="{{today}}" required>

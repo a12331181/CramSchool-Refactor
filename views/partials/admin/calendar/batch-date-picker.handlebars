@@ -3,9 +3,9 @@
   <legend class="h5">選擇上課日期</legend>
   <p id="batch-date-help" class="text-muted">點同一天可取消選擇；切換月份會保留已選日期。每次最多 {{maxDates}} 天。</p>
   <div class="form-inline d-flex flex-wrap mb-2">
-    <button type="button" class="btn btn-outline-secondary mr-2" id="batch-prev-month">上一月</button>
-    <label for="batch-month" class="mr-2">月份</label>
-    <input type="month" class="form-control mr-2" id="batch-month" value="{{calendarMonth}}" aria-describedby="batch-date-help">
+    <button type="button" class="btn btn-outline-secondary me-2" id="batch-prev-month">上一月</button>
+    <label for="batch-month" class="me-2">月份</label>
+    <input type="month" class="form-control me-2" id="batch-month" value="{{calendarMonth}}" aria-describedby="batch-date-help">
     <button type="button" class="btn btn-outline-secondary" id="batch-next-month">下一月</button>
   </div>
   <div class="table-responsive">
@@ -20,7 +20,7 @@
     </table>
   </div>
   <p id="batch-date-count" aria-live="polite"></p>
-  <button type="button" class="btn btn-sm btn-link pl-0" id="batch-clear-dates">清除所有日期</button>
+  <button type="button" class="btn btn-sm btn-link ps-0" id="batch-clear-dates">清除所有日期</button>
   <ul id="batch-selected-dates">
     {{#each selectedDates}}
     <li><input type="hidden" name="dates[]" value="{{this}}">{{this}}</li>

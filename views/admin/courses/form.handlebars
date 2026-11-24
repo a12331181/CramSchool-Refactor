@@ -9,7 +9,7 @@
   {{#if course}}
   <p>課程編號：<strong>{{#if course.courseNo}}{{course.courseNo}}{{else}}—{{/if}}</strong></p>
   {{else}}
-  <fieldset class="form-group">
+  <fieldset class="mb-3">
     <legend class="h6">課程編號開頭</legend>
     <div class="form-row">
       <div class="col">
@@ -30,12 +30,12 @@
     <small class="form-text text-muted">系統會接上補習班代碼與流水號，例如 MA0010001。</small>
   </fieldset>
   {{/if}}
-  <div class="form-group">
+  <div class="mb-3">
     <label for="name">課程名稱</label>
     <input type="text" class="form-control" name="name" id="name" placeholder="輸入課程名稱" value="{{course.name}}" required {{#if course}} readonly {{/if}}>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="time">上課時長</label>
     <select class="form-control" name="time" id="time">
       {{#each timeList}}
@@ -48,7 +48,7 @@
     </select>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="type">計費方式</label>
     <select class="form-control" name="type" id="type">
       {{#each typeList}}
@@ -61,13 +61,13 @@
     </select>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="price">價格（NT$）</label>
     <input type="number" class="form-control" name="price" id="price" min="0" max="{{maxPrice}}" step="1" value="{{course.price}}" placeholder="輸入價格" required>
     <small class="form-text text-muted">月費制填整月金額；堂數制填每堂單價，堂數依該月的正式排課計算。</small>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="teacherId">授課老師</label>
     <select class="form-control" id="teacherId" name="teacherId">
       {{#each teachers}}

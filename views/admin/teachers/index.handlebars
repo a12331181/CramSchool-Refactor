@@ -3,7 +3,7 @@
 <div class="ws-content">
 <form class="ws-filter" action="/admin/teachers">
   <div class="ws-tools">
-    <label class="mr-2 mt-1" for="status">在職狀態</label>
+    <label class="me-2 mt-1" for="status">在職狀態</label>
     <select name="status" id="status" class="form-control-sm" onchange="this.form.requestSubmit()">
       <option value="" {{#ifCond '' status}} selected{{/ifCond}}>全部教師</option>
       {{#each statusList}}

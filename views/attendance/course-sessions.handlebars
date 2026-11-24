@@ -3,17 +3,17 @@
 <div class="ws-content">
 <p class="ws-context">{{referenceLabel course.courseNo course.name}}</p>
 <form action="{{listUrl}}" method="GET" class="ws-filter">
-  <label for="attendance-month" class="mr-2">月份（台北）</label>
-  <input type="month" class="form-control mr-3 mb-1" id="attendance-month" name="month" value="{{month}}">
+  <label for="attendance-month" class="me-2">月份（台北）</label>
+  <input type="month" class="form-control me-3 mb-1" id="attendance-month" name="month" value="{{month}}">
 
-  <label for="attendance-session-status" class="mr-2">課堂狀態</label>
-  <select class="form-control mr-3 mb-1" id="attendance-session-status" name="status">
+  <label for="attendance-session-status" class="me-2">課堂狀態</label>
+  <select class="form-control me-3 mb-1" id="attendance-session-status" name="status">
     <option value="">全部狀態</option>
     {{#each statusOptions}}
     <option value="{{this.value}}"{{#if this.selected}} selected{{/if}}>{{this.label}}</option>
     {{/each}}
   </select>
-  <button type="submit" class="btn btn-sm btn-primary mr-2 mb-1">篩選</button>
+  <button type="submit" class="btn btn-sm btn-primary me-2 mb-1">篩選</button>
   <a href="{{listUrl}}">清除篩選</a>
 </form>
 

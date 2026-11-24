@@ -13,17 +13,17 @@
 {{/unless}}
 
 <form class="ws-form" action="/admin/courses/{{course.id}}/sessions" method="POST">
-  <div class="form-group">
+  <div class="mb-3">
     <label for="startAt">開始時間（台北）</label>
     <input type="datetime-local" class="form-control" id="startAt" name="startAt" value="{{values.startAt}}" step="60" required>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="endAt">結束時間（台北）</label>
     <input type="datetime-local" class="form-control" id="endAt" name="endAt" value="{{values.endAt}}" step="60" required>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="teacherId">授課教師</label>
     <select class="form-control" id="teacherId" name="teacherId" required>
       <option value="">請選擇授課教師</option>
@@ -35,7 +35,7 @@
     </select>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="content">課堂內容（選填）</label>
     <textarea class="form-control" id="content" name="content" rows="3" maxlength="40">
       {{values.content}}

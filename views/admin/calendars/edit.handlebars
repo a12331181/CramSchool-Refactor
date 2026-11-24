@@ -4,12 +4,12 @@
 <form class="ws-form" action="/admin/courses/{{calendar.Course.id}}/calendar/{{calendar.id}}?_method=PUT" method="POST">
   <p>課程：{{referenceLabel calendar.Course.courseNo calendar.Course.name}}</p>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="date">日期</label>
     <input type="date" class="form-control" name="date" id="date" value="{{calendar.date}}" required>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="content">上課內容</label>
     <input type="text" class="form-control" name="content" id="content" value="{{calendar.content}}"
         placeholder="輸入上課內容.." maxlength="40" required>

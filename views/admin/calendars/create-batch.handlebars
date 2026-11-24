@@ -21,15 +21,15 @@
 <form class="ws-form" action="/admin/courses/{{course.id}}/sessions/batch" method="POST">
   <input type="hidden" name="batchToken" value="{{batchToken}}">
   <div class="form-row">
-    <div class="form-group col-md-3">
+    <div class="mb-3 col-md-3">
       <label for="batch-start-time">開始時間（台北）</label>
       <input type="time" class="form-control" id="batch-start-time" name="startTime" value="{{values.startTime}}" step="60" required>
     </div>
-    <div class="form-group col-md-3">
+    <div class="mb-3 col-md-3">
       <label for="batch-end-time">結束時間（台北）</label>
       <input type="time" class="form-control" id="batch-end-time" name="endTime" value="{{values.endTime}}" step="60" required>
     </div>
-    <div class="form-group col-md-6">
+    <div class="mb-3 col-md-6">
       <label for="batch-teacher">授課老師</label>
       <select class="form-control" id="batch-teacher" name="teacherId" required>
         <option value="">請選擇授課老師</option>
@@ -40,7 +40,7 @@
     </div>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="batch-content">課堂內容（選填）</label>
     <textarea class="form-control" id="batch-content" name="content" rows="2" maxlength="40">{{values.content}}</textarea>
   </div>

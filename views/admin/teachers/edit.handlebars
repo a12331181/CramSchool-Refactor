@@ -2,12 +2,12 @@
 
 <div class="ws-content">
 <form class="ws-form" action="/admin/teachers/{{teacher.id}}?_method=PUT" method="POST">
-  <div class="form-group">
+  <div class="mb-3">
     <label for="name">教師名稱</label>
     <input type="text" class="form-control" name="name" id="name" placeholder="輸入教師名稱.." value="{{teacher.name}}" required {{#ifCond teacher.status 3 }} readonly {{/ifCond}}>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="sex">性別</label>
     <select class="form-control" name="sex" id="sex" {{#ifCond teacher.status 3 }} disabled {{/ifCond}}>
       {{#each sexList}}
@@ -20,37 +20,37 @@
     </select>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="birth">生日</label>
     <input type="date" class="form-control" name="birth" id="birth" value="{{teacher.birth}}" placeholder="輸入出生年月日.."
       required {{#ifCond teacher.status 3 }} disabled {{/ifCond}}>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="phone">聯絡方式</label>
     <input type="text" class="form-control" name="phone" id="phone" value="{{teacher.phone}}" placeholder="輸入聯絡方式.."
       required {{#ifCond teacher.status 3 }} readonly {{/ifCond}}>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="address">聯絡地址</label>
     <input type="text" class="form-control" name="address" id="address" value="{{teacher.address}}"
       placeholder="輸入聯絡地址.." required {{#ifCond teacher.status 3 }} readonly {{/ifCond}}>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="education">最高學歷</label>
     <input type="text" class="form-control" name="education" id="education" value="{{teacher.education}}"
       placeholder="輸入最高學歷.." required {{#ifCond teacher.status 3 }} readonly {{/ifCond}}>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="school">學校</label>
     <input type="text" class="form-control" name="school" id="school" value="{{teacher.school}}" placeholder="輸入學校.."
       required {{#ifCond teacher.status 3 }} readonly {{/ifCond}}>
   </div>
 
-  <div class="form-group">
+  <div class="mb-3">
     <label for="status">狀態</label>
     <select class="form-control" name="status" id="status">
       {{#each statusList}}
